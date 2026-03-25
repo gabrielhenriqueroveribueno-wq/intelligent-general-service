@@ -1,0 +1,163 @@
+import logging
+from typing import Any, Dict, Optional
+
+import anthropic
+
+from app.config import settings
+
+logger = logging.getLogger(__name__)
+
+BOT_SYSTEM_PROMPT = """Você é um assistente virtual universitário chamado {bot_name}.
+Você atende alunos e funcionários da instituição via WhatsApp.
+
+REGRAS OBRIGATÓRIAS:
+1. Responda SOMENTE com base nos dados fornecidos abaixo. NUNCA invente informações.
+2. Se os dados não contiverem a informação solicitada, diga: "Não encontrei essa informação. Por favor, entre em contato com a secretaria."
+3. Use linguagem clara, direta e amigável em português brasileiro.
+4. Seja conciso - respostas via WhatsApp devem ser curtas.
+5. Use emojis moderadamente para deixar a mensagem mais amigável.
+6. Se o usuário pedir algo fora do seu escopo, ofereça encaminhar para um atendente humano.
+
+DADOS DISPONÍVEIS:
+{data_context}
+
+BASE DE CONHECIMENTO:
+{kb_context}
+
+HISTÓRICO DA CONVERSA:
+{conversation_history}
+"""
+
+
+async def generate_response(
+    message: str,
+    intent: str,
+    data_context: Dict[str, Any],
+    kb_articles: list,
+    conversation_history: list,
+    bot_name: str = "Assistente",
+    api_key: Optional[str] = None,
+) -> tuple[str, int]:
+    """
+    Gera uma resposta inteligente usando Claude.
+    Retorna: (resposta, tokens_usados)
+    """
+    effective_api_key = api_key or settings.ANTHROPIC_API_KEY
+    client = anthropic.AsyncAnthropic(api_key=effective_api_key)
+
+    # Formata contexto de dados
+    data_str = _format_data_context(intent, data_context)
+
+    # Formata artigos da KB
+    kb_str = _format_kb_context(kb_articles)
+
+    # Formata histórico da conversa (últimas 5 mensagens)
+    history_str = _format_history(conversation_history[-5:])
+
+    system = BOT_SYSTEM_PROMPT.format(
+        bot_name=bot_name,
+        data_context=data_str or "Nenhum dado disponível para esta consulta.",
+        kb_context=kb_str or "Nenhum artigo relevante encontrado.",
+        conversation_history=history_str or "Início da conversa.",
+    )
+
+    try:
+        response = await client.messages.create(
+            model=settings.CLAUDE_MODEL,
+            max_tokens=settings.CLAUDE_MAX_TOKENS,
+            system=system,
+            messages=[{"role": "user", "content": message}],
+        )
+
+        text = response.content[0].text.strip()
+        tokens = response.usage.input_tokens + response.usage.output_tokens
+        return text, tokens
+
+    except anthropic.APIError as e:
+        logger.error("Erro na API Claude: %s", e)
+        return (
+            "Desculpe, estou com dificuldades técnicas no momento. "
+            "Tente novamente em alguns instantes ou fale com um atendente. 🙏",
+            0,
+        )
+
+
+def _format_data_context(intent: str, data: Dict[str, Any]) -> str:
+    if not data:
+        return ""
+
+    lines = []
+    if intent == "grade_query" and "grades" in data:
+        lines.append("=== NOTAS ===")
+        for g in data["grades"]:
+            lines.append(
+                f"- {g['subject_name']} ({g['academic_period']}): "
+                f"{g['grade_type']} = {g.get('grade_value', 'Não lançada')} "
+                f"[{g.get('status', '')}]"
+            )
+    elif intent == "attendance_query" and "attendance" in data:
+        lines.append("=== FREQUÊNCIA ===")
+        for a in data["attendance"]:
+            lines.append(
+                f"- {a['subject_name']} ({a['academic_period']}): "
+                f"{a['attended']}/{a['total_classes']} aulas "
+                f"({a.get('absence_pct', 0):.1f}% faltas)"
+            )
+    elif intent == "boleto_query" and "boletos" in data:
+        lines.append("=== BOLETOS ===")
+        for b in data["boletos"]:
+            lines.append(
+                f"- {b['reference_month']}: R$ {b['amount']:.2f} "
+                f"[{b['status']}] Vence: {b.get('due_date', 'N/A')}"
+            )
+    elif intent == "payslip_query" and "payslips" in data:
+        lines.append("=== HOLERITES ===")
+        for p in data["payslips"]:
+            lines.append(
+                f"- {p['reference_month']}: Bruto R$ {p['gross_salary']:.2f} / "
+                f"Líquido R$ {p['net_salary']:.2f}"
+            )
+    elif intent == "vacation_query" and "vacation" in data:
+        v = data["vacation"]
+        lines.append("=== FÉRIAS ===")
+        lines.append(f"- Dias disponíveis: {v.get('remaining_days', 0)}")
+        lines.append(f"- Dias usados: {v.get('used_days', 0)}")
+        lines.append(f"- Prazo limite: {v.get('deadline_date', 'N/A')}")
+    elif "student" in data:
+        s = data["student"]
+        lines.append("=== DADOS DO ALUNO ===")
+        lines.append(f"- Nome: {s.get('full_name')}")
+        lines.append(f"- RA: {s.get('registration_number')}")
+        lines.append(f"- Curso: {s.get('course')}")
+        lines.append(f"- Situação: {s.get('enrollment_status')}")
+    elif "employee" in data:
+        e = data["employee"]
+        lines.append("=== DADOS DO FUNCIONÁRIO ===")
+        lines.append(f"- Nome: {e.get('full_name')}")
+        lines.append(f"- Matrícula: {e.get('employee_number')}")
+        lines.append(f"- Departamento: {e.get('department')}")
+        lines.append(f"- Cargo: {e.get('position')}")
+    else:
+        for k, v in data.items():
+            lines.append(f"{k}: {v}")
+
+    return "\n".join(lines)
+
+
+def _format_kb_context(articles: list) -> str:
+    if not articles:
+        return ""
+    lines = []
+    for art in articles[:3]:  # Máximo 3 artigos
+        lines.append(f"[{art.get('title')}]\n{art.get('content')}")
+    return "\n\n".join(lines)
+
+
+def _format_history(history: list) -> str:
+    if not history:
+        return ""
+    lines = []
+    for msg in history:
+        role = "Usuário" if msg.get("sender_type") == "user" else "Bot"
+        lines.append(f"{role}: {msg.get('content', '')[:200]}")
+    return "\n".join(lines)

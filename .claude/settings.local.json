@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git config:*)",
+      "Bash(find /c/Users/Loide/Downloads/intelligent-general-service -type f -not -path ./.git/* -not -path ./.git*)",
+      "Bash(git:*)"
+    ]
+  }
+}
