@@ -20,6 +20,8 @@ class MessageResponse(BaseModel):
 class ConversationResponse(BaseModel):
     id: uuid.UUID
     contact_id: uuid.UUID
+    contact_name: Optional[str] = None
+    contact_phone: Optional[str] = None
     channel: str
     status: str
     context_type: Optional[str]

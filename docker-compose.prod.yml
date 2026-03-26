@@ -82,11 +82,20 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
       - ./frontend/dist:/usr/share/nginx/html:ro
     depends_on:
       - api
+
+  certbot:
+    image: certbot/certbot
+    container_name: igs_certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: /bin/sh -c "trap exit TERM; while :; do certbot renew --quiet; sleep 12h & wait $${!}; done"
 
   prometheus:
     image: prom/prometheus:latest
@@ -124,6 +133,29 @@ services:
       - ./monitoring/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock
+
+  # ── Redis Exporter (Prometheus) ───────────────────────────
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: igs_redis_exporter
+    restart: always
+    environment:
+      - REDIS_ADDR=redis://redis:6379
+    depends_on:
+      - redis
+
+  # ── AlertManager ──────────────────────────────────────────
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: igs_alertmanager
+    restart: always
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    depends_on:
+      - prometheus
 
 volumes:
   postgres_data:

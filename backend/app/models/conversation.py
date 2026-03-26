@@ -75,6 +75,10 @@ class Message(Base, TenantMixin, TimestampMixin):
     intent: Mapped[Optional[str]] = mapped_column(String(50))
     is_delivered: Mapped[bool] = mapped_column(Boolean, default=False)
     is_read: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Campos para mensagens com mídia
+    whatsapp_media_id: Mapped[Optional[str]] = mapped_column(String(255))
+    media_url: Mapped[Optional[str]] = mapped_column(String(500))
+    media_mime_type: Mapped[Optional[str]] = mapped_column(String(100))
 
     conversation: Mapped[object] = relationship(
         "Conversation", back_populates="messages", lazy="noload"

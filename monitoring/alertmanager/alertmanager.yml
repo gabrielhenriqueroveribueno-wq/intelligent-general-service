@@ -1,0 +1,57 @@
+global:
+  # Tempo para declarar alerta resolvido após ausência de disparo
+  resolve_timeout: 5m
+
+# Template de notificação padrão
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Roteamento de alertas
+route:
+  receiver: 'igs-webhook'
+  group_by: ['alertname', 'tenant_id']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+
+  routes:
+    # Alertas críticos: notificar imediatamente sem agrupamento
+    - match:
+        severity: critical
+      receiver: 'igs-webhook-critical'
+      group_wait: 0s
+      repeat_interval: 1h
+
+    # Alertas de infraestrutura críticos
+    - match_re:
+        alertname: 'APIDown|RedisDown'
+      receiver: 'igs-webhook-critical'
+      group_wait: 0s
+      repeat_interval: 30m
+
+# Inibição: não disparar warning se já há critical para o mesmo tenant
+inhibit_rules:
+  - source_match:
+      severity: critical
+    target_match:
+      severity: warning
+    equal: ['alertname', 'tenant_id']
+
+receivers:
+  - name: 'igs-webhook'
+    webhook_configs:
+      - url: 'http://api:8000/api/v1/internal/alerts'
+        send_resolved: true
+        http_config:
+          # Autenticação interna via header
+          headers:
+            X-Internal-Token: '${INTERNAL_ALERT_TOKEN:-igs-internal-alerts}'
+
+  - name: 'igs-webhook-critical'
+    webhook_configs:
+      - url: 'http://api:8000/api/v1/internal/alerts'
+        send_resolved: true
+        http_config:
+          headers:
+            X-Internal-Token: '${INTERNAL_ALERT_TOKEN:-igs-internal-alerts}'
+            X-Alert-Priority: 'critical'

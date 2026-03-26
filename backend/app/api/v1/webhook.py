@@ -106,17 +106,37 @@ async def _handle_incoming_message(
     contact_name: str | None,
 ):
     """Persiste a mensagem e enfileira o processamento via Celery."""
-    # Só processa mensagens de texto por enquanto
-    if raw_msg.get("type") != "text":
-        logger.debug("Tipo de mensagem não suportado: %s", raw_msg.get("type"))
-        return
-
-    text_body = raw_msg.get("text", {}).get("body", "").strip()
-    if not text_body:
-        return
-
+    msg_type = raw_msg.get("type", "text")
     from_phone = raw_msg.get("from")
     whatsapp_msg_id = raw_msg.get("id")
+
+    SUPPORTED_TYPES = {"text", "image", "document", "audio", "video", "sticker"}
+    if msg_type not in SUPPORTED_TYPES:
+        logger.debug("Tipo de mensagem não suportado: %s", msg_type)
+        return
+
+    # Extrai conteúdo conforme tipo
+    text_body = ""
+    media_id = None
+    media_mime_type = None
+
+    if msg_type == "text":
+        text_body = raw_msg.get("text", {}).get("body", "").strip()
+        if not text_body:
+            return
+    elif msg_type in ("image", "document", "video", "sticker"):
+        media_data = raw_msg.get(msg_type, {})
+        media_id = media_data.get("id")
+        media_mime_type = media_data.get("mime_type")
+        caption = media_data.get("caption", "")
+        filename = media_data.get("filename", "")
+        text_body = caption or filename or f"[{msg_type}]"
+    elif msg_type == "audio":
+        # Áudio: notifica usuário que não é suportado ainda
+        media_data = raw_msg.get("audio", {})
+        media_id = media_data.get("id")
+        media_mime_type = media_data.get("mime_type")
+        text_body = "[audio]"
 
     # Encontra o tenant pelo phone_number_id
     tenant_result = await db.execute(
@@ -161,7 +181,10 @@ async def _handle_incoming_message(
         conversation_id=conversation.id,
         sender_type="user",
         content=text_body,
+        message_type=msg_type if msg_type in ("image", "document", "audio", "video") else "text",
         whatsapp_msg_id=whatsapp_msg_id,
+        whatsapp_media_id=media_id,
+        media_mime_type=media_mime_type,
     )
     db.add(message)
 

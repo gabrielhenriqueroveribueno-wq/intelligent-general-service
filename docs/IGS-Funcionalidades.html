@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IGS - Mapa Completo de Funcionalidades</title>
+<style>
+  @media print {
+    body { font-size: 11px; }
+    .page-break { page-break-before: always; }
+    h2 { page-break-after: avoid; }
+    table { page-break-inside: avoid; }
+    pre { page-break-inside: avoid; }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: #1a1a2e;
+    background: #fff;
+    line-height: 1.6;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 40px 32px;
+  }
+  .cover {
+    text-align: center;
+    padding: 80px 0 60px;
+    border-bottom: 3px solid #2563eb;
+    margin-bottom: 40px;
+  }
+  .cover h1 {
+    font-size: 36px;
+    color: #1e3a5f;
+    margin-bottom: 8px;
+  }
+  .cover .subtitle {
+    font-size: 18px;
+    color: #64748b;
+    margin-bottom: 24px;
+  }
+  .cover .meta {
+    font-size: 13px;
+    color: #94a3b8;
+  }
+  .logo {
+    display: inline-block;
+    width: 80px; height: 80px;
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    border-radius: 20px;
+    color: #fff;
+    font-size: 36px;
+    font-weight: 900;
+    line-height: 80px;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  h2 {
+    font-size: 22px;
+    color: #1e3a5f;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 8px;
+    margin: 40px 0 16px;
+  }
+  h3 {
+    font-size: 16px;
+    color: #334155;
+    margin: 20px 0 8px;
+  }
+  h4 {
+    font-size: 14px;
+    color: #475569;
+    margin: 14px 0 6px;
+  }
+  p, li { font-size: 14px; color: #334155; }
+  ul, ol { padding-left: 24px; margin: 8px 0; }
+  li { margin: 4px 0; }
+  strong { color: #1e293b; }
+  code {
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #7c3aed;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+  }
+  pre {
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 16px 20px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 12px;
+    line-height: 1.5;
+    margin: 12px 0;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 13px;
+  }
+  th {
+    background: #f1f5f9;
+    color: #334155;
+    font-weight: 600;
+    text-align: left;
+    padding: 10px 12px;
+    border: 1px solid #e2e8f0;
+  }
+  td {
+    padding: 8px 12px;
+    border: 1px solid #e2e8f0;
+    vertical-align: top;
+  }
+  tr:nth-child(even) { background: #f8fafc; }
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .badge-green { background: #dcfce7; color: #166534; }
+  .badge-yellow { background: #fef9c3; color: #854d0e; }
+  .badge-red { background: #fee2e2; color: #991b1b; }
+  .badge-blue { background: #dbeafe; color: #1e40af; }
+  .badge-purple { background: #f3e8ff; color: #6b21a8; }
+  .badge-gray { background: #f1f5f9; color: #475569; }
+  .card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 12px 0;
+  }
+  .card-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 12px 0;
+  }
+  .flow-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin: 8px 0;
+  }
+  .flow-num {
+    flex-shrink: 0;
+    width: 28px; height: 28px;
+    background: #2563eb;
+    color: #fff;
+    border-radius: 50%;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 28px;
+    text-align: center;
+  }
+  .toc { column-count: 2; column-gap: 32px; }
+  .toc a { color: #2563eb; text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .toc li { margin: 4px 0; font-size: 14px; }
+  .endpoint {
+    font-family: monospace;
+    background: #f0fdf4;
+    border-left: 3px solid #22c55e;
+    padding: 4px 10px;
+    margin: 4px 0;
+    font-size: 13px;
+  }
+  .endpoint-post { border-left-color: #f59e0b; background: #fffbeb; }
+  .endpoint-patch { border-left-color: #8b5cf6; background: #faf5ff; }
+  .endpoint-delete { border-left-color: #ef4444; background: #fef2f2; }
+  hr { border: none; border-top: 1px solid #e2e8f0; margin: 32px 0; }
+  .section-icon { font-size: 20px; margin-right: 8px; }
+</style>
+</head>
+<body>
+
+<!-- CAPA -->
+<div class="cover">
+  <div class="logo">IGS</div>
+  <h1>Intelligent General Service</h1>
+  <p class="subtitle">Mapa Completo de Funcionalidades e Interface Visual</p>
+  <p class="meta">SaaS de Atendimento Inteligente via WhatsApp para Instituicoes de Ensino</p>
+  <p class="meta" style="margin-top: 8px;">Documento gerado em Marco 2026 | Versao 1.0</p>
+</div>
+
+<!-- SUMARIO -->
+<h2>Sumario</h2>
+<div class="toc">
+<ol>
+  <li><a href="#auth">Autenticacao e Login</a></li>
+  <li><a href="#layout">Layout Principal</a></li>
+  <li><a href="#dashboard">Dashboard</a></li>
+  <li><a href="#conversations">Conversas (WhatsApp)</a></li>
+  <li><a href="#tickets">Tickets</a></li>
+  <li><a href="#students">Alunos</a></li>
+  <li><a href="#employees">Funcionarios</a></li>
+  <li><a href="#kb">Base de Conhecimento</a></li>
+  <li><a href="#reports">Relatorios</a></li>
+  <li><a href="#users">Gestao de Usuarios</a></li>
+  <li><a href="#settings">Configuracoes</a></li>
+  <li><a href="#whatsapp-flow">Fluxo WhatsApp (Backend)</a></li>
+  <li><a href="#dlq">Dead Letter Queue</a></li>
+  <li><a href="#webhooks">Webhooks de Saida</a></li>
+  <li><a href="#monitoring">Monitoramento</a></li>
+  <li><a href="#infra">Infraestrutura e DevOps</a></li>
+  <li><a href="#models">Modelos de Dados</a></li>
+</ol>
+</div>
+
+<hr>
+
+<!-- 1. AUTH -->
+<h2 id="auth"><span class="section-icon">&#128274;</span> 1. Autenticacao e Login</h2>
+
+<h3>Tela: Login (<code>/login</code>)</h3>
+<div class="card">
+  <strong>Layout Visual:</strong>
+  <ul>
+    <li>Fundo gradiente escuro (blue-900 para gray-900)</li>
+    <li>Card branco centralizado com logo IGS + icone de bot</li>
+    <li>Campo de e-mail com validacao</li>
+    <li>Campo de senha com toggle de visibilidade</li>
+    <li>Botao "Entrar" azul com spinner durante loading</li>
+    <li>Mensagens de erro inline em vermelho</li>
+  </ul>
+</div>
+
+<h4>Endpoints de API</h4>
+<div class="endpoint endpoint-post"><strong>POST</strong> /api/v1/auth/login &rarr; access_token (15min) + refresh_token (7d)</div>
+<div class="endpoint endpoint-post"><strong>POST</strong> /api/v1/auth/refresh &rarr; renova token automaticamente</div>
+<div class="endpoint"><strong>GET</strong> /api/v1/auth/me &rarr; dados do usuario logado</div>
+
+<h4>Roles do Sistema</h4>
+<p>
+  <span class="badge badge-purple">super_admin</span>
+  <span class="badge badge-red">admin</span>
+  <span class="badge badge-yellow">manager</span>
+  <span class="badge badge-blue">agent</span>
+</p>
+
+<hr>
+
+<!-- 2. LAYOUT -->
+<h2 id="layout"><span class="section-icon">&#128196;</span> 2. Layout Principal</h2>
+
+<h3>Sidebar (Barra Lateral)</h3>
+<div class="card">
+  <strong>Visual:</strong> Barra escura (gray-900) fixa a esquerda com 9 links de navegacao:
+  <table style="margin-top:8px;">
+    <tr><th>Icone</th><th>Label</th><th>Rota</th></tr>
+    <tr><td>&#128202;</td><td>Dashboard</td><td><code>/dashboard</code></td></tr>
+    <tr><td>&#128172;</td><td>Conversas</td><td><code>/conversations</code></td></tr>
+    <tr><td>&#127915;</td><td>Tickets</td><td><code>/tickets</code></td></tr>
+    <tr><td>&#127891;</td><td>Alunos</td><td><code>/students</code></td></tr>
+    <tr><td>&#128101;</td><td>Funcionarios</td><td><code>/employees</code></td></tr>
+    <tr><td>&#128214;</td><td>Base de Conhecimento</td><td><code>/knowledge-base</code></td></tr>
+    <tr><td>&#128200;</td><td>Relatorios</td><td><code>/reports</code></td></tr>
+    <tr><td>&#9881;</td><td>Usuarios</td><td><code>/users</code></td></tr>
+    <tr><td>&#128295;</td><td>Configuracoes</td><td><code>/settings</code></td></tr>
+  </table>
+  <p style="margin-top:8px;"><strong>Mobile:</strong> drawer deslizante com overlay escuro + botao X</p>
+  <p><strong>Desktop (lg+):</strong> barra fixa relativa</p>
+</div>
+
+<h3>Header (Barra Superior)</h3>
+<div class="card">
+  <ul>
+    <li>Hamburguer (mobile only)</li>
+    <li>Indicador WebSocket: Wifi verde (conectado) / WifiOff cinza pulsante (desconectado)</li>
+    <li>Sino de notificacoes com badge vermelho (contagem, "99+" se >99)</li>
+    <li>Avatar do usuario + nome + role</li>
+    <li>Botao "Sair"</li>
+  </ul>
+</div>
+
+<h3>Notificacoes em Tempo Real (WebSocket)</h3>
+<div class="card">
+  <ul>
+    <li><code>ws[s]://host/api/v1/ws?token=JWT</code></li>
+    <li>Auto-reconnect com backoff exponencial (1s a 30s)</li>
+    <li>Eventos: <code>new_message</code> (toast), <code>conversation_waiting</code> (toast), <code>conversation_closed</code></li>
+    <li>Buffer maximo: 50 notificacoes</li>
+  </ul>
+</div>
+
+<hr>
+
+<!-- 3. DASHBOARD -->
+<div class="page-break"></div>
+<h2 id="dashboard"><span class="section-icon">&#128202;</span> 3. Dashboard</h2>
+
+<div class="card">
+<pre style="background:#f8fafc;color:#334155;border:1px solid #e2e8f0;">
++------------------------------------------------------------------+
+|  Dashboard -- Visao geral do atendimento                         |
+|                                                                  |
+|  +-----------+-----------+-----------+-----------+               |
+|  | Conversas | Resolucao |  Tickets  |    SLA    |  4 cards KPI  |
+|  |   Hoje    | Automatica|  Abertos  |  Violado  |               |
+|  |   (azul)  |  (verde)  | (laranja) |(vermelho) |               |
+|  +-----------+-----------+-----------+-----------+               |
+|                                                                  |
+|  +-- Volume de Conversas ----------------------------+           |
+|  |  ===== Hoje  ======== Semana  == Mes              | Grafico   |
+|  +---------------------------------------------------+           |
+|                                                                  |
+|  +-- Tempo Medio ------+  +-- Conversas Mes --------+           |
+|  |  X.X min            |  |  XXX                    |  2 cards  |
+|  +---------------------+  +-------------------------+           |
++------------------------------------------------------------------+
+</pre>
+</div>
+
+<h4>Metricas exibidas</h4>
+<table>
+  <tr><th>Metrica</th><th>Cor</th><th>Descricao</th></tr>
+  <tr><td>Conversas Hoje</td><td><span class="badge badge-blue">Azul</span></td><td>Total de conversas do dia + contagem semanal</td></tr>
+  <tr><td>Resolucao Automatica</td><td><span class="badge badge-green">Verde</span></td><td>Percentual de conversas resolvidas sem agente humano</td></tr>
+  <tr><td>Tickets Abertos</td><td><span class="badge badge-yellow">Laranja</span></td><td>Quantidade de tickets em status open</td></tr>
+  <tr><td>SLA Violado</td><td><span class="badge badge-red">Vermelho</span></td><td>Tickets que ultrapassaram o prazo de SLA</td></tr>
+</table>
+
+<div class="endpoint"><strong>GET</strong> /api/v1/dashboard/overview &rarr; Auto-refresh a cada 30 segundos</div>
+
+<hr>
+
+<!-- 4. CONVERSAS -->
+<h2 id="conversations"><span class="section-icon">&#128172;</span> 4. Conversas (WhatsApp)</h2>
+
+<h3>4a. Lista de Conversas (<code>/conversations</code>)</h3>
+<div class="card">
+<pre style="background:#f8fafc;color:#334155;border:1px solid #e2e8f0;">
+Filtros: [Todas] [Ativa] [Aguardando agente] [Encerrada]
+
++---------+----------+---------+------------+----------+
+| Contato |   Tipo   | Status  | Ultima msg |  Inicio  |
++---------+----------+---------+------------+----------+
+| Joao S. |Estudante | Ativa   | 14:32      |01/03/2026|
+| Maria L.|  Geral   | Aguard. | 09:15      |28/02/2026|
++---------+----------+---------+------------+----------+
+
+[Anterior]  Pagina 1  [Proxima]    Total: 42
+</pre>
+</div>
+<ul>
+  <li>Linhas clicaveis &rarr; detalhe da conversa</li>
+  <li>Badges: <span class="badge badge-green">Ativa</span> <span class="badge badge-yellow">Aguardando</span> <span class="badge badge-gray">Encerrada</span></li>
+  <li>Paginacao: 20 por pagina</li>
+</ul>
+
+<h3>4b. Detalhe da Conversa (<code>/conversations/:id</code>)</h3>
+<div class="card">
+<pre style="background:#f8fafc;color:#334155;border:1px solid #e2e8f0;">
++------------------------------------------+---------------+
+| [<-] Joao Silva  +5511999  [Ativa]   [X] | Informacoes   |
+|                                          |               |
+|  +-------------------+                   | Canal: wpp    |
+|  | Usuario:          |                   | Tipo: student |
+|  | Preciso ver notas |  14:30            | Inicio: ...   |
+|  +-------------------+                   | Msgs: 12      |
+|                    +-------------------+ |               |
+|                    | Bot:               | |               |
+|                    | Ola Joao! Aqui     | |               |
+|                    | estao suas notas   | |               |
+|                    +-------------------+ |               |
+|                                          |               |
+|  +--------------------------------------+|               |
+|  | Digite mensagem... (Enter = enviar)  ||               |
+|  +--------------------------------------+|               |
++------------------------------------------+---------------+
+</pre>
+</div>
+<ul>
+  <li><strong>Baloes:</strong> Usuario (esquerda, branco) | Bot (direita, azul) | Agente (direita, verde)</li>
+  <li>Input: Enter envia, Shift+Enter nova linha</li>
+  <li>Botao fechar conversa (X vermelho)</li>
+  <li>Sidebar de metadados (telas XL)</li>
+  <li>Atualizacao em tempo real via WebSocket</li>
+</ul>
+
+<h4>Endpoints</h4>
+<div class="endpoint"><strong>GET</strong> /api/v1/conversations/{id} &rarr; conversa + mensagens</div>
+<div class="endpoint endpoint-post"><strong>POST</strong> /api/v1/conversations/{id}/messages &rarr; agente envia mensagem (BD + WhatsApp API)</div>
+<div class="endpoint endpoint-post"><strong>POST</strong> /api/v1/conversations/{id}/close &rarr; fecha + webhook <code>conversation.closed</code></div>
+<div class="endpoint endpoint-post"><strong>POST</strong> /api/v1/conversations/{id}/assign &rarr; atribui a agente</div>
+
+<hr>
+
+<!-- 5. TICKETS -->
+<div class="page-break"></div>
+<h2 id="tickets"><span class="section-icon">&#127915;</span> 5. Tickets</h2>
+
+<div class="card">
+<pre style="background:#f8fafc;color:#334155;border:1px solid #e2e8f0;">
+Filtros: [Todos] [open] [in_progress] [resolved] [closed]
+
++-----------+---------+-----------+----------+-------+------+
+| Protocolo | Assunto |Prioridade |  Status  |  SLA  | Data |
++-----------+---------+-----------+----------+-------+------+
+| ABC-20260 | Duvida  |   Medio   |  Aberto  | 15:00 |01/03 |
+| DEF-20260 | Boleto  |  Critico  | Em and.  | SLA!  |28/02 |
++-----------+---------+-----------+----------+-------+------+
+</pre>
+</div>
+
+<h4>Badges de Prioridade</h4>
+<p>
+  <span class="badge badge-gray">Low</span>
+  <span class="badge badge-blue">Medium</span>
+  <span class="badge badge-yellow">High</span>
+  <span class="badge badge-red">Critical</span>
+</p>
+
+<h4>Badges de Status</h4>
+<p>
+  <span class="badge badge-yellow">Open</span>
+  <span class="badge badge-blue">In Progress</span>
+  <span class="badge badge-green">Resolved</span>
+  <span class="badge badge-gray">Closed</span>
+</p>
+
+<h4>Endpoints</h4>
+<div class="endpoint endpoint-post"><strong>POST</strong> /api/v1/tickets &rarr; cria ticket com SLA deadline + webhook <code>ticket.created</code></div>
+<div class="endpoint"><strong>GET</strong> /api/v1/tickets &rarr; lista paginada (filtros: status, prioridade)</div>
+<div class="endpoint"><strong>GET</strong> /api/v1/tickets/{id} &rarr; detalhes com comentarios</div>
+<div class="endpoint endpoint-patch"><strong>PATCH</strong> /api/v1/tickets/{id} &rarr; atualiza status/prioridade/assignee</div>
+<div class="endpoint endpoint-post"><strong>POST</strong> /api/v1/tickets/{id}/comments &rarr; comentario (interno ou publico)</div>
+
+<hr>
+
+<!-- 6. ALUNOS -->
+<h2 id="students"><span class="section-icon">&#127891;</span> 6. Alunos</h2>
+
+<h3>6a. Lista (<code>/students</code>)</h3>
+<div class="card">
+<pre style="background:#f8fafc;color:#334155;border:1px solid #e2e8f0;">
+Busca: [Buscar por nome ou RA...]
+
++----------+----------+----------+----------+----------+
+|    RA    |  Nome    |  Curso   | Semestre | Situacao |
++----------+----------+----------+----------+----------+
+| 20260001 | Joao S.  | Eng.Comp |   4o     |  Ativo   |
+| 20260002 | Maria L. | Direito  |   6o     | Formado  |
++----------+----------+----------+----------+----------+
+                                        Total: 150
+</pre>
+</div>
+<p>Badges: <span class="badge badge-green">Ativo</span> <span class="badge badge-red">Bloqueado</span> <span class="badge badge-blue">Formado</span> <span class="badge badge-gray">Evadido</span></p>
+
+<h3>6b. Detalhe do Aluno (<code>/students/:id</code>)</h3>
+
+<div class="card">
+  <strong>Header:</strong> Icone + Nome + RA + Badge de status<br>
+  <strong>Cards de info:</strong> Curso | Semestre | E-mail | Telefone
+</div>
+
+<h4>Tabela: Notas</h4>
+<table>
+  <tr><th>Disciplina</th><th>Periodo</th><th>Tipo</th><th>Nota</th><th>Status</th></tr>
+  <tr><td>Calculo I</td><td>2026.1</td><td>P1</td><td><strong>8.5</strong></td><td><span class="badge badge-green">Aprovado</span></td></tr>
+  <tr><td>Fisica II</td><td>2026.1</td><td>P2</td><td><strong style="color:#dc2626;">3.0</strong></td><td><span class="badge badge-red">Reprovado</span></td></tr>
+</table>
+
+<h4>Tabela: Frequencia</h4>
+<table>
+  <tr><th>Disciplina</th><th>Periodo</th><th>Presentes</th><th>Total</th><th>Faltas %</th></tr>
+  <tr><td>Calculo I</td><td>2026.1</td><td>28</td><td>30</td><td><strong style="color:#16a34a;">6.7%</strong></td></tr>
+  <tr><td>Fisica II</td><td>2026.1</td><td>18</td><td>30</td><td><strong style="color:#dc2626;">40.0%</strong></td></tr>
+</table>
+<p>Cores: <span style="color:#16a34a;">Verde &le;15%</span> | <span style="color:#ca8a04;">Amarelo 15-25%</span> | <span style="color:#dc2626;">Vermelho &gt;25%</span></p>
+
+<h4>Tabela: Boletos</h4>
+<table>
+  <tr><th>Referencia</th><th>Valor</th><th>Vencimento</th><th>Status</th></tr>
+  <tr><td>2026-03</td><td>R$ 850,00</td><td>15/03/2026</td><td><span class="badge badge-yellow">Pendente</span></td></tr>
+  <tr><td>2026-02</td><td>R$ 850,00</td><td>15/02/2026</td><td><span class="badge badge-green">Pago</span></td></tr>
+</table>
+
+<h4>Endpoints</h4>
+<div class="endpoint"><strong>GET</strong> /api/v1/students/{id}</div>
+<div class="endpoint"><strong>GET</strong> /api/v1/students/{id}/grades</div>
+<div class="endpoint"><strong>GET</strong> /api/v1/students/{id}/attendance</div>
+<div class="endpoint"><strong>GET</strong> /api/v1/students/{id}/boletos</div>
+
+<hr>
+
+<!-- 7. FUNCIONARIOS -->
+<div class="page-break"></div>
+<h2 id="employees"><span class="section-icon">&#128101;</span> 7. Funcionarios</h2>
+
+<h3>7a. Lista (<code>/employees</code>)</h3>
+<p>Mesma estrutura da lista de alunos: Matricula | Nome | Departamento | Cargo | Status</p>
+
+<h3>7b. Detalhe (<code>/employees/:id</code>)</h3>
+
+<div class="card">
+  <strong>Header:</strong> Icone + Nome + Matricula + Badge de status<br>
+  <strong>Cards de info:</strong> Departamento | Cargo | Admissao | E-mail
+</div>
+
+<h4>Card: Saldo de Ferias</h4>
+<div class="card" style="text-align:center;">
+  <div class="card-grid" style="grid-template-columns: 1fr 1fr 1fr; text-align:center;">
+    <div><strong style="font-size:24px;">30</strong><br><small>Dias totais</small></div>
+    <div><strong style="font-size:24px;color:#ea580c;">10</strong><br><small>Utilizados</small></div>
+    <div><strong style="font-size:24px;color:#16a34a;">20</strong><br><small>Disponiveis</small></div>
+  </div>
+  <p style="color:#94a3b8;font-size:12px;margin-top:8px;">Prazo limite: 01/06/2027</p>
+</div>
+
+<h4>Tabela: Holerites</h4>
+<table>
+  <tr><th>Competencia</th><th>Sal. Bruto</th><th>Descontos</th><th>Sal. Liquido</th><th>PDF</th></tr>
+  <tr><td>2026-03</td><td>R$ 5.000,00</td><td style="color:#dc2626;">R$ 800,00</td><td><strong style="color:#16a34a;">R$ 4.200,00</strong></td><td><a href="#">Baixar</a></td></tr>
+</table>
+
+<h4>Tabela: Solicitacoes de RH</h4>
+<table>
+  <tr><th>Tipo</th><th>Data</th><th>Status</th><th>Resposta</th></tr>
+  <tr><td>Atestado</td><td>15/03/2026</td><td><span class="badge badge-green">Aprovado</span></td><td>Deferido</td></tr>
+  <tr><td>Ferias</td><td>10/03/2026</td><td><span class="badge badge-yellow">Pendente</span></td><td>&mdash;</td></tr>
+</table>
+
+<h4>Endpoints</h4>
+<div class="endpoint"><strong>GET</strong> /api/v1/employees/{id}</div>
+<div class="endpoint"><strong>GET</strong> /api/v1/employees/{id}/payslips</div>
+<div class="endpoint"><strong>GET</strong> /api/v1/employees/{id}/vacation</div>
+<div class="endpoint"><strong>GET</strong> /api/v1/employees/{id}/requests</div>
+<div class="endpoint endpoint-post"><strong>POST</strong> /api/v1/employees/{id}/requests &rarr; criar solicitacao</div>
+<div class="endpoint endpoint-patch"><strong>PATCH</strong> /api/v1/employees/{id}/requests/{rid} &rarr; responder (manager+)</div>
+
+<hr>
+
+<!-- 8. KB -->
+<h2 id="kb"><span class="section-icon">&#128214;</span> 8. Base de Conhecimento</h2>
+
+<div class="card">
+  <strong>Funcionalidades:</strong>
+  <ul>
+    <li>Criar/editar/excluir artigos FAQ</li>
+    <li>Busca por titulo/conteudo</li>
+    <li>Categorias: <code>all</code> | <code>student</code> | <code>employee</code></li>
+    <li>Contagem de uso (quantas vezes o bot usou o artigo)</li>
+    <li>Artigos alimentam o RAG do bot para respostas automaticas</li>
+  </ul>
+</div>
+
+<div class="endpoint"><strong>GET</strong> /api/v1/kb/articles</div>
+<div class="endpoint endpoint-post"><strong>POST</strong> /api/v1/kb/articles</div>
+<div class="endpoint endpoint-patch"><strong>PATCH</strong> /api/v1/kb/articles/{id}</div>
+<div class="endpoint endpoint-delete"><strong>DELETE</strong> /api/v1/kb/articles/{id}</div>
+
+<hr>
+
+<!-- 9. RELATORIOS -->
+<h2 id="reports"><span class="section-icon">&#128200;</span> 9. Relatorios</h2>
+
+<div class="card">
+  <ul>
+    <li>Seletor de periodo (data inicial + data final)</li>
+    <li>Exportar Conversas como CSV</li>
+    <li>Exportar Tickets como CSV</li>
+    <li>Link para Grafana (dashboards avancados)</li>
+  </ul>
+</div>
+
+<div class="endpoint"><strong>GET</strong> /api/v1/reports/conversations?start_date=&amp;end_date= &rarr; CSV</div>
+<div class="endpoint"><strong>GET</strong> /api/v1/reports/tickets?start_date=&amp;end_date= &rarr; CSV</div>
+
+<hr>
+
+<!-- 10. USUARIOS -->
+<h2 id="users"><span class="section-icon">&#9881;</span> 10. Gestao de Usuarios</h2>
+
+<div class="card">
+  Tabela com: Nome | Email | Papel<br>
+  Badges: <span class="badge badge-purple">super_admin</span>
+  <span class="badge badge-red">admin</span>
+  <span class="badge badge-yellow">manager</span>
+  <span class="badge badge-blue">agent</span>
+</div>
+
+<div class="endpoint endpoint-post"><strong>POST</strong> /api/v1/users &rarr; cria usuario (admin+)</div>
+<div class="endpoint"><strong>GET</strong> /api/v1/users &rarr; lista (manager+)</div>
+<div class="endpoint endpoint-delete"><strong>DELETE</strong> /api/v1/users/{id} &rarr; desativa (admin+)</div>
+
+<hr>
+
+<!-- 11. SETTINGS -->
+<h2 id="settings"><span class="section-icon">&#128295;</span> 11. Configuracoes</h2>
+
+<div class="card-grid">
+  <div class="card">
+    <strong>Bot WhatsApp</strong><br>
+    Nome do bot<br>
+    Mensagem de boas-vindas
+  </div>
+  <div class="card">
+    <strong>Horario de Funcionamento</strong><br>
+    Abertura / Fechamento<br>
+    Mensagem fora do horario
+  </div>
+  <div class="card">
+    <strong>Integracoes</strong><br>
+    WhatsApp Phone Number ID<br>
+    WhatsApp Access Token<br>
+    Claude API Key
+  </div>
+  <div class="card">
+    <strong>SLA Padrao</strong><br>
+    Critico: 15min/1h<br>
+    Alto: 30min/4h<br>
+    Medio: 1h/8h<br>
+    Baixo: 2h/24h
+  </div>
+</div>
+
+<hr>
+
+<!-- 12. WHATSAPP FLOW -->
+<div class="page-break"></div>
+<h2 id="whatsapp-flow"><span class="section-icon">&#128241;</span> 12. Fluxo de Mensagens WhatsApp</h2>
+
+<h3>Fluxo Completo (Backend)</h3>
+<div class="flow-step"><div class="flow-num">1</div><div>Usuario envia mensagem no WhatsApp</div></div>
+<div class="flow-step"><div class="flow-num">2</div><div>Meta Cloud API &rarr; <code>POST /api/v1/webhook/whatsapp</code> (verifica HMAC-SHA256)</div></div>
+<div class="flow-step"><div class="flow-num">3</div><div>Cria/encontra Contact &rarr; Cria/encontra Conversation &rarr; Salva Message</div></div>
+<div class="flow-step"><div class="flow-num">4</div><div>Enfileira task Celery <code>process_incoming_message</code></div></div>
+<div class="flow-step"><div class="flow-num">5</div><div>Se contato nao verificado &rarr; pede RA/matricula, retorna</div></div>
+<div class="flow-step"><div class="flow-num">6</div><div>Classifica intent via Claude (~50 tokens): grade_query, boleto_query, payslip_query, etc.</div></div>
+<div class="flow-step"><div class="flow-num">7</div><div>Se <code>human_handoff</code> &rarr; cria Ticket + status <code>waiting_agent</code></div></div>
+<div class="flow-step"><div class="flow-num">8</div><div>Carrega dados do BD conforme intent (notas, boletos, holerites, etc.)</div></div>
+<div class="flow-step"><div class="flow-num">9</div><div>Busca artigos KB relevantes (ILIKE full-text)</div></div>
+<div class="flow-step"><div class="flow-num">10</div><div>Gera resposta via Claude com RAG (~200-500 tokens)</div></div>
+<div class="flow-step"><div class="flow-num">11</div><div>Envia resposta via WhatsApp Cloud API</div></div>
+<div class="flow-step"><div class="flow-num">12</div><div>Salva Message (sender_type: bot) + atualiza metricas Prometheus</div></div>
+<div class="flow-step"><div class="flow-num">13</div><div>Broadcast via Redis pub/sub &rarr; WebSocket &rarr; painel em tempo real</div></div>
+
+<h3>Intents Suportados</h3>
+<table>
+  <tr><th>Intent</th><th>Descricao</th><th>Dados consultados</th></tr>
+  <tr><td><code>grade_query</code></td><td>Consulta de notas</td><td>Tabela grades</td></tr>
+  <tr><td><code>attendance_query</code></td><td>Consulta de frequencia</td><td>Tabela attendance_records</td></tr>
+  <tr><td><code>boleto_query</code></td><td>Consulta de boletos</td><td>Tabela boletos</td></tr>
+  <tr><td><code>schedule_query</code></td><td>Horario de aulas</td><td>Tabela schedules</td></tr>
+  <tr><td><code>enrollment_query</code></td><td>Situacao da matricula</td><td>Tabela students</td></tr>
+  <tr><td><code>payslip_query</code></td><td>Consulta de holerite</td><td>Tabela payslips</td></tr>
+  <tr><td><code>vacation_query</code></td><td>Saldo de ferias</td><td>Tabela vacation_balances</td></tr>
+  <tr><td><code>time_record_query</code></td><td>Ponto eletronico</td><td>Tabela time_records</td></tr>
+  <tr><td><code>hr_request</code></td><td>Solicitacao RH</td><td>Tabela hr_requests</td></tr>
+  <tr><td><code>human_handoff</code></td><td>Transferir para agente</td><td>Cria ticket</td></tr>
+  <tr><td><code>faq</code></td><td>Pergunta geral</td><td>KB articles</td></tr>
+  <tr><td><code>greeting</code></td><td>Saudacao</td><td>&mdash;</td></tr>
+  <tr><td><code>verification</code></td><td>Identificacao inicial</td><td>students/employees</td></tr>
+</table>
+
+<h3>Suporte a Midia</h3>
+<div class="card">
+  Tipos aceitos: <code>image</code>, <code>document</code>, <code>audio</code>, <code>video</code>, <code>sticker</code><br>
+  Download da Meta Graph API &rarr; salva em <code>/app/media/</code><br>
+  Campos: <code>whatsapp_media_id</code>, <code>media_url</code>, <code>media_mime_type</code>
+</div>
+
+<h3>Templates WhatsApp (HSM) -- Envio Proativo</h3>
+<div class="card">
+  <ul>
+    <li>CRUD de templates Meta via <code>/api/v1/templates</code></li>
+    <li>Celery Beat diario (9h): <code>send_boleto_reminders_task</code></li>
+    <li>Envia lembrete para boletos vencendo em 3 dias</li>
+    <li>Parametros: [nome_aluno, data_vencimento, valor]</li>
+  </ul>
+</div>
+
+<hr>
+
+<!-- 13. DLQ -->
+<h2 id="dlq"><span class="section-icon">&#128680;</span> 13. Dead Letter Queue</h2>
+
+<div class="card">
+  Quando <code>process_incoming_message</code> falha 3 vezes:
+  <ul>
+    <li><code>on_failure</code> handler persiste <code>FailedTask</code> no banco</li>
+    <li>Campos: task_id, task_name, args, error_message, traceback, retry_count</li>
+    <li>Admin pode re-enfileirar via API</li>
+  </ul>
+</div>
+
+<div class="endpoint"><strong>GET</strong> /api/v1/admin/failed-tasks &rarr; super_admin only</div>
+<div class="endpoint endpoint-post"><strong>POST</strong> /api/v1/admin/failed-tasks/{id}/retry &rarr; re-enfileira mensagem</div>
+
+<hr>
+
+<!-- 14. WEBHOOKS -->
+<h2 id="webhooks"><span class="section-icon">&#128279;</span> 14. Webhooks de Saida (Integracao ERP)</h2>
+
+<div class="card">
+  <ul>
+    <li>Tenants cadastram endpoints para receber eventos</li>
+    <li>Eventos: <code>conversation.closed</code>, <code>ticket.created</code>, <code>*</code> (todos)</li>
+    <li>Payload assinado com HMAC-SHA256 (header <code>X-IGS-Signature</code>)</li>
+    <li>Retry exponencial: 1, 2, 4, 8, 16 minutos (ate 5 tentativas)</li>
+    <li>Registro de cada delivery: status_code, response_body, success</li>
+  </ul>
+</div>
+
+<div class="endpoint"><strong>GET</strong> /api/v1/webhooks &rarr; listar endpoints</div>
+<div class="endpoint endpoint-post"><strong>POST</strong> /api/v1/webhooks &rarr; cadastrar endpoint</div>
+<div class="endpoint endpoint-patch"><strong>PATCH</strong> /api/v1/webhooks/{id} &rarr; atualizar</div>
+<div class="endpoint endpoint-delete"><strong>DELETE</strong> /api/v1/webhooks/{id} &rarr; remover</div>
+<div class="endpoint"><strong>GET</strong> /api/v1/webhooks/{id}/deliveries &rarr; historico de entregas</div>
+
+<hr>
+
+<!-- 15. MONITORAMENTO -->
+<div class="page-break"></div>
+<h2 id="monitoring"><span class="section-icon">&#128201;</span> 15. Monitoramento</h2>
+
+<h3>Grafana (<code>localhost:3001</code>)</h3>
+<div class="card">
+  <strong>Dashboard IGS Overview</strong> -- 13 paineis:
+  <ul>
+    <li>Mensagens/min por tenant e intent</li>
+    <li>Tokens AI/hora (controle de custo Claude)</li>
+    <li>Response time P50/P95/P99</li>
+    <li>Conversas ativas por tenant</li>
+    <li>Taxa de SLA breach</li>
+    <li>HTTP request rate + error rate</li>
+  </ul>
+  <strong>Dashboard IGS Logs</strong> -- paineis Loki para API e Celery Worker
+</div>
+
+<h3>Alertas Prometheus</h3>
+<table>
+  <tr><th>Alerta</th><th>Condicao</th><th>Severidade</th></tr>
+  <tr><td>BotResponseTimeHigh</td><td>P95 &gt; 8s por 2min</td><td><span class="badge badge-yellow">warning</span></td></tr>
+  <tr><td>BotResponseTimeCritical</td><td>P95 &gt; 15s por 1min</td><td><span class="badge badge-red">critical</span></td></tr>
+  <tr><td>SLABreachRateHigh</td><td>&gt; 0.05/s por 5min</td><td><span class="badge badge-yellow">warning</span></td></tr>
+  <tr><td>SLABreachSpike</td><td>&gt; 5 breaches em 5min</td><td><span class="badge badge-red">critical</span></td></tr>
+  <tr><td>HighTokenConsumption</td><td>&gt; 100k tokens/hora</td><td><span class="badge badge-yellow">warning</span></td></tr>
+  <tr><td>ExcessiveTokenConsumption</td><td>&gt; 500k tokens/hora</td><td><span class="badge badge-red">critical</span></td></tr>
+  <tr><td>APIDown</td><td>Job ausente por 1min</td><td><span class="badge badge-red">critical</span></td></tr>
+  <tr><td>RedisDown</td><td>Job ausente por 1min</td><td><span class="badge badge-red">critical</span></td></tr>
+</table>
+
+<hr>
+
+<!-- 16. INFRA -->
+<h2 id="infra"><span class="section-icon">&#9881;</span> 16. Infraestrutura e DevOps</h2>
+
+<h3>Servicos Docker (14 containers)</h3>
+<table>
+  <tr><th>Servico</th><th>Imagem</th><th>Porta</th></tr>
+  <tr><td>api</td><td>FastAPI custom</td><td>8000</td></tr>
+  <tr><td>celery-worker</td><td>Same image</td><td>&mdash;</td></tr>
+  <tr><td>celery-beat</td><td>Same image</td><td>&mdash;</td></tr>
+  <tr><td>postgres</td><td>postgres:16-alpine</td><td>5432</td></tr>
+  <tr><td>redis</td><td>redis:7-alpine</td><td>6379</td></tr>
+  <tr><td>frontend</td><td>React/Vite custom</td><td>3000</td></tr>
+  <tr><td>nginx</td><td>nginx:alpine</td><td>80, 443</td></tr>
+  <tr><td>prometheus</td><td>prom/prometheus</td><td>9090</td></tr>
+  <tr><td>grafana</td><td>grafana/grafana</td><td>3001</td></tr>
+  <tr><td>loki</td><td>grafana/loki</td><td>3100</td></tr>
+  <tr><td>promtail</td><td>grafana/promtail</td><td>&mdash;</td></tr>
+  <tr><td>redis-exporter</td><td>oliver006/redis_exporter</td><td>9121</td></tr>
+  <tr><td>alertmanager</td><td>prom/alertmanager</td><td>9093</td></tr>
+  <tr><td>certbot (prod)</td><td>certbot/certbot</td><td>&mdash;</td></tr>
+</table>
+
+<h3>CI/CD (GitHub Actions)</h3>
+<div class="card">
+  <ul>
+    <li><strong>ci.yml:</strong> testes backend (pytest + postgres + redis), lint (ruff), build frontend (tsc + vite)</li>
+    <li><strong>deploy.yml:</strong> tag <code>v*</code> &rarr; SSH &rarr; docker compose pull/up com rolling update zero-downtime</li>
+  </ul>
+</div>
+
+<h3>SSL/TLS (Producao)</h3>
+<div class="card">
+  <ul>
+    <li>HTTP &rarr; HTTPS redirect, TLS 1.2/1.3, HSTS</li>
+    <li>Certbot webroot + renovacao automatica 12h</li>
+    <li>Headers: HSTS, X-Frame-Options DENY, Permissions-Policy</li>
+  </ul>
+</div>
+
+<h3>Backup Automatico</h3>
+<div class="card">
+  <ul>
+    <li><code>pg_dump</code> + gzip, rotacao ultimos 7</li>
+    <li>Celery Beat: toda segunda 3h da manha</li>
+    <li>Suporte opcional a rclone (S3/GCS)</li>
+  </ul>
+</div>
+
+<h3>Comandos Makefile</h3>
+<table>
+  <tr><th>Comando</th><th>Acao</th></tr>
+  <tr><td><code>make up / down / restart</code></td><td>Gerenciar containers dev</td></tr>
+  <tr><td><code>make logs</code></td><td>Ver logs de todos os servicos</td></tr>
+  <tr><td><code>make migrate</code></td><td>Rodar migracoes Alembic</td></tr>
+  <tr><td><code>make seed</code></td><td>Popular banco com dados iniciais</td></tr>
+  <tr><td><code>make test / test-cov</code></td><td>Executar testes</td></tr>
+  <tr><td><code>make lint / format</code></td><td>Linting e formatacao</td></tr>
+  <tr><td><code>make create-tenant</code></td><td>Criar novo tenant</td></tr>
+  <tr><td><code>make import-students/employees</code></td><td>Importar CSV</td></tr>
+  <tr><td><code>make backup</code></td><td>Backup manual do banco</td></tr>
+  <tr><td><code>make ssl DOMAIN= EMAIL=</code></td><td>Configurar SSL</td></tr>
+  <tr><td><code>make up-prod / down-prod</code></td><td>Gerenciar producao</td></tr>
+</table>
+
+<hr>
+
+<!-- 17. MODELOS -->
+<div class="page-break"></div>
+<h2 id="models"><span class="section-icon">&#128451;</span> 17. Modelos de Dados</h2>
+
+<table>
+  <tr><th>Modelo</th><th>Campos-chave</th><th>Relacoes</th></tr>
+  <tr><td><strong>Tenant</strong></td><td>name, slug, whatsapp_phone/token, claude_api_key, plan</td><td>&rarr; users, students, employees</td></tr>
+  <tr><td><strong>TenantSettings</strong></td><td>bot_name, welcome_message, business_hours, language</td><td>&rarr; tenant</td></tr>
+  <tr><td><strong>User</strong></td><td>email, password_hash, full_name, role</td><td>&rarr; tenant</td></tr>
+  <tr><td><strong>Contact</strong></td><td>phone_number, name, contact_type, is_verified</td><td>&rarr; student/employee</td></tr>
+  <tr><td><strong>Conversation</strong></td><td>channel, status, context_type, assigned_agent_id</td><td>&rarr; contact, messages</td></tr>
+  <tr><td><strong>Message</strong></td><td>sender_type, content, message_type, intent, media_url</td><td>&rarr; conversation</td></tr>
+  <tr><td><strong>Ticket</strong></td><td>protocol_number, subject, priority, status, sla_deadline</td><td>&rarr; comments</td></tr>
+  <tr><td><strong>Student</strong></td><td>registration_number (RA), full_name, course, semester</td><td>&rarr; grades, attendance, boletos</td></tr>
+  <tr><td><strong>Grade</strong></td><td>subject_name, grade_value, grade_type, status</td><td>&rarr; student</td></tr>
+  <tr><td><strong>AttendanceRecord</strong></td><td>subject_name, total_classes, attended, absence_pct</td><td>&rarr; student</td></tr>
+  <tr><td><strong>Boleto</strong></td><td>reference_month, amount, due_date, status</td><td>&rarr; student</td></tr>
+  <tr><td><strong>Employee</strong></td><td>employee_number, full_name, department, position</td><td>&rarr; payslips, vacation, hr_requests</td></tr>
+  <tr><td><strong>Payslip</strong></td><td>reference_month, gross_salary, net_salary, pdf_url</td><td>&rarr; employee</td></tr>
+  <tr><td><strong>VacationBalance</strong></td><td>total_days, used_days, deadline_date</td><td>&rarr; employee</td></tr>
+  <tr><td><strong>HRRequest</strong></td><td>request_type, status, response_text</td><td>&rarr; employee</td></tr>
+  <tr><td><strong>KBArticle</strong></td><td>title, content, applies_to, usage_count</td><td>&rarr; category</td></tr>
+  <tr><td><strong>MessageTemplate</strong></td><td>meta_template_name, language_code, category</td><td>&rarr; tenant</td></tr>
+  <tr><td><strong>SLAConfig</strong></td><td>priority, resolution_time_minutes</td><td>&rarr; tenant</td></tr>
+  <tr><td><strong>WebhookEndpoint</strong></td><td>url, secret, events, is_active</td><td>&rarr; deliveries, tenant</td></tr>
+  <tr><td><strong>WebhookDelivery</strong></td><td>event_type, payload, status_code, success</td><td>&rarr; endpoint</td></tr>
+  <tr><td><strong>FailedTask</strong></td><td>task_name, args, error_message, resolved</td><td>DLQ</td></tr>
+</table>
+
+<hr>
+
+<h2>Credenciais Padrao (apos <code>make seed</code>)</h2>
+<table>
+  <tr><th>Papel</th><th>Email</th><th>Senha</th></tr>
+  <tr><td><span class="badge badge-purple">Super Admin</span></td><td>admin@igs.com</td><td>Admin@123456</td></tr>
+  <tr><td><span class="badge badge-red">Admin Tenant</span></td><td>gestor@anchieta.edu.br</td><td>Gestor@2026</td></tr>
+</table>
+
+<hr>
+<div style="text-align:center; padding: 40px 0; color: #94a3b8; font-size: 12px;">
+  <p><strong>IGS - Intelligent General Service</strong></p>
+  <p>Documento gerado automaticamente | Marco 2026</p>
+  <p>FastAPI + React + Celery + Claude AI + WhatsApp Cloud API</p>
+</div>
+
+</body>
+</html>

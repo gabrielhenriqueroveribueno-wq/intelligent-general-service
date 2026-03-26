@@ -43,7 +43,28 @@ HANDOFF_MSG = (
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=5)
 def process_incoming_message(self, message_id: str):
     """Processa uma mensagem recebida do WhatsApp."""
-    asyncio.run(_process_message_async(message_id))
+    try:
+        asyncio.run(_process_message_async(message_id))
+    except Exception as exc:
+        try:
+            self.retry(exc=exc)
+        except self.MaxRetriesExceededError:
+            _persist_failed_task(self, message_id, exc)
+            raise
+
+
+def _persist_failed_task(task, message_id: str, exc: Exception):
+    """Persiste tarefa falha no banco para inspeção posterior."""
+    import traceback as tb
+    from app.tasks.dlq_tasks import save_failed_task_async
+    asyncio.run(save_failed_task_async(
+        task_id=task.request.id or "unknown",
+        task_name=task.name,
+        args={"message_id": message_id},
+        error_message=str(exc),
+        traceback=tb.format_exc(),
+        retry_count=task.max_retries,
+    ))
 
 
 async def _process_message_async(message_id: str):
@@ -278,6 +299,24 @@ async def _process_message_async(message_id: str):
 
         await db.commit()
         logger.info("Mensagem %s processada em %.2fs (intent=%s)", message_id, elapsed, intent)
+
+        # ── 8. Notifica painel via WebSocket (Redis pub/sub) ──────────────
+        try:
+            import json as _json
+            import redis.asyncio as aioredis
+            from app.config import settings as _settings
+            from app.services.ws_manager import REDIS_CHANNEL
+            _r = aioredis.from_url(_settings.REDIS_URL, decode_responses=True)
+            await _r.publish(REDIS_CHANNEL, _json.dumps({
+                "type": "new_message",
+                "tenant_id": str(tenant_id),
+                "conversation_id": str(conversation.id),
+                "intent": intent,
+                "resolution_type": resolution_type,
+            }))
+            await _r.aclose()
+        except Exception as _exc:
+            logger.warning("Falha ao publicar evento WS: %s", _exc)
 
 
 def _save_bot_message(db, conversation, content: str, tenant_id, whatsapp_msg_id=None):

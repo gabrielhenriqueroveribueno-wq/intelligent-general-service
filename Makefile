@@ -1,4 +1,4 @@
-.PHONY: help up down build restart logs shell migrate seed test lint format
+.PHONY: help up down build restart logs shell migrate seed test lint format backup ssl
 
 # Exibe ajuda
 help:
@@ -16,6 +16,8 @@ help:
 	@echo "  make test       - Executa os testes"
 	@echo "  make lint       - Executa linting (ruff)"
 	@echo "  make format     - Formata o código (ruff format)"
+	@echo "  make backup     - Executa backup manual do banco"
+	@echo "  make ssl        - Obtém certificado SSL Let's Encrypt (DOMAIN= EMAIL=)"
 
 up:
 	docker compose up -d
@@ -67,6 +69,12 @@ import-students:
 
 import-employees:
 	docker compose exec api python scripts/import_employees.py $(file)
+
+backup:
+	bash scripts/backup_db.sh
+
+ssl:
+	bash scripts/init-letsencrypt.sh $(DOMAIN) $(EMAIL)
 
 # Produção
 up-prod:

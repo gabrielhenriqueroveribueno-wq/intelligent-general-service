@@ -5,9 +5,12 @@ import Layout from './components/layout/Layout'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Conversations from './pages/Conversations'
+import ConversationDetail from './pages/ConversationDetail'
 import Tickets from './pages/Tickets'
 import Students from './pages/Students'
+import StudentDetail from './pages/StudentDetail'
 import Employees from './pages/Employees'
+import EmployeeDetail from './pages/EmployeeDetail'
 import KnowledgeBase from './pages/KnowledgeBase'
 import Reports from './pages/Reports'
 import UserManagement from './pages/UserManagement'
@@ -29,9 +32,12 @@ export default function App() {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="conversations" element={<Conversations />} />
+          <Route path="conversations/:id" element={<ConversationDetail />} />
           <Route path="tickets" element={<Tickets />} />
           <Route path="students" element={<Students />} />
+          <Route path="students/:id" element={<StudentDetail />} />
           <Route path="employees" element={<Employees />} />
+          <Route path="employees/:id" element={<EmployeeDetail />} />
           <Route path="knowledge-base" element={<KnowledgeBase />} />
           <Route path="reports" element={<Reports />} />
           <Route path="users" element={<UserManagement />} />

@@ -13,6 +13,10 @@ from app.api.v1 import (
     reports,
     webhook,
     health,
+    ws,
+    admin,
+    templates,
+    webhooks_config,
 )
 
 api_router = APIRouter()
@@ -29,3 +33,7 @@ api_router.include_router(knowledge_base.router, prefix="/kb", tags=["Knowledge 
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
 api_router.include_router(reports.router, prefix="/reports", tags=["Reports"])
 api_router.include_router(webhook.router, prefix="/webhook", tags=["Webhook"])
+api_router.include_router(ws.router, tags=["WebSocket"])
+api_router.include_router(admin.router, prefix="/admin", tags=["Admin"])
+api_router.include_router(templates.router, prefix="/templates", tags=["Templates"])
+api_router.include_router(webhooks_config.router, prefix="/webhooks", tags=["Webhooks Config"])

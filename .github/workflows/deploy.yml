@@ -1,0 +1,69 @@
+name: Deploy
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            set -e
+            cd ${{ secrets.DEPLOY_PATH || '/opt/igs' }}
+
+            echo "=== Pulling latest images ==="
+            docker compose -f docker-compose.prod.yml pull
+
+            echo "=== Running database migrations ==="
+            docker compose -f docker-compose.prod.yml run --rm api alembic upgrade head
+
+            echo "=== Restarting services (zero-downtime rolling) ==="
+            docker compose -f docker-compose.prod.yml up -d --no-deps --scale api=2 api
+            sleep 10
+            docker compose -f docker-compose.prod.yml up -d --no-deps --scale api=1 api
+
+            docker compose -f docker-compose.prod.yml up -d --no-deps celery_worker
+            docker compose -f docker-compose.prod.yml up -d --no-deps celery_beat
+            docker compose -f docker-compose.prod.yml up -d --no-deps nginx
+
+            echo "=== Cleaning old images ==="
+            docker image prune -f
+
+            echo "=== Deploy concluído: $(date) ==="
+
+  notify:
+    name: Notify Deploy Result
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: always()
+    steps:
+      - name: Set status
+        id: status
+        run: |
+          if [ "${{ needs.deploy.result }}" == "success" ]; then
+            echo "emoji=✅" >> $GITHUB_OUTPUT
+            echo "msg=Deploy ${{ github.ref_name }} concluído com sucesso" >> $GITHUB_OUTPUT
+          else
+            echo "emoji=❌" >> $GITHUB_OUTPUT
+            echo "msg=Deploy ${{ github.ref_name }} falhou" >> $GITHUB_OUTPUT
+          fi
+
+      - name: GitHub Summary
+        run: |
+          echo "## ${{ steps.status.outputs.emoji }} ${{ steps.status.outputs.msg }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY

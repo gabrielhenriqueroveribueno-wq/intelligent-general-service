@@ -1,0 +1,117 @@
+groups:
+  - name: igs_bot_performance
+    interval: 1m
+    rules:
+      - alert: BotResponseTimeHigh
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(igs_bot_response_time_seconds_bucket[5m])) by (le, tenant_id)
+          ) > 8
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Bot response time P95 alto (tenant: {{ $labels.tenant_id }})"
+          description: "P95 do tempo de resposta do bot está em {{ $value | humanizeDuration }} (threshold: 8s)"
+
+      - alert: BotResponseTimeCritical
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(igs_bot_response_time_seconds_bucket[5m])) by (le, tenant_id)
+          ) > 15
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Bot response time P95 crítico (tenant: {{ $labels.tenant_id }})"
+          description: "P95 do tempo de resposta do bot está em {{ $value | humanizeDuration }} — pode haver problema com a API do Claude"
+
+  - name: igs_sla
+    interval: 1m
+    rules:
+      - alert: SLABreachRateHigh
+        expr: |
+          sum(rate(igs_sla_breaches_total[10m])) by (tenant_id) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Taxa de violações de SLA alta (tenant: {{ $labels.tenant_id }})"
+          description: "Taxa de violações de SLA: {{ $value | humanize }} violações/s nos últimos 10 minutos"
+
+      - alert: SLABreachSpike
+        expr: |
+          increase(igs_sla_breaches_total[5m]) > 5
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Pico de violações SLA (tenant: {{ $labels.tenant_id }}, prioridade: {{ $labels.priority }})"
+          description: "{{ $value }} violações de SLA nos últimos 5 minutos"
+
+  - name: igs_ai_costs
+    interval: 5m
+    rules:
+      - alert: HighTokenConsumption
+        expr: |
+          sum(rate(igs_ai_tokens_used_total[1h])) by (tenant_id) * 3600 > 100000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Alto consumo de tokens AI (tenant: {{ $labels.tenant_id }})"
+          description: "Consumo de tokens projetado: {{ $value | humanize }} tokens/hora. Verifique se há loops de mensagem."
+
+      - alert: ExcessiveTokenConsumption
+        expr: |
+          sum(rate(igs_ai_tokens_used_total[1h])) by (tenant_id) * 3600 > 500000
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Consumo excessivo de tokens AI (tenant: {{ $labels.tenant_id }})"
+          description: "Consumo de tokens projetado: {{ $value | humanize }} tokens/hora. Risco de custo elevado."
+
+  - name: igs_infrastructure
+    interval: 30s
+    rules:
+      - alert: APIDown
+        expr: |
+          absent(up{job="igs-api"} == 1)
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "API IGS está fora do ar"
+          description: "O job 'igs-api' não está respondendo ao scrape do Prometheus"
+
+      - alert: RedisDown
+        expr: |
+          absent(up{job="redis"} == 1)
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis está fora do ar"
+          description: "O redis-exporter não está respondendo. Celery pode não estar processando mensagens."
+
+      - alert: HighHTTPErrorRate
+        expr: |
+          sum(rate(http_requests_total{status_code=~"5.."}[5m])) /
+          sum(rate(http_requests_total[5m])) > 0.05
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Taxa de erros HTTP 5xx alta"
+          description: "{{ $value | humanizePercentage }} das requisições estão retornando 5xx"
+
+      - alert: NoMessagesProcessed
+        expr: |
+          sum(rate(igs_messages_processed_total[15m])) == 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Nenhuma mensagem processada nos últimos 15 minutos"
+          description: "Pode indicar problema com o Celery worker ou com o webhook do WhatsApp"

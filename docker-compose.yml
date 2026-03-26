@@ -179,6 +179,31 @@ services:
     depends_on:
       - loki
 
+  # ── Redis Exporter (Prometheus) ───────────────────────────
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: igs_redis_exporter
+    restart: unless-stopped
+    environment:
+      - REDIS_ADDR=redis://redis:6379
+    depends_on:
+      - redis
+
+  # ── AlertManager ──────────────────────────────────────────
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: igs_alertmanager
+    restart: unless-stopped
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    depends_on:
+      - prometheus
+
 volumes:
   postgres_data:
   redis_data:

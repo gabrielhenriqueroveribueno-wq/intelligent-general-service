@@ -1,0 +1,250 @@
+{
+  "__inputs": [],
+  "__requires": [
+    {"type": "grafana", "id": "grafana", "name": "Grafana", "version": "9.0.0"},
+    {"type": "datasource", "id": "loki", "name": "Loki", "version": "1.0.0"}
+  ],
+  "uid": "igs-logs-v1",
+  "title": "IGS — Logs",
+  "description": "Logs estruturados da API e workers do IGS via Loki",
+  "schemaVersion": 36,
+  "version": 1,
+  "refresh": "10s",
+  "time": {"from": "now-1h", "to": "now"},
+  "timepicker": {},
+  "tags": ["igs", "logs", "loki"],
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "Serviço",
+        "type": "custom",
+        "options": [
+          {"selected": true, "text": "Todos", "value": ""},
+          {"selected": false, "text": "API", "value": "igs_api"},
+          {"selected": false, "text": "Celery Worker", "value": "igs_celery_worker"},
+          {"selected": false, "text": "Celery Beat", "value": "igs_celery_beat"}
+        ],
+        "current": {"selected": true, "text": "Todos", "value": ""},
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "name": "level",
+        "label": "Nível",
+        "type": "custom",
+        "options": [
+          {"selected": true, "text": "Todos", "value": ""},
+          {"selected": false, "text": "ERROR", "value": "error"},
+          {"selected": false, "text": "WARNING", "value": "warning"},
+          {"selected": false, "text": "INFO", "value": "info"}
+        ],
+        "current": {"selected": true, "text": "Todos", "value": ""},
+        "multi": false,
+        "includeAll": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Erros na última hora — API",
+      "gridPos": {"h": 3, "w": 6, "x": 0, "y": 0},
+      "datasource": {"type": "loki", "uid": "${DS_LOKI}"},
+      "targets": [
+        {
+          "expr": "sum(count_over_time({container_name=\"igs_api\"} |= \"error\" [1h]))",
+          "legendFormat": "Erros",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"]},
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 1},
+              {"color": "red", "value": 10}
+            ]
+          },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Erros na última hora — Celery Worker",
+      "gridPos": {"h": 3, "w": 6, "x": 6, "y": 0},
+      "datasource": {"type": "loki", "uid": "${DS_LOKI}"},
+      "targets": [
+        {
+          "expr": "sum(count_over_time({container_name=\"igs_celery_worker\"} |= \"error\" [1h]))",
+          "legendFormat": "Erros Worker",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"]},
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 1},
+              {"color": "red", "value": 5}
+            ]
+          },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Tarefas Celery com falha (últimas 6h)",
+      "gridPos": {"h": 3, "w": 6, "x": 12, "y": 0},
+      "datasource": {"type": "loki", "uid": "${DS_LOKI}"},
+      "targets": [
+        {
+          "expr": "sum(count_over_time({container_name=\"igs_celery_worker\"} |= \"Task failed\" [6h]))",
+          "legendFormat": "Falhas",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"]},
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 1},
+              {"color": "red", "value": 3}
+            ]
+          },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Webhooks WhatsApp (última hora)",
+      "gridPos": {"h": 3, "w": 6, "x": 18, "y": 0},
+      "datasource": {"type": "loki", "uid": "${DS_LOKI}"},
+      "targets": [
+        {
+          "expr": "sum(count_over_time({container_name=\"igs_api\"} |= \"/webhook/whatsapp\" [1h]))",
+          "legendFormat": "Webhooks",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"]},
+        "colorMode": "value",
+        "graphMode": "area"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "logs",
+      "title": "Logs — API (igs_api)",
+      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 3},
+      "datasource": {"type": "loki", "uid": "${DS_LOKI}"},
+      "targets": [
+        {
+          "expr": "{container_name=\"igs_api\"}",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      }
+    },
+    {
+      "id": 6,
+      "type": "logs",
+      "title": "Logs — Celery Worker (igs_celery_worker)",
+      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 15},
+      "datasource": {"type": "loki", "uid": "${DS_LOKI}"},
+      "targets": [
+        {
+          "expr": "{container_name=\"igs_celery_worker\"}",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Taxa de erros ao longo do tempo",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 27},
+      "datasource": {"type": "loki", "uid": "${DS_LOKI}"},
+      "targets": [
+        {
+          "expr": "sum(rate({container_name=\"igs_api\"} |= \"error\" [2m]))",
+          "legendFormat": "API errors/s",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate({container_name=\"igs_celery_worker\"} |= \"error\" [2m]))",
+          "legendFormat": "Worker errors/s",
+          "refId": "B"
+        }
+      ],
+      "options": {
+        "tooltip": {"mode": "multi"},
+        "legend": {"displayMode": "list", "placement": "bottom"}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"lineWidth": 2, "fillOpacity": 15},
+          "unit": "ops"
+        }
+      }
+    }
+  ]
+}

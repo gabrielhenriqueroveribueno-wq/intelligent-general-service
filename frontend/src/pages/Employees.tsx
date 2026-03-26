@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { Users, Search } from 'lucide-react'
 import { api } from '../api/client'
 import clsx from 'clsx'
 
 export default function Employees() {
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
 
@@ -47,7 +49,7 @@ export default function Employees() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {data?.items?.map((emp: any) => (
-                <tr key={emp.id} className="hover:bg-gray-50">
+                <tr key={emp.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/employees/${emp.id}`)}>
                   <td className="px-4 py-3 text-sm font-mono">{emp.employee_number}</td>
                   <td className="px-4 py-3 text-sm font-medium">{emp.full_name}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{emp.department || '—'}</td>

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -17,8 +18,11 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Gerencia o ciclo de vida da aplicação."""
+    from app.services.ws_manager import ws_manager
     logger.info("IGS API iniciando...")
+    redis_task = asyncio.create_task(ws_manager.start_redis_listener())
     yield
+    redis_task.cancel()
     logger.info("IGS API encerrando...")
 
 

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { GraduationCap, Search } from 'lucide-react'
 import { api } from '../api/client'
 import clsx from 'clsx'
@@ -12,6 +13,7 @@ const statusColors: Record<string, string> = {
 }
 
 export default function Students() {
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
 
@@ -59,7 +61,7 @@ export default function Students() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {data?.items?.map((student: any) => (
-                <tr key={student.id} className="hover:bg-gray-50">
+                <tr key={student.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/students/${student.id}`)}>
                   <td className="px-4 py-3 text-sm font-mono">{student.registration_number}</td>
                   <td className="px-4 py-3 text-sm font-medium">{student.full_name}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{student.course || '—'}</td>

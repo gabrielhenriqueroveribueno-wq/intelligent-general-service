@@ -38,6 +38,19 @@ async def create_ticket(
         contact_id=body.contact_id,
         conversation_id=body.conversation_id,
     )
+
+    # Dispara webhook de saída
+    try:
+        from app.services.webhook_delivery_service import dispatch_event
+        await dispatch_event(db, tenant_id, "ticket.created", {
+            "ticket_id": str(ticket.id),
+            "subject": ticket.subject,
+            "priority": ticket.priority,
+            "category": ticket.category,
+        })
+    except Exception:
+        pass
+
     return TicketResponse.model_validate(ticket)
 
 

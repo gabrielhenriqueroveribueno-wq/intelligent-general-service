@@ -81,6 +81,54 @@ async def send_interactive_list(
             return None
 
 
+async def send_template_message(
+    phone_number_id: str,
+    access_token: str,
+    to: str,
+    template_name: str,
+    language_code: str = "pt_BR",
+    components: list | None = None,
+) -> Optional[str]:
+    """
+    Envia mensagem usando template aprovado na Meta.
+
+    components exemplo (corpo com variáveis):
+    [{"type": "body", "parameters": [{"type": "text", "text": "João"}, {"type": "text", "text": "R$ 350,00"}]}]
+    """
+    url = f"{settings.WHATSAPP_API_URL}/{phone_number_id}/messages"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+    payload: dict = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": to,
+        "type": "template",
+        "template": {
+            "name": template_name,
+            "language": {"code": language_code},
+        },
+    }
+    if components:
+        payload["template"]["components"] = components
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        try:
+            response = await client.post(url, json=payload, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+            msg_id = data.get("messages", [{}])[0].get("id")
+            logger.info("Template '%s' enviado para %s: %s", template_name, to, msg_id)
+            return msg_id
+        except httpx.HTTPStatusError as e:
+            logger.error("Erro ao enviar template %s: %s", template_name, e.response.text)
+            return None
+        except Exception as e:
+            logger.error("Erro inesperado ao enviar template: %s", e)
+            return None
+
+
 async def mark_message_read(
     phone_number_id: str, access_token: str, message_id: str
 ) -> bool:

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { MessageSquare, Clock, User } from 'lucide-react'
 import { api } from '../api/client'
 import { format } from 'date-fns'
@@ -19,6 +20,7 @@ const statusLabels: Record<string, string> = {
 }
 
 export default function Conversations() {
+  const navigate = useNavigate()
   const [status, setStatus] = useState<string>('')
   const [page, setPage] = useState(1)
 
@@ -69,13 +71,19 @@ export default function Conversations() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {data?.items?.map((conv: any) => (
-                <tr key={conv.id} className="hover:bg-gray-50 cursor-pointer">
+                <tr
+                  key={conv.id}
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => navigate(`/conversations/${conv.id}`)}
+                >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <div className="bg-blue-100 p-1.5 rounded-full">
                         <User size={14} className="text-blue-600" />
                       </div>
-                      <span className="text-sm font-medium">{conv.contact_id?.substring(0, 8)}...</span>
+                      <span className="text-sm font-medium">
+                        {conv.contact_name || conv.contact_phone || conv.contact_id?.substring(0, 8) + '...'}
+                      </span>
                     </div>
                   </td>
                   <td className="px-4 py-3">
