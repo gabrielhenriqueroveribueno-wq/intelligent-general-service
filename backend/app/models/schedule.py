@@ -5,7 +5,7 @@ from sqlalchemy import Integer, String, Time
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.base import Base, TimestampMixin, TenantMixin
+from app.models.base import Base, TenantMixin, TimestampMixin
 
 
 class ClassSchedule(Base, TenantMixin, TimestampMixin):

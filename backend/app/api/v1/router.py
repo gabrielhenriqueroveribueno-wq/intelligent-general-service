@@ -1,22 +1,22 @@
 from fastapi import APIRouter
 
 from app.api.v1 import (
-    auth,
-    tenants,
-    users,
-    students,
-    employees,
-    conversations,
-    tickets,
-    knowledge_base,
-    dashboard,
-    reports,
-    webhook,
-    health,
-    ws,
     admin,
+    auth,
+    conversations,
+    dashboard,
+    employees,
+    health,
+    knowledge_base,
+    reports,
+    students,
     templates,
+    tenants,
+    tickets,
+    users,
+    webhook,
     webhooks_config,
+    ws,
 )
 
 api_router = APIRouter()

@@ -1,3 +1,4 @@
+import io
 import uuid
 from datetime import datetime
 
@@ -11,7 +12,6 @@ from app.services.report_service import (
     get_ticket_report,
     rows_to_csv,
 )
-import io
 
 router = APIRouter()
 

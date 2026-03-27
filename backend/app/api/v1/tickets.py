@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_current_user, get_db, get_tenant_id, require_roles
+from app.dependencies import get_db, get_tenant_id, require_roles
 from app.schemas.ticket import (
     TicketCommentCreate,
     TicketCommentResponse,
@@ -16,7 +16,6 @@ from app.schemas.ticket import (
     TicketUpdate,
 )
 from app.services import ticket_service
-from app.utils.exceptions import NotFoundError
 
 router = APIRouter()
 

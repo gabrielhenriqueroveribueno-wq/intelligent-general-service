@@ -3,7 +3,7 @@ from typing import AsyncGenerator, Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.config import settings
 from app.utils.security import decode_access_token
@@ -58,8 +58,9 @@ async def get_current_user(
     token_data: dict = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    from app.models.user import User
     from sqlalchemy import select
+
+    from app.models.user import User
 
     user_id = token_data.get("sub")
     if not user_id:

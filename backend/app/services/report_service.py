@@ -2,12 +2,11 @@ import csv
 import io
 import uuid
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.conversation import Conversation, Message
+from app.models.conversation import Conversation
 from app.models.ticket import Ticket
 
 
@@ -87,7 +86,7 @@ def rows_to_csv(rows: list[dict]) -> bytes:
 async def get_dashboard_overview(
     db: AsyncSession, tenant_id: uuid.UUID
 ) -> dict:
-    from datetime import timezone, timedelta
+    from datetime import timedelta, timezone
 
     now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)

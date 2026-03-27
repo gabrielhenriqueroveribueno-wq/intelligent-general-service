@@ -2,13 +2,13 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_db, get_tenant_id, require_roles
 from app.models.knowledge_base import KBArticle, KBCategory
 from app.services import knowledge_service
 from app.utils.exceptions import NotFoundError
-from pydantic import BaseModel
 
 
 class ArticleCreate(BaseModel):

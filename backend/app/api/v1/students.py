@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, UploadFile, File
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_db, get_tenant_id, require_roles
@@ -13,7 +13,6 @@ from app.schemas.student import (
     StudentResponse,
 )
 from app.services import student_service
-from app.utils.exceptions import NotFoundError
 
 router = APIRouter()
 

@@ -3,7 +3,7 @@ import uuid
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.student import Student, Grade
+from app.models.student import Student
 from app.services.student_service import get_grades, get_student_by_ra, list_students
 
 

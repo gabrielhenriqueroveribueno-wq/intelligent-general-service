@@ -12,7 +12,6 @@ Nota: Para produção, substituir upload_to_storage() por S3/Cloudflare R2.
 """
 import hashlib
 import logging
-import os
 from pathlib import Path
 
 import httpx
