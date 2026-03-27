@@ -20,7 +20,7 @@ async def authenticate_user(
     db: AsyncSession, email: str, password: str
 ) -> tuple[str, str]:
     """Autentica o usuário e retorna access + refresh tokens."""
-    result = await db.execute(select(User).where(User.email == email, User.is_active == True))
+    result = await db.execute(select(User).where(User.email == email, User.is_active))
     user = result.scalar_one_or_none()
 
     if not user or not verify_password(password, user.password_hash):
@@ -52,7 +52,7 @@ async def refresh_tokens(db: AsyncSession, refresh_token: str) -> tuple[str, str
 
     user_id = payload.get("sub")
     result = await db.execute(
-        select(User).where(User.id == uuid.UUID(user_id), User.is_active == True)
+        select(User).where(User.id == uuid.UUID(user_id), User.is_active)
     )
     user = result.scalar_one_or_none()
     if not user:

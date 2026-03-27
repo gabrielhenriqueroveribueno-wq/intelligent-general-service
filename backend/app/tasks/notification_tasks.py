@@ -24,7 +24,9 @@ async def _send_boleto_reminders_async():
     Requer template 'boleto_lembrete' cadastrado no tenant.
     """
     from datetime import date, timedelta
+
     from sqlalchemy import select
+
     from app.dependencies import AsyncSessionLocal
     from app.models.billing import Boleto
     from app.models.conversation import Contact
@@ -66,7 +68,7 @@ async def _send_boleto_reminders_async():
                     select(Contact).where(
                         Contact.tenant_id == boleto.tenant_id,
                         Contact.student_id == student.id,
-                        Contact.is_verified == True,
+                        Contact.is_verified,
                     )
                 )
                 contact = contact_result.scalar_one_or_none()
@@ -78,7 +80,7 @@ async def _send_boleto_reminders_async():
                     select(MessageTemplate).where(
                         MessageTemplate.tenant_id == boleto.tenant_id,
                         MessageTemplate.meta_template_name == "boleto_lembrete",
-                        MessageTemplate.is_active == True,
+                        MessageTemplate.is_active,
                     )
                 )
                 template = tmpl_result.scalar_one_or_none()

@@ -1,16 +1,15 @@
 import uuid
-from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_current_user, get_db, get_tenant_id, require_roles
+from app.dependencies import get_db, get_tenant_id, require_roles
 from app.models.user import User
 from app.schemas.auth import UserMe
 from app.services.auth_service import create_user
 from app.utils.exceptions import NotFoundError
-from pydantic import BaseModel, EmailStr
 
 
 class UserCreate(BaseModel):
@@ -54,7 +53,7 @@ async def list_users(
     _=Depends(require_roles("super_admin", "admin", "manager")),
 ):
     result = await db.execute(
-        select(User).where(User.tenant_id == tenant_id, User.is_active == True)
+        select(User).where(User.tenant_id == tenant_id, User.is_active)
     )
     users = result.scalars().all()
     return [
