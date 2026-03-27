@@ -6,7 +6,7 @@ from sqlalchemy import Boolean, DateTime, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, TimestampMixin, TenantMixin
+from app.models.base import Base, TenantMixin, TimestampMixin
 
 
 class Ticket(Base, TenantMixin, TimestampMixin):

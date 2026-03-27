@@ -8,16 +8,16 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.dependencies import get_db
 from app.models.conversation import Contact, Conversation, Message
 from app.models.tenant import Tenant
 from app.tasks.message_tasks import process_incoming_message
 from app.utils.whatsapp_crypto import verify_webhook_signature
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -110,8 +110,8 @@ async def _handle_incoming_message(
     from_phone = raw_msg.get("from")
     whatsapp_msg_id = raw_msg.get("id")
 
-    SUPPORTED_TYPES = {"text", "image", "document", "audio", "video", "sticker"}
-    if msg_type not in SUPPORTED_TYPES:
+    supported_types = {"text", "image", "document", "audio", "video", "sticker"}
+    if msg_type not in supported_types:
         logger.debug("Tipo de mensagem não suportado: %s", msg_type)
         return
 
@@ -142,7 +142,7 @@ async def _handle_incoming_message(
     tenant_result = await db.execute(
         select(Tenant).where(
             Tenant.whatsapp_phone_number_id == phone_number_id,
-            Tenant.is_active == True,
+            Tenant.is_active,
         )
     )
     tenant = tenant_result.scalar_one_or_none()

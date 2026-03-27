@@ -24,7 +24,7 @@ async def get_sla_deadline(
         select(SLAConfig).where(
             SLAConfig.tenant_id == tenant_id,
             SLAConfig.priority == priority,
-            SLAConfig.is_active == True,
+            SLAConfig.is_active,
         )
     )
     sla = result.scalar_one_or_none()

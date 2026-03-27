@@ -6,7 +6,7 @@ from sqlalchemy import Boolean, DateTime, Integer, String, Text, UniqueConstrain
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, TimestampMixin, TenantMixin
+from app.models.base import Base, TenantMixin, TimestampMixin
 
 
 class Contact(Base, TenantMixin, TimestampMixin):

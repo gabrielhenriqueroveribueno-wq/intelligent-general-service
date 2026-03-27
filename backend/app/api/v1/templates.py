@@ -6,7 +6,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_db, get_tenant_id, require_roles
@@ -39,7 +39,7 @@ async def list_templates(
 ):
     query = select(MessageTemplate).where(
         MessageTemplate.tenant_id == tenant_id,
-        MessageTemplate.is_active == True,
+        MessageTemplate.is_active,
     )
     total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar()
     result = await db.execute(query.offset((page - 1) * size).limit(size))
@@ -97,7 +97,7 @@ async def send_template(
         select(MessageTemplate).where(
             MessageTemplate.id == template_id,
             MessageTemplate.tenant_id == tenant_id,
-            MessageTemplate.is_active == True,
+            MessageTemplate.is_active,
         )
     )
     template = result.scalar_one_or_none()

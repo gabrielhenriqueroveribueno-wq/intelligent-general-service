@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_current_user, get_db, get_tenant_id, require_roles
+from app.dependencies import get_db, get_tenant_id, require_roles
 from app.models.conversation import Contact, Conversation, Message
 from app.schemas.conversation import (
     AgentMessageCreate,
@@ -144,7 +144,9 @@ async def close_conversation(
     # Notifica painel via WebSocket
     try:
         import json as _json
+
         import redis.asyncio as aioredis
+
         from app.config import settings as _settings
         from app.services.ws_manager import REDIS_CHANNEL
         _r = aioredis.from_url(_settings.REDIS_URL, decode_responses=True)
@@ -230,7 +232,9 @@ async def send_agent_message(
     # Notifica painel via WebSocket
     try:
         import json as _json
+
         import redis.asyncio as aioredis
+
         from app.config import settings as _settings
         from app.services.ws_manager import REDIS_CHANNEL
         _r = aioredis.from_url(_settings.REDIS_URL, decode_responses=True)

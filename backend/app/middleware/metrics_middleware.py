@@ -1,6 +1,6 @@
 from fastapi import FastAPI
+from prometheus_client import Counter, Gauge, Histogram
 from prometheus_fastapi_instrumentator import Instrumentator
-from prometheus_client import Counter, Histogram, Gauge
 
 # Métricas customizadas IGS
 messages_processed_total = Counter(

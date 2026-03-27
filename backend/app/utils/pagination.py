@@ -1,7 +1,6 @@
 from typing import TypeVar
 
 from fastapi import Query
-from pydantic import BaseModel
 
 T = TypeVar("T")
 

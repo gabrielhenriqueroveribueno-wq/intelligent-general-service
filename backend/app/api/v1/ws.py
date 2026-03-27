@@ -10,10 +10,10 @@ Eventos enviados ao cliente:
 """
 import logging
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, status
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect, status
 
-from app.utils.security import decode_access_token
 from app.services.ws_manager import ws_manager
+from app.utils.security import decode_access_token
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

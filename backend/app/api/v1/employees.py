@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_current_user, get_db, get_tenant_id, require_roles
+from app.dependencies import get_db, get_tenant_id, require_roles
 from app.schemas.employee import (
     EmployeeListResponse,
     EmployeeResponse,
@@ -15,7 +15,6 @@ from app.schemas.employee import (
     VacationBalanceResponse,
 )
 from app.services import employee_service
-from app.utils.exceptions import NotFoundError
 
 router = APIRouter()
 
@@ -113,6 +112,7 @@ async def respond_hr_request(
     current_user=Depends(require_roles("super_admin", "admin", "manager")),
 ):
     from sqlalchemy import select, update
+
     from app.models.employee import HRRequest
 
     await db.execute(

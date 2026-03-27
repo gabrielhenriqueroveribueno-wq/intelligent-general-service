@@ -17,7 +17,7 @@ async def search_articles(
     """Busca artigos na KB por texto (full-text simples com ILIKE)."""
     q = select(KBArticle).where(
         KBArticle.tenant_id == tenant_id,
-        KBArticle.is_published == True,
+        KBArticle.is_published,
         or_(
             KBArticle.title.ilike(f"%{query}%"),
             KBArticle.content.ilike(f"%{query}%"),
@@ -46,7 +46,7 @@ async def list_articles(
     size: int = 20,
 ) -> tuple[list[KBArticle], int]:
     query = select(KBArticle).where(
-        KBArticle.tenant_id == tenant_id, KBArticle.is_published == True
+        KBArticle.tenant_id == tenant_id, KBArticle.is_published
     )
     if category_id:
         query = query.where(KBArticle.category_id == category_id)

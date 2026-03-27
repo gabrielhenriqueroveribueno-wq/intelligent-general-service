@@ -59,6 +59,7 @@ class WebSocketManager:
         para os clientes WS conectados. Reinicia automaticamente em caso de erro.
         """
         import redis.asyncio as aioredis
+
         from app.config import settings
 
         while True:

@@ -6,8 +6,8 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.config import settings
 from app.api.v1.router import api_router
+from app.config import settings
 from app.middleware.logging_middleware import LoggingMiddleware
 from app.middleware.metrics_middleware import setup_metrics
 from app.utils.exceptions import IGSException

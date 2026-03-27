@@ -5,7 +5,7 @@ from sqlalchemy import Boolean, Integer, String, Text
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, TimestampMixin, TenantMixin
+from app.models.base import Base, TenantMixin, TimestampMixin
 
 
 class KBCategory(Base, TenantMixin, TimestampMixin):

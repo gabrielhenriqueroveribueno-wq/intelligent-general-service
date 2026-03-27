@@ -36,7 +36,7 @@ async def dispatch_event(
     result = await db.execute(
         select(WebhookEndpoint).where(
             WebhookEndpoint.tenant_id == tenant_id,
-            WebhookEndpoint.is_active == True,
+            WebhookEndpoint.is_active,
         )
     )
     endpoints = result.scalars().all()

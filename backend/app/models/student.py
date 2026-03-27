@@ -2,11 +2,11 @@ import uuid
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import Date, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Date, Numeric, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, TimestampMixin, TenantMixin
+from app.models.base import Base, TenantMixin, TimestampMixin
 
 
 class Student(Base, TenantMixin, TimestampMixin):

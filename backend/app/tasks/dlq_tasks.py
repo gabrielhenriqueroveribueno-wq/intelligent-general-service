@@ -21,6 +21,7 @@ async def save_failed_task_async(
 ):
     """Persiste registro de tarefa falhada no banco."""
     from datetime import datetime, timezone
+
     from app.dependencies import AsyncSessionLocal
     from app.models.audit import FailedTask
 
@@ -51,7 +52,9 @@ def retry_failed_task(self, failed_task_id: str):
 async def _retry_async(failed_task_id: str):
     import uuid
     from datetime import datetime, timezone
+
     from sqlalchemy import select, update
+
     from app.dependencies import AsyncSessionLocal
     from app.models.audit import FailedTask
 

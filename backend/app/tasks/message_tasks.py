@@ -56,6 +56,7 @@ def process_incoming_message(self, message_id: str):
 def _persist_failed_task(task, message_id: str, exc: Exception):
     """Persiste tarefa falha no banco para inspeção posterior."""
     import traceback as tb
+
     from app.tasks.dlq_tasks import save_failed_task_async
     asyncio.run(save_failed_task_async(
         task_id=task.request.id or "unknown",
@@ -69,16 +70,23 @@ def _persist_failed_task(task, message_id: str, exc: Exception):
 
 async def _process_message_async(message_id: str):
     from sqlalchemy import select, update
+
     from app.dependencies import AsyncSessionLocal
+    from app.middleware.metrics_middleware import (
+        ai_tokens_used_total,
+        messages_processed_total,
+        response_time_histogram,
+    )
     from app.models.conversation import Contact, Conversation, Message
     from app.models.tenant import Tenant
-    from app.services import ai_service, intent_classifier, knowledge_service
-    from app.services import student_service, employee_service, ticket_service
-    from app.services import whatsapp_service
-    from app.middleware.metrics_middleware import (
-        messages_processed_total,
-        ai_tokens_used_total,
-        response_time_histogram,
+    from app.services import (
+        ai_service,
+        employee_service,
+        intent_classifier,
+        knowledge_service,
+        student_service,
+        ticket_service,
+        whatsapp_service,
     )
 
     start_time = time.perf_counter()
@@ -303,7 +311,9 @@ async def _process_message_async(message_id: str):
         # ── 8. Notifica painel via WebSocket (Redis pub/sub) ──────────────
         try:
             import json as _json
+
             import redis.asyncio as aioredis
+
             from app.config import settings as _settings
             from app.services.ws_manager import REDIS_CHANNEL
             _r = aioredis.from_url(_settings.REDIS_URL, decode_responses=True)
