@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -41,7 +41,9 @@ class ScheduledNotification(Base, TenantMixin, TimestampMixin):
     __tablename__ = "scheduled_notifications"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    template_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    template_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("message_templates.id"), nullable=False
+    )
     # Filtro de contatos que receberão a notificação (JSONB)
     # Ex: {"overdue_boletos": true, "days_ahead": 3}
     contact_filter: Mapped[Optional[dict]] = mapped_column(JSONB, default=dict)
