@@ -1,5 +1,5 @@
 import uuid
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -77,6 +77,7 @@ async def get_current_user(
 
 def require_roles(*roles: str):
     """Factory de dependência para verificar papéis do usuário."""
+
     async def dependency(current_user=Depends(get_current_user)):
         if current_user.role not in roles:
             raise HTTPException(
@@ -84,10 +85,13 @@ def require_roles(*roles: str):
                 detail="Permissão insuficiente",
             )
         return current_user
+
     return dependency
 
 
-def get_tenant_id(token_data: dict = Depends(get_current_user_id)) -> Optional[uuid.UUID]:
+def get_tenant_id(
+    token_data: dict = Depends(get_current_user_id),
+) -> uuid.UUID | None:
     tenant_id = token_data.get("tenant_id")
     if tenant_id:
         return uuid.UUID(tenant_id)

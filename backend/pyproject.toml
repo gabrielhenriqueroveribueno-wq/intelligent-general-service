@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "igs-backend"
@@ -22,6 +22,7 @@ dependencies = [
     # Auth
     "python-jose[cryptography]==3.3.0",
     "passlib[bcrypt]==1.7.4",
+    "bcrypt==4.1.3",
     # Validation
     "pydantic==2.9.2",
     "pydantic-settings==2.5.2",

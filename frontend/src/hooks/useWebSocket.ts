@@ -31,7 +31,7 @@ export function useWebSocket(url: string | null) {
       try {
         const data: WsEvent = JSON.parse(event.data)
         setLastMessage(data)
-      } catch {
+      } catch (_e) {
         // ignore malformed messages
       }
     }
