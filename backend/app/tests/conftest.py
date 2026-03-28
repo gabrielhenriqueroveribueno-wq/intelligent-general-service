@@ -1,28 +1,44 @@
 import os
+
+# Set test DATABASE_URL before importing app modules to avoid asyncpg dependency
+os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
+
 from typing import AsyncGenerator
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import Text
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.pool import NullPool
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.pool import NullPool, StaticPool
 
-from app.dependencies import get_db
-from app.main import app
-from app.models.base import Base
-from app.models.tenant import Tenant
-from app.models.user import User
-from app.utils.security import hash_password
+# Register SQLite compilation overrides for PostgreSQL-specific types
+compiles(JSONB, "sqlite")(lambda element, compiler, **kw: compiler.visit_JSON(element, **kw))
 
-TEST_DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "sqlite+aiosqlite:///:memory:",
-)
 
-test_engine = create_async_engine(
-    TEST_DATABASE_URL,
-    echo=False,
-    poolclass=NullPool,
-)
+@compiles(ARRAY, "sqlite")
+def _compile_array_sqlite(element, compiler, **kw):
+    return compiler.visit_string(Text(), **kw)
+
+
+from app.dependencies import get_db  # noqa: E402
+from app.main import app  # noqa: E402
+from app.models.base import Base  # noqa: E402
+from app.models.tenant import Tenant  # noqa: E402
+from app.models.user import User  # noqa: E402
+from app.utils.security import hash_password  # noqa: E402
+
+TEST_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
+
+_is_sqlite = "sqlite" in TEST_DATABASE_URL
+_engine_kwargs: dict = {"echo": False}
+if _is_sqlite:
+    _engine_kwargs.update(poolclass=StaticPool, connect_args={"check_same_thread": False})
+else:
+    _engine_kwargs.update(poolclass=NullPool)
+
+test_engine = create_async_engine(TEST_DATABASE_URL, **_engine_kwargs)
 TestSessionLocal = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
 
 

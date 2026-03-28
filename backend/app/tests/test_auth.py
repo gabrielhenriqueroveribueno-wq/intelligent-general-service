@@ -39,7 +39,7 @@ async def test_me_authenticated(client: AsyncClient, auth_token: str):
 @pytest.mark.asyncio
 async def test_me_unauthenticated(client: AsyncClient):
     response = await client.get("/api/v1/auth/me")
-    assert response.status_code == 403  # HTTPBearer returns 403 when no credentials
+    assert response.status_code in (401, 403)  # HTTPBearer returns 403 or 401 depending on version
 
 
 @pytest.mark.asyncio

@@ -10,13 +10,13 @@ from app.utils.security import decode_access_token
 
 # ── Database ──────────────────────────────────────────────────────────────────
 
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=settings.APP_DEBUG,
-    pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
-)
+_engine_kwargs: dict = {
+    "echo": settings.APP_DEBUG,
+}
+if "sqlite" not in settings.DATABASE_URL:
+    _engine_kwargs.update(pool_pre_ping=True, pool_size=10, max_overflow=20)
+
+engine = create_async_engine(settings.DATABASE_URL, **_engine_kwargs)
 
 AsyncSessionLocal = async_sessionmaker(
     engine,
