@@ -11,7 +11,7 @@ async def test_webhook_verify_valid(client: AsyncClient):
         params={
             "hub.mode": "subscribe",
             "hub.verify_token": settings.WHATSAPP_VERIFY_TOKEN,
-            "hub.challenge": "abc123",
+            "hub.challenge": "12345",
         },
     )
     assert response.status_code == 200
@@ -24,7 +24,7 @@ async def test_webhook_verify_invalid_token(client: AsyncClient):
         params={
             "hub.mode": "subscribe",
             "hub.verify_token": "wrong-token",
-            "hub.challenge": "abc123",
+            "hub.challenge": "12345",
         },
     )
     assert response.status_code == 403
@@ -32,7 +32,6 @@ async def test_webhook_verify_invalid_token(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_webhook_post_ignored_object(client: AsyncClient):
-    """Payloads que não são whatsapp_business_account devem ser ignorados."""
     response = await client.post(
         "/api/v1/webhook/whatsapp",
         json={"object": "instagram", "entry": []},
