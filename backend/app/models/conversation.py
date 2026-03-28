@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -39,7 +39,9 @@ class Conversation(Base, TenantMixin, TimestampMixin):
     __tablename__ = "conversations"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    contact_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    contact_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("contacts.id"), nullable=False, index=True
+    )
     channel: Mapped[str] = mapped_column(String(20), default="whatsapp")
     status: Mapped[str] = mapped_column(
         String(20), default="active"
@@ -63,7 +65,7 @@ class Message(Base, TenantMixin, TimestampMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     conversation_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), nullable=False, index=True
+        UUID(as_uuid=True), ForeignKey("conversations.id"), nullable=False, index=True
     )
     sender_type: Mapped[str] = mapped_column(String(20), nullable=False)  # user, bot, agent
     content: Mapped[str] = mapped_column(Text, nullable=False)

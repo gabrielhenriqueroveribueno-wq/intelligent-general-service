@@ -31,7 +31,9 @@ async def test_webhook_verify_invalid_token(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_webhook_post_ignored_object(client: AsyncClient):
+async def test_webhook_post_ignored_object(client: AsyncClient, monkeypatch):
+    """Payloads que não são whatsapp_business_account devem ser ignorados."""
+    monkeypatch.setattr("app.config.settings.WHATSAPP_APP_SECRET", "")
     response = await client.post(
         "/api/v1/webhook/whatsapp",
         json={"object": "instagram", "entry": []},
