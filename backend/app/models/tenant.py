@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional
 
-from sqlalchemy import Boolean, String, Text
+from sqlalchemy import Boolean, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -9,7 +9,7 @@ from app.models.base import Base, TimestampMixin
 
 
 class Tenant(Base, TimestampMixin):
-    """Representa uma instituição cliente no SaaS."""
+    """Representa uma instituiÃ§Ã£o cliente no SaaS."""
 
     __tablename__ = "tenants"
 
@@ -31,7 +31,7 @@ class Tenant(Base, TimestampMixin):
 
 
 class TenantSettings(Base, TimestampMixin):
-    """Configurações detalhadas do tenant."""
+    """ConfiguraÃ§Ãµes detalhadas do tenant."""
 
     __tablename__ = "tenant_settings"
 

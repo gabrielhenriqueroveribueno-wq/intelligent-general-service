@@ -2,7 +2,7 @@ import uuid
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import Date, Numeric, String, UniqueConstraint
+from sqlalchemy import Date, ForeignKey, Numeric, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -45,7 +45,9 @@ class Grade(Base, TenantMixin, TimestampMixin):
     __tablename__ = "grades"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    student_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    student_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("students.id"), nullable=False, index=True
+    )
     subject_name: Mapped[str] = mapped_column(String(255), nullable=False)
     subject_code: Mapped[Optional[str]] = mapped_column(String(50))
     academic_period: Mapped[str] = mapped_column(String(20), nullable=False)  # "2026.1"
@@ -57,12 +59,14 @@ class Grade(Base, TenantMixin, TimestampMixin):
 
 
 class AttendanceRecord(Base, TenantMixin, TimestampMixin):
-    """Registro de frequência do aluno."""
+    """Registro de frequÃªncia do aluno."""
 
     __tablename__ = "attendance_records"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    student_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    student_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("students.id"), nullable=False, index=True
+    )
     subject_code: Mapped[Optional[str]] = mapped_column(String(50))
     subject_name: Mapped[Optional[str]] = mapped_column(String(255))
     academic_period: Mapped[str] = mapped_column(String(20), nullable=False)

@@ -2,7 +2,7 @@ import uuid
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import Date, DateTime, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Date, DateTime, ForeignKey, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -10,7 +10,7 @@ from app.models.base import Base, TenantMixin, TimestampMixin
 
 
 class Employee(Base, TenantMixin, TimestampMixin):
-    """Dados do funcionário."""
+    """Dados do funcionÃ¡rio."""
 
     __tablename__ = "employees"
     __table_args__ = (
@@ -42,12 +42,14 @@ class Employee(Base, TenantMixin, TimestampMixin):
 
 
 class Payslip(Base, TenantMixin, TimestampMixin):
-    """Holerite do funcionário."""
+    """Holerite do funcionÃ¡rio."""
 
     __tablename__ = "payslips"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    employee_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    employee_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("employees.id"), nullable=False, index=True
+    )
     reference_month: Mapped[str] = mapped_column(String(7), nullable=False)  # "2026-03"
     gross_salary: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     net_salary: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
@@ -58,12 +60,14 @@ class Payslip(Base, TenantMixin, TimestampMixin):
 
 
 class VacationBalance(Base, TenantMixin, TimestampMixin):
-    """Saldo de férias."""
+    """Saldo de fÃ©rias."""
 
     __tablename__ = "vacation_balances"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    employee_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    employee_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("employees.id"), nullable=False, index=True
+    )
     accrual_period_start: Mapped[Optional[object]] = mapped_column(Date)
     accrual_period_end: Mapped[Optional[object]] = mapped_column(Date)
     total_days: Mapped[int] = mapped_column(default=30)
@@ -85,7 +89,9 @@ class TimeRecord(Base, TenantMixin, TimestampMixin):
     __tablename__ = "time_records"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    employee_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    employee_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("employees.id"), nullable=False, index=True
+    )
     record_date: Mapped[Optional[object]] = mapped_column(Date)
     clock_in: Mapped[Optional[object]] = mapped_column(DateTime(timezone=True))
     clock_out: Mapped[Optional[object]] = mapped_column(DateTime(timezone=True))
@@ -100,12 +106,14 @@ class TimeRecord(Base, TenantMixin, TimestampMixin):
 
 
 class HRRequest(Base, TenantMixin, TimestampMixin):
-    """Solicitação de RH do funcionário."""
+    """SolicitaÃ§Ã£o de RH do funcionÃ¡rio."""
 
     __tablename__ = "hr_requests"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    employee_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    employee_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("employees.id"), nullable=False, index=True
+    )
     request_type: Mapped[str] = mapped_column(
         String(50), nullable=False
     )  # medical_cert, declaration, vacation

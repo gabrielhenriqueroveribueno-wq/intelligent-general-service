@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, String, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -10,7 +10,7 @@ from app.models.base import Base, TimestampMixin
 
 
 class User(Base, TimestampMixin):
-    """Usuário do painel admin (agente, gestor, admin)."""
+    """UsuÃ¡rio do painel admin (agente, gestor, admin)."""
 
     __tablename__ = "users"
     __table_args__ = (UniqueConstraint("tenant_id", "email", name="uq_user_tenant_email"),)
