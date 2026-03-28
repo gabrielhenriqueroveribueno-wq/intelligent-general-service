@@ -1,6 +1,7 @@
 """
 Endpoints administrativos (super_admin apenas).
 """
+
 import uuid
 from typing import Optional
 
@@ -67,6 +68,7 @@ async def retry_failed_task(
         raise NotFoundError("Tarefa falhada")
 
     from app.tasks.dlq_tasks import retry_failed_task as _retry
+
     _retry.delay(str(task_id))
 
     return {"message": "Tarefa reenfileirada para reprocessamento", "task_id": str(task_id)}

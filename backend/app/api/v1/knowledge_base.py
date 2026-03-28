@@ -95,7 +95,9 @@ async def list_articles(
     if search:
         articles = await knowledge_service.search_articles(db, tenant_id, search, applies_to)
     else:
-        articles, _ = await knowledge_service.list_articles(db, tenant_id, applies_to=applies_to, page=page, size=size)
+        articles, _ = await knowledge_service.list_articles(
+            db, tenant_id, applies_to=applies_to, page=page, size=size
+        )
     return [ArticleResponse.model_validate(a) for a in articles]
 
 

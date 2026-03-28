@@ -3,6 +3,7 @@ webhook_delivery_service.py
 Enfileira e entrega eventos para endpoints externos cadastrados pelos tenants.
 Usa assinatura HMAC-SHA256 no header X-IGS-Signature para validação pelo receptor.
 """
+
 import hashlib
 import hmac
 import json
@@ -60,7 +61,12 @@ async def dispatch_event(
             args=[str(delivery.id)],
             countdown=0,
         )
-        logger.debug("Webhook enfileirado: endpoint=%s event=%s delivery=%s", endpoint.id, event_type, delivery.id)
+        logger.debug(
+            "Webhook enfileirado: endpoint=%s event=%s delivery=%s",
+            endpoint.id,
+            event_type,
+            delivery.id,
+        )
 
 
 async def send_delivery(db: AsyncSession, delivery_id: uuid.UUID) -> bool:
@@ -68,9 +74,7 @@ async def send_delivery(db: AsyncSession, delivery_id: uuid.UUID) -> bool:
     Executa a requisição HTTP para o endpoint e registra o resultado.
     Retorna True em caso de sucesso (2xx).
     """
-    result = await db.execute(
-        select(WebhookDelivery).where(WebhookDelivery.id == delivery_id)
-    )
+    result = await db.execute(select(WebhookDelivery).where(WebhookDelivery.id == delivery_id))
     delivery = result.scalar_one_or_none()
     if not delivery:
         logger.error("WebhookDelivery não encontrado: %s", delivery_id)
@@ -83,13 +87,16 @@ async def send_delivery(db: AsyncSession, delivery_id: uuid.UUID) -> bool:
     if not endpoint or not endpoint.is_active:
         return False
 
-    body = json.dumps({
-        "id": str(delivery.id),
-        "event": delivery.event_type,
-        "tenant_id": str(delivery.tenant_id),
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "data": delivery.payload,
-    }, ensure_ascii=False)
+    body = json.dumps(
+        {
+            "id": str(delivery.id),
+            "event": delivery.event_type,
+            "tenant_id": str(delivery.tenant_id),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "data": delivery.payload,
+        },
+        ensure_ascii=False,
+    )
 
     headers = {
         "Content-Type": "application/json",

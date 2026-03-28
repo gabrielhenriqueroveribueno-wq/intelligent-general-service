@@ -8,6 +8,7 @@ Eventos enviados ao cliente:
   {"type": "conversation_closed","tenant_id": "...", "conversation_id": "..."}
   {"type": "conversation_waiting","tenant_id": "...", "conversation_id": "..."}
 """
+
 import logging
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect, status

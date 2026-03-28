@@ -52,9 +52,7 @@ async def list_users(
     tenant_id: uuid.UUID = Depends(get_tenant_id),
     _=Depends(require_roles("super_admin", "admin", "manager")),
 ):
-    result = await db.execute(
-        select(User).where(User.tenant_id == tenant_id, User.is_active)
-    )
+    result = await db.execute(select(User).where(User.tenant_id == tenant_id, User.is_active))
     users = result.scalars().all()
     return [
         UserMe(
@@ -75,9 +73,7 @@ async def deactivate_user(
     tenant_id: uuid.UUID = Depends(get_tenant_id),
     _=Depends(require_roles("super_admin", "admin")),
 ):
-    result = await db.execute(
-        select(User).where(User.id == user_id, User.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(User).where(User.id == user_id, User.tenant_id == tenant_id))
     user = result.scalar_one_or_none()
     if not user:
         raise NotFoundError("Usuário")

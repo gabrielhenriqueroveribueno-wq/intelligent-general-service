@@ -12,6 +12,7 @@ from app.utils.exceptions import NotFoundError
 
 def _generate_protocol(tenant_id: uuid.UUID) -> str:
     from datetime import datetime
+
     ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     short = str(tenant_id).split("-")[0][:4].upper()
     return f"{short}-{ts}"
@@ -88,9 +89,7 @@ async def list_tickets(
     return result.scalars().all(), total
 
 
-async def get_ticket(
-    db: AsyncSession, tenant_id: uuid.UUID, ticket_id: uuid.UUID
-) -> Ticket:
+async def get_ticket(db: AsyncSession, tenant_id: uuid.UUID, ticket_id: uuid.UUID) -> Ticket:
     result = await db.execute(
         select(Ticket).where(Ticket.tenant_id == tenant_id, Ticket.id == ticket_id)
     )

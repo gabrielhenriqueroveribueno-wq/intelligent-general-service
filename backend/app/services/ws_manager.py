@@ -6,6 +6,7 @@ Arquitetura:
   - FastAPI background task escuta o canal e chama broadcast_to_tenant()
   - broadcast_to_tenant() entrega o payload a todos os WS do tenant
 """
+
 import asyncio
 import json
 import logging

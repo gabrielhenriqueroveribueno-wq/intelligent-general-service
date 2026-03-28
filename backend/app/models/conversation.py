@@ -53,9 +53,7 @@ class Conversation(Base, TenantMixin, TimestampMixin):
     metadata_: Mapped[Optional[dict]] = mapped_column("metadata", JSONB, default=dict)
 
     contact: Mapped[object] = relationship("Contact", back_populates="conversations", lazy="noload")
-    messages: Mapped[list] = relationship(
-        "Message", back_populates="conversation", lazy="noload"
-    )
+    messages: Mapped[list] = relationship("Message", back_populates="conversation", lazy="noload")
 
 
 class Message(Base, TenantMixin, TimestampMixin):

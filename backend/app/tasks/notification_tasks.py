@@ -57,6 +57,7 @@ async def _send_boleto_reminders_async():
             try:
                 # Encontra contato do aluno
                 from app.models.student import Student
+
                 student_result = await db.execute(
                     select(Student).where(Student.id == boleto.student_id)
                 )
@@ -100,14 +101,16 @@ async def _send_boleto_reminders_async():
                     to=contact.phone_number,
                     template_name="boleto_lembrete",
                     language_code=template.language_code,
-                    components=[{
-                        "type": "body",
-                        "parameters": [
-                            {"type": "text", "text": student.full_name.split()[0]},
-                            {"type": "text", "text": str(boleto.due_date.strftime("%d/%m/%Y"))},
-                            {"type": "text", "text": f"R$ {boleto.amount:.2f}"},
-                        ],
-                    }],
+                    components=[
+                        {
+                            "type": "body",
+                            "parameters": [
+                                {"type": "text", "text": student.full_name.split()[0]},
+                                {"type": "text", "text": str(boleto.due_date.strftime("%d/%m/%Y"))},
+                                {"type": "text", "text": f"R$ {boleto.amount:.2f}"},
+                            ],
+                        }
+                    ],
                 )
                 sent += 1
             except Exception as exc:

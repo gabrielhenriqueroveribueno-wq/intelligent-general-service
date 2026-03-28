@@ -45,9 +45,7 @@ async def list_articles(
     page: int = 1,
     size: int = 20,
 ) -> tuple[list[KBArticle], int]:
-    query = select(KBArticle).where(
-        KBArticle.tenant_id == tenant_id, KBArticle.is_published
-    )
+    query = select(KBArticle).where(KBArticle.tenant_id == tenant_id, KBArticle.is_published)
     if category_id:
         query = query.where(KBArticle.category_id == category_id)
     if applies_to:
@@ -83,9 +81,7 @@ async def create_article(
     return article
 
 
-async def list_categories(
-    db: AsyncSession, tenant_id: uuid.UUID
-) -> list[KBCategory]:
+async def list_categories(db: AsyncSession, tenant_id: uuid.UUID) -> list[KBCategory]:
     result = await db.execute(
         select(KBCategory)
         .where(KBCategory.tenant_id == tenant_id)

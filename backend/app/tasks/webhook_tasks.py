@@ -35,7 +35,10 @@ async def _deliver(task, delivery_id: uuid.UUID) -> None:
             countdown = COUNTDOWN[min(attempt - 1, len(COUNTDOWN) - 1)]
             logger.warning(
                 "Webhook delivery falhou (tentativa %d/%d), retry em %ds: %s",
-                attempt, MAX_RETRIES, countdown, delivery_id,
+                attempt,
+                MAX_RETRIES,
+                countdown,
+                delivery_id,
             )
             raise task.retry(countdown=countdown)
         else:

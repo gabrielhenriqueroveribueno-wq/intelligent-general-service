@@ -1,6 +1,7 @@
 """
 Endpoints para gerenciamento de templates de mensagem WhatsApp (HSM).
 """
+
 import uuid
 from typing import Optional
 

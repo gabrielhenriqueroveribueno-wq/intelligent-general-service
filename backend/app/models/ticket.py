@@ -15,21 +15,25 @@ class Ticket(Base, TenantMixin, TimestampMixin):
     __tablename__ = "tickets"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    protocol_number: Mapped[str] = mapped_column(String(20), unique=True, nullable=False, index=True)
+    protocol_number: Mapped[str] = mapped_column(
+        String(20), unique=True, nullable=False, index=True
+    )
     contact_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True))
     conversation_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True))
     category: Mapped[Optional[str]] = mapped_column(String(100))
     subject: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text)
-    priority: Mapped[str] = mapped_column(String(20), default="medium")  # low, medium, high, critical
-    status: Mapped[str] = mapped_column(String(20), default="open")  # open, in_progress, resolved, closed
+    priority: Mapped[str] = mapped_column(
+        String(20), default="medium"
+    )  # low, medium, high, critical
+    status: Mapped[str] = mapped_column(
+        String(20), default="open"
+    )  # open, in_progress, resolved, closed
     assigned_to: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True))
     sla_deadline: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
-    comments: Mapped[list] = relationship(
-        "TicketComment", back_populates="ticket", lazy="noload"
-    )
+    comments: Mapped[list] = relationship("TicketComment", back_populates="ticket", lazy="noload")
 
 
 class TicketComment(Base, TimestampMixin):

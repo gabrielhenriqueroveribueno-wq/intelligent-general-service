@@ -4,6 +4,7 @@ Webhook do WhatsApp Business Cloud API.
 GET  /webhook/whatsapp  - Verificação de desafio da Meta
 POST /webhook/whatsapp  - Recebe mensagens e atualizações de status
 """
+
 import logging
 from datetime import datetime, timezone
 from typing import Any
@@ -71,9 +72,7 @@ async def whatsapp_webhook(
             contacts = value.get("contacts", [])
             for raw_msg in value.get("messages", []):
                 contact_name = contacts[0]["profile"]["name"] if contacts else None
-                await _handle_incoming_message(
-                    db, raw_msg, phone_number_id, contact_name
-                )
+                await _handle_incoming_message(db, raw_msg, phone_number_id, contact_name)
 
     return {"status": "ok"}
 
@@ -92,11 +91,7 @@ async def _handle_status_update(db: AsyncSession, status_upd: dict):
         updates["is_read"] = True
 
     if updates:
-        await db.execute(
-            update(Message)
-            .where(Message.whatsapp_msg_id == msg_id)
-            .values(**updates)
-        )
+        await db.execute(update(Message).where(Message.whatsapp_msg_id == msg_id).values(**updates))
 
 
 async def _handle_incoming_message(
@@ -157,11 +152,14 @@ async def _handle_incoming_message(
 
     # Obtém ou cria conversa ativa
     conv_result = await db.execute(
-        select(Conversation).where(
+        select(Conversation)
+        .where(
             Conversation.tenant_id == tenant_id,
             Conversation.contact_id == contact.id,
             Conversation.status.in_(["active", "waiting_agent"]),
-        ).order_by(Conversation.started_at.desc()).limit(1)
+        )
+        .order_by(Conversation.started_at.desc())
+        .limit(1)
     )
     conversation = conv_result.scalar_one_or_none()
 
@@ -245,6 +243,7 @@ async def _try_verify_contact(db: AsyncSession, contact: Contact, tenant_id, tex
     if ra_match:
         ra = ra_match.group(1)
         from app.models.student import Student
+
         student_result = await db.execute(
             select(Student).where(
                 Student.tenant_id == tenant_id,
@@ -264,6 +263,7 @@ async def _try_verify_contact(db: AsyncSession, contact: Contact, tenant_id, tex
     if func_match:
         func_num = func_match.group(1)
         from app.models.employee import Employee
+
         emp_result = await db.execute(
             select(Employee).where(
                 Employee.tenant_id == tenant_id,

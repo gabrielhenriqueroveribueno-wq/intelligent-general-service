@@ -1,6 +1,7 @@
 """
 Modelos para templates de mensagem WhatsApp (HSM) e notificações agendadas.
 """
+
 import uuid
 from datetime import datetime
 from typing import Optional

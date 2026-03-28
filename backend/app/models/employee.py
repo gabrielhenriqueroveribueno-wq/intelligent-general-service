@@ -26,7 +26,9 @@ class Employee(Base, TenantMixin, TimestampMixin):
     department: Mapped[Optional[str]] = mapped_column(String(255))
     position: Mapped[Optional[str]] = mapped_column(String(255))
     hire_date: Mapped[Optional[object]] = mapped_column(Date)
-    status: Mapped[str] = mapped_column(String(20), default="active")  # active, on_leave, terminated
+    status: Mapped[str] = mapped_column(
+        String(20), default="active"
+    )  # active, on_leave, terminated
 
     tenant: Mapped[object] = relationship("Tenant", back_populates="employees", lazy="noload")
     payslips: Mapped[list] = relationship("Payslip", back_populates="employee", lazy="noload")
@@ -36,9 +38,7 @@ class Employee(Base, TenantMixin, TimestampMixin):
     time_records: Mapped[list] = relationship(
         "TimeRecord", back_populates="employee", lazy="noload"
     )
-    hr_requests: Mapped[list] = relationship(
-        "HRRequest", back_populates="employee", lazy="noload"
-    )
+    hr_requests: Mapped[list] = relationship("HRRequest", back_populates="employee", lazy="noload")
 
 
 class Payslip(Base, TenantMixin, TimestampMixin):
@@ -94,7 +94,9 @@ class TimeRecord(Base, TenantMixin, TimestampMixin):
     total_hours: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 2))
     status: Mapped[str] = mapped_column(String(20), default="regular")  # regular, overtime, absence
 
-    employee: Mapped[object] = relationship("Employee", back_populates="time_records", lazy="noload")
+    employee: Mapped[object] = relationship(
+        "Employee", back_populates="time_records", lazy="noload"
+    )
 
 
 class HRRequest(Base, TenantMixin, TimestampMixin):
@@ -108,7 +110,9 @@ class HRRequest(Base, TenantMixin, TimestampMixin):
         String(50), nullable=False
     )  # medical_cert, declaration, vacation
     description: Mapped[Optional[str]] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending, approved, rejected
+    status: Mapped[str] = mapped_column(
+        String(20), default="pending"
+    )  # pending, approved, rejected
     response_text: Mapped[Optional[str]] = mapped_column(Text)
     responded_by: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True))
     responded_at: Mapped[Optional[object]] = mapped_column(DateTime(timezone=True))

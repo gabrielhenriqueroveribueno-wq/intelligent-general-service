@@ -10,6 +10,7 @@ Fluxo:
 6. Envia via WhatsApp API
 7. Registra tokens, intenção e tempo de resposta
 """
+
 import asyncio
 import logging
 import time
@@ -58,14 +59,17 @@ def _persist_failed_task(task, message_id: str, exc: Exception):
     import traceback as tb
 
     from app.tasks.dlq_tasks import save_failed_task_async
-    asyncio.run(save_failed_task_async(
-        task_id=task.request.id or "unknown",
-        task_name=task.name,
-        args={"message_id": message_id},
-        error_message=str(exc),
-        traceback=tb.format_exc(),
-        retry_count=task.max_retries,
-    ))
+
+    asyncio.run(
+        save_failed_task_async(
+            task_id=task.request.id or "unknown",
+            task_name=task.name,
+            args={"message_id": message_id},
+            error_message=str(exc),
+            traceback=tb.format_exc(),
+            retry_count=task.max_retries,
+        )
+    )
 
 
 async def _process_message_async(message_id: str):
@@ -115,9 +119,7 @@ async def _process_message_async(message_id: str):
             return
 
         # Carrega o tenant (para obter phone_number_id e access_token)
-        tenant_result = await db.execute(
-            select(Tenant).where(Tenant.id == message.tenant_id)
-        )
+        tenant_result = await db.execute(select(Tenant).where(Tenant.id == message.tenant_id))
         tenant = tenant_result.scalar_one_or_none()
         if not tenant or not tenant.whatsapp_phone_number_id or not tenant.whatsapp_token:
             logger.warning("Tenant sem configuração WhatsApp: %s", message.tenant_id)
@@ -142,11 +144,7 @@ async def _process_message_async(message_id: str):
         intent = classification["intent"]
         entities = classification["entities"]
 
-        await db.execute(
-            update(Message)
-            .where(Message.id == message.id)
-            .values(intent=intent)
-        )
+        await db.execute(update(Message).where(Message.id == message.id).values(intent=intent))
 
         # ── 3. Human handoff ───────────────────────────────────────────────
         if intent == "human_handoff":
@@ -230,7 +228,9 @@ async def _process_message_async(message_id: str):
                         "total_days": vacation.total_days,
                         "used_days": vacation.used_days,
                         "remaining_days": vacation.remaining_days,
-                        "deadline_date": str(vacation.deadline_date) if vacation.deadline_date else None,
+                        "deadline_date": str(vacation.deadline_date)
+                        if vacation.deadline_date
+                        else None,
                     }
 
         # ── 5. Busca KB ───────────────────────────────────────────────────
@@ -247,6 +247,7 @@ async def _process_message_async(message_id: str):
         else:
             # Histórico de mensagens recentes
             from app.models.conversation import Message as MsgModel
+
             history_result = await db.execute(
                 select(MsgModel)
                 .where(MsgModel.conversation_id == conversation.id)
@@ -274,15 +275,13 @@ async def _process_message_async(message_id: str):
 
             # Atualiza tokens usados na mensagem
             await db.execute(
-                update(Message)
-                .where(Message.id == message.id)
-                .values(ai_tokens_used=tokens)
+                update(Message).where(Message.id == message.id).values(ai_tokens_used=tokens)
             )
 
             if tokens:
-                ai_tokens_used_total.labels(
-                    tenant_id=str(tenant_id), call_type="generate"
-                ).inc(tokens)
+                ai_tokens_used_total.labels(tenant_id=str(tenant_id), call_type="generate").inc(
+                    tokens
+                )
 
         # ── 7. Envia resposta ──────────────────────────────────────────────
         msg_id = await whatsapp_service.send_text_message(phone_id, token, to, reply)
@@ -290,6 +289,7 @@ async def _process_message_async(message_id: str):
 
         # Atualiza last_message_at
         from datetime import datetime, timezone
+
         await db.execute(
             update(Conversation)
             .where(Conversation.id == conversation.id)
@@ -316,14 +316,20 @@ async def _process_message_async(message_id: str):
 
             from app.config import settings as _settings
             from app.services.ws_manager import REDIS_CHANNEL
+
             _r = aioredis.from_url(_settings.REDIS_URL, decode_responses=True)
-            await _r.publish(REDIS_CHANNEL, _json.dumps({
-                "type": "new_message",
-                "tenant_id": str(tenant_id),
-                "conversation_id": str(conversation.id),
-                "intent": intent,
-                "resolution_type": resolution_type,
-            }))
+            await _r.publish(
+                REDIS_CHANNEL,
+                _json.dumps(
+                    {
+                        "type": "new_message",
+                        "tenant_id": str(tenant_id),
+                        "conversation_id": str(conversation.id),
+                        "intent": intent,
+                        "resolution_type": resolution_type,
+                    }
+                ),
+            )
             await _r.aclose()
         except Exception as _exc:
             logger.warning("Falha ao publicar evento WS: %s", _exc)
@@ -331,6 +337,7 @@ async def _process_message_async(message_id: str):
 
 def _save_bot_message(db, conversation, content: str, tenant_id, whatsapp_msg_id=None):
     from app.models.conversation import Message
+
     msg = Message(
         tenant_id=tenant_id,
         conversation_id=conversation.id,

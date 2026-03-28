@@ -20,7 +20,9 @@ from app.utils.exceptions import NotFoundError
 router = APIRouter()
 
 
-def _conv_to_response(conv: Conversation, contact: Optional[Contact] = None) -> ConversationResponse:
+def _conv_to_response(
+    conv: Conversation, contact: Optional[Contact] = None
+) -> ConversationResponse:
     """Constrói ConversationResponse enriquecido com dados do contato."""
     data = ConversationResponse.model_validate(conv)
     if contact:
@@ -47,7 +49,9 @@ async def list_conversations(
     count_q = select(func.count()).select_from(query.subquery())
     total = (await db.execute(count_q)).scalar()
 
-    query = query.offset((page - 1) * size).limit(size).order_by(Conversation.last_message_at.desc())
+    query = (
+        query.offset((page - 1) * size).limit(size).order_by(Conversation.last_message_at.desc())
+    )
     result = await db.execute(query)
     convs = result.scalars().all()
 
@@ -55,9 +59,7 @@ async def list_conversations(
     contact_ids = list({c.contact_id for c in convs})
     contacts_map: dict[uuid.UUID, Contact] = {}
     if contact_ids:
-        ct_result = await db.execute(
-            select(Contact).where(Contact.id.in_(contact_ids))
-        )
+        ct_result = await db.execute(select(Contact).where(Contact.id.in_(contact_ids)))
         for ct in ct_result.scalars().all():
             contacts_map[ct.id] = ct
 
@@ -149,12 +151,18 @@ async def close_conversation(
 
         from app.config import settings as _settings
         from app.services.ws_manager import REDIS_CHANNEL
+
         _r = aioredis.from_url(_settings.REDIS_URL, decode_responses=True)
-        await _r.publish(REDIS_CHANNEL, _json.dumps({
-            "type": "conversation_closed",
-            "tenant_id": str(tenant_id),
-            "conversation_id": str(conversation_id),
-        }))
+        await _r.publish(
+            REDIS_CHANNEL,
+            _json.dumps(
+                {
+                    "type": "conversation_closed",
+                    "tenant_id": str(tenant_id),
+                    "conversation_id": str(conversation_id),
+                }
+            ),
+        )
         await _r.aclose()
     except Exception:
         pass
@@ -162,9 +170,15 @@ async def close_conversation(
     # Dispara webhook de saída
     try:
         from app.services.webhook_delivery_service import dispatch_event
-        await dispatch_event(db, tenant_id, "conversation.closed", {
-            "conversation_id": str(conversation_id),
-        })
+
+        await dispatch_event(
+            db,
+            tenant_id,
+            "conversation.closed",
+            {
+                "conversation_id": str(conversation_id),
+            },
+        )
     except Exception:
         pass
 
@@ -237,13 +251,21 @@ async def send_agent_message(
 
         from app.config import settings as _settings
         from app.services.ws_manager import REDIS_CHANNEL
+
         _r = aioredis.from_url(_settings.REDIS_URL, decode_responses=True)
-        await _r.publish(REDIS_CHANNEL, _json.dumps({
-            "type": "agent_message",
-            "tenant_id": str(tenant_id),
-            "conversation_id": str(conversation_id),
-            "sender_name": current_user.full_name if hasattr(current_user, 'full_name') else "Agente",
-        }))
+        await _r.publish(
+            REDIS_CHANNEL,
+            _json.dumps(
+                {
+                    "type": "agent_message",
+                    "tenant_id": str(tenant_id),
+                    "conversation_id": str(conversation_id),
+                    "sender_name": current_user.full_name
+                    if hasattr(current_user, "full_name")
+                    else "Agente",
+                }
+            ),
+        )
         await _r.aclose()
     except Exception:
         pass

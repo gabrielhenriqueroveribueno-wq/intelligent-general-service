@@ -9,20 +9,20 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 VALID_INTENTS = [
-    "grade_query",         # Consulta de notas
-    "attendance_query",    # Consulta de frequência
-    "schedule_query",      # Consulta de horários
-    "boleto_query",        # Consulta/2ª via de boleto
-    "enrollment_query",    # Situação de matrícula
-    "payslip_query",       # Consulta de holerite
-    "vacation_query",      # Saldo de férias
-    "time_record_query",   # Registro de ponto
-    "hr_request",          # Solicitação de RH (atestado, declaração)
-    "faq",                 # Pergunta geral / FAQ
-    "human_handoff",       # Pedido de atendente humano
-    "greeting",            # Saudação inicial
-    "verification",        # Verificação de identidade (RA/matrícula)
-    "unknown",             # Intenção não reconhecida
+    "grade_query",  # Consulta de notas
+    "attendance_query",  # Consulta de frequência
+    "schedule_query",  # Consulta de horários
+    "boleto_query",  # Consulta/2ª via de boleto
+    "enrollment_query",  # Situação de matrícula
+    "payslip_query",  # Consulta de holerite
+    "vacation_query",  # Saldo de férias
+    "time_record_query",  # Registro de ponto
+    "hr_request",  # Solicitação de RH (atestado, declaração)
+    "faq",  # Pergunta geral / FAQ
+    "human_handoff",  # Pedido de atendente humano
+    "greeting",  # Saudação inicial
+    "verification",  # Verificação de identidade (RA/matrícula)
+    "unknown",  # Intenção não reconhecida
 ]
 
 CLASSIFIER_SYSTEM_PROMPT = """Você é um classificador de intenções para um sistema de atendimento universitário.

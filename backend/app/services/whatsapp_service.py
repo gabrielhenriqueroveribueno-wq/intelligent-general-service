@@ -129,9 +129,7 @@ async def send_template_message(
             return None
 
 
-async def mark_message_read(
-    phone_number_id: str, access_token: str, message_id: str
-) -> bool:
+async def mark_message_read(phone_number_id: str, access_token: str, message_id: str) -> bool:
     """Marca mensagem como lida."""
     url = f"{settings.WHATSAPP_API_URL}/{phone_number_id}/messages"
     headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}

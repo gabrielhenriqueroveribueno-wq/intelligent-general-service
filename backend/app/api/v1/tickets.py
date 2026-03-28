@@ -41,12 +41,18 @@ async def create_ticket(
     # Dispara webhook de saída
     try:
         from app.services.webhook_delivery_service import dispatch_event
-        await dispatch_event(db, tenant_id, "ticket.created", {
-            "ticket_id": str(ticket.id),
-            "subject": ticket.subject,
-            "priority": ticket.priority,
-            "category": ticket.category,
-        })
+
+        await dispatch_event(
+            db,
+            tenant_id,
+            "ticket.created",
+            {
+                "ticket_id": str(ticket.id),
+                "subject": ticket.subject,
+                "priority": ticket.priority,
+                "category": ticket.category,
+            },
+        )
     except Exception:
         pass
 
@@ -63,7 +69,9 @@ async def list_tickets(
     page: int = Query(default=1, ge=1),
     size: int = Query(default=20, ge=1, le=100),
 ):
-    tickets, total = await ticket_service.list_tickets(db, tenant_id, status, priority, page=page, size=size)
+    tickets, total = await ticket_service.list_tickets(
+        db, tenant_id, status, priority, page=page, size=size
+    )
     return TicketListResponse(
         items=[TicketResponse.model_validate(t) for t in tickets],
         total=total,

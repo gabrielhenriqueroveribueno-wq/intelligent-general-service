@@ -1,6 +1,7 @@
 """
 Dead Letter Queue — tarefas auxiliares para persistir e reprocessar falhas.
 """
+
 import asyncio
 import logging
 from typing import Optional
@@ -39,7 +40,9 @@ async def save_failed_task_async(
         await db.commit()
         logger.error(
             "Tarefa persistida no DLQ: task_id=%s task_name=%s error=%s",
-            task_id, task_name, error_message,
+            task_id,
+            task_name,
+            error_message,
         )
 
 
@@ -69,6 +72,7 @@ async def _retry_async(failed_task_id: str):
 
         # Re-enfileira a tarefa original
         from app.tasks.message_tasks import process_incoming_message
+
         message_id = failed.args.get("message_id") if failed.args else None
         if message_id:
             process_incoming_message.delay(message_id)

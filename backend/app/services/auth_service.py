@@ -16,9 +16,7 @@ from app.utils.security import (
 )
 
 
-async def authenticate_user(
-    db: AsyncSession, email: str, password: str
-) -> tuple[str, str]:
+async def authenticate_user(db: AsyncSession, email: str, password: str) -> tuple[str, str]:
     """Autentica o usuário e retorna access + refresh tokens."""
     result = await db.execute(select(User).where(User.email == email, User.is_active))
     user = result.scalar_one_or_none()
@@ -28,9 +26,7 @@ async def authenticate_user(
 
     # Atualiza last_login_at
     await db.execute(
-        update(User)
-        .where(User.id == user.id)
-        .values(last_login_at=datetime.now(timezone.utc))
+        update(User).where(User.id == user.id).values(last_login_at=datetime.now(timezone.utc))
     )
 
     token_data = {
@@ -51,9 +47,7 @@ async def refresh_tokens(db: AsyncSession, refresh_token: str) -> tuple[str, str
         raise UnauthorizedError("Refresh token inválido ou expirado")
 
     user_id = payload.get("sub")
-    result = await db.execute(
-        select(User).where(User.id == uuid.UUID(user_id), User.is_active)
-    )
+    result = await db.execute(select(User).where(User.id == uuid.UUID(user_id), User.is_active))
     user = result.scalar_one_or_none()
     if not user:
         raise UnauthorizedError("Usuário não encontrado")

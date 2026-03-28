@@ -1,6 +1,7 @@
 """
 API para gerenciar endpoints de webhook de saída por tenant.
 """
+
 import uuid
 from typing import Optional
 
@@ -17,6 +18,7 @@ router = APIRouter()
 
 
 # ── Schemas ────────────────────────────────────────────────────────
+
 
 class WebhookEndpointCreate(BaseModel):
     url: HttpUrl
@@ -49,15 +51,16 @@ class WebhookDeliveryResponse(BaseModel):
 
 # ── Endpoints ──────────────────────────────────────────────────────
 
+
 @router.get("", response_model=list[WebhookEndpointResponse])
 async def list_endpoints(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(WebhookEndpoint).where(
-            WebhookEndpoint.tenant_id == current_user.tenant_id
-        ).order_by(WebhookEndpoint.created_at.desc())
+        select(WebhookEndpoint)
+        .where(WebhookEndpoint.tenant_id == current_user.tenant_id)
+        .order_by(WebhookEndpoint.created_at.desc())
     )
     return result.scalars().all()
 

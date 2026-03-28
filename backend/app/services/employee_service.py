@@ -44,8 +44,7 @@ async def list_employees(
 
     if search:
         query = query.where(
-            Employee.full_name.ilike(f"%{search}%")
-            | Employee.employee_number.ilike(f"%{search}%")
+            Employee.full_name.ilike(f"%{search}%") | Employee.employee_number.ilike(f"%{search}%")
         )
     if department:
         query = query.where(Employee.department == department)

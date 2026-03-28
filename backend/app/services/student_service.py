@@ -64,9 +64,7 @@ async def get_grades(
     academic_period: Optional[str] = None,
     subject: Optional[str] = None,
 ) -> list[Grade]:
-    query = select(Grade).where(
-        Grade.tenant_id == tenant_id, Grade.student_id == student_id
-    )
+    query = select(Grade).where(Grade.tenant_id == tenant_id, Grade.student_id == student_id)
     if academic_period:
         query = query.where(Grade.academic_period == academic_period)
     if subject:
@@ -101,12 +99,14 @@ async def get_schedule(
     academic_period: str,
 ) -> list[ClassSchedule]:
     result = await db.execute(
-        select(ClassSchedule).where(
+        select(ClassSchedule)
+        .where(
             ClassSchedule.tenant_id == tenant_id,
             ClassSchedule.course == course,
             ClassSchedule.semester == semester,
             ClassSchedule.academic_period == academic_period,
-        ).order_by(ClassSchedule.day_of_week, ClassSchedule.start_time)
+        )
+        .order_by(ClassSchedule.day_of_week, ClassSchedule.start_time)
     )
     return result.scalars().all()
 
@@ -117,9 +117,7 @@ async def get_boletos(
     student_id: uuid.UUID,
     status: Optional[str] = None,
 ) -> list[Boleto]:
-    query = select(Boleto).where(
-        Boleto.tenant_id == tenant_id, Boleto.student_id == student_id
-    )
+    query = select(Boleto).where(Boleto.tenant_id == tenant_id, Boleto.student_id == student_id)
     if status:
         query = query.where(Boleto.status == status)
 

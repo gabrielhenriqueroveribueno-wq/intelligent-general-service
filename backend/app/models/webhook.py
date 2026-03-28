@@ -14,7 +14,9 @@ class WebhookEndpoint(Base):
     __tablename__ = "webhook_endpoints"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True
+    )
 
     url: Mapped[str] = mapped_column(String(512), nullable=False)
     secret: Mapped[str | None] = mapped_column(String(256))  # HMAC-SHA256 signing key
@@ -26,7 +28,9 @@ class WebhookEndpoint(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    deliveries: Mapped[list["WebhookDelivery"]] = relationship(back_populates="endpoint", cascade="all, delete-orphan")
+    deliveries: Mapped[list["WebhookDelivery"]] = relationship(
+        back_populates="endpoint", cascade="all, delete-orphan"
+    )
 
 
 class WebhookDelivery(Base):
@@ -35,7 +39,9 @@ class WebhookDelivery(Base):
     __tablename__ = "webhook_deliveries"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    endpoint_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("webhook_endpoints.id"), nullable=False, index=True)
+    endpoint_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("webhook_endpoints.id"), nullable=False, index=True
+    )
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
 
     event_type: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -47,6 +53,8 @@ class WebhookDelivery(Base):
     error_message: Mapped[str | None] = mapped_column(Text)
 
     success: Mapped[bool] = mapped_column(Boolean, default=False)
-    delivered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    delivered_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
     endpoint: Mapped["WebhookEndpoint"] = relationship(back_populates="deliveries")

@@ -1,4 +1,5 @@
-from typing import AsyncGenerator
+﻿from typing import AsyncGenerator
+import os
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
@@ -11,9 +12,21 @@ from app.models.tenant import Tenant
 from app.models.user import User
 from app.utils.security import hash_password
 
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+TEST_DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "sqlite+aiosqlite:///:memory:"
+)
 
-test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+# Para SQLite, não podemos usar pool_pre_ping
+connect_args = {}
+if TEST_DATABASE_URL.startswith("sqlite"):
+    connect_args = {"check_same_thread": False}
+
+test_engine = create_async_engine(
+    TEST_DATABASE_URL,
+    echo=False,
+    connect_args=connect_args,
+)
 TestSessionLocal = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
 
 

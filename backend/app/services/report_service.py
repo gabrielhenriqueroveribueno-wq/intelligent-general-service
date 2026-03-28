@@ -17,11 +17,13 @@ async def get_conversation_report(
     end_date: datetime,
 ) -> list[dict]:
     result = await db.execute(
-        select(Conversation).where(
+        select(Conversation)
+        .where(
             Conversation.tenant_id == tenant_id,
             Conversation.started_at >= start_date,
             Conversation.started_at <= end_date,
-        ).order_by(Conversation.started_at.desc())
+        )
+        .order_by(Conversation.started_at.desc())
     )
     conversations = result.scalars().all()
 
@@ -47,11 +49,13 @@ async def get_ticket_report(
     end_date: datetime,
 ) -> list[dict]:
     result = await db.execute(
-        select(Ticket).where(
+        select(Ticket)
+        .where(
             Ticket.tenant_id == tenant_id,
             Ticket.created_at >= start_date,
             Ticket.created_at <= end_date,
-        ).order_by(Ticket.created_at.desc())
+        )
+        .order_by(Ticket.created_at.desc())
     )
     tickets = result.scalars().all()
 
@@ -83,9 +87,7 @@ def rows_to_csv(rows: list[dict]) -> bytes:
     return output.getvalue().encode("utf-8-sig")  # BOM para Excel
 
 
-async def get_dashboard_overview(
-    db: AsyncSession, tenant_id: uuid.UUID
-) -> dict:
+async def get_dashboard_overview(db: AsyncSession, tenant_id: uuid.UUID) -> dict:
     from datetime import timedelta, timezone
 
     now = datetime.now(timezone.utc)

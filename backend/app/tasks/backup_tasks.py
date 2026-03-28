@@ -25,6 +25,7 @@ def backup_database_task() -> str:
     # Extrai componentes da DATABASE_URL (postgresql+asyncpg://user:pass@host:port/db)
     try:
         from urllib.parse import urlparse
+
         parsed = urlparse(db_url.replace("postgresql+asyncpg://", "postgresql://"))
         host = parsed.hostname or "localhost"
         port = str(parsed.port or 5432)
@@ -39,10 +40,14 @@ def backup_database_task() -> str:
 
     dump_cmd = [
         "pg_dump",
-        "-h", host,
-        "-p", port,
-        "-U", user,
-        "-d", database,
+        "-h",
+        host,
+        "-p",
+        port,
+        "-U",
+        user,
+        "-d",
+        database,
         "--no-owner",
         "--no-acl",
         "--format=plain",
