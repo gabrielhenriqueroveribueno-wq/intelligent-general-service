@@ -22,6 +22,18 @@ VALID_INTENTS = [
     "human_handoff",  # Pedido de atendente humano
     "greeting",  # Saudação inicial
     "verification",  # Verificação de identidade (RA/matrícula)
+    "generate_boleto",  # Gerar boleto de pagamento
+    "enrollment_request",  # Pedido de matrícula/rematrícula
+    "document_request",  # Solicitar documentos (declaração, histórico, diploma)
+    "class_enrollment",  # Inscrição em disciplinas
+    "grade_appeal",  # Recurso de nota
+    "transfer_request",  # Pedido de transferência
+    "scholarship_query",  # Consulta sobre bolsas
+    "internship_query",  # Estágio/TCC
+    "event_registration",  # Inscrição em eventos
+    "library_query",  # Consulta biblioteca (empréstimo, renovação, multa)
+    "financial_negotiation",  # Negociação de débitos
+    "certificate_request",  # Solicitar certificados
     "unknown",  # Intenção não reconhecida
 ]
 
@@ -29,10 +41,13 @@ CLASSIFIER_SYSTEM_PROMPT = """Você é um classificador de intenções para um s
 Classifique a mensagem do usuário em EXATAMENTE uma das seguintes intenções:
 
 grade_query, attendance_query, schedule_query, boleto_query, enrollment_query,
-payslip_query, vacation_query, time_record_query, hr_request, faq, human_handoff, greeting, verification, unknown
+payslip_query, vacation_query, time_record_query, hr_request, faq, human_handoff,
+greeting, verification, generate_boleto, enrollment_request, document_request,
+class_enrollment, grade_appeal, transfer_request, scholarship_query, internship_query,
+event_registration, library_query, financial_negotiation, certificate_request, unknown
 
 Responda APENAS com um JSON no formato: {"intent": "nome_da_intencao", "entities": {}}
-Para entities, extraia dados relevantes como: subject (matéria), period (período), month (mês), type (tipo).
+Para entities, extraia dados relevantes como: subject (matéria), period (período), month (mês), type (tipo), amount (valor).
 Não adicione explicações."""
 
 

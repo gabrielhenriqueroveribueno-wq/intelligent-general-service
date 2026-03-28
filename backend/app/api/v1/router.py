@@ -8,6 +8,7 @@ from app.api.v1 import (
     employees,
     health,
     knowledge_base,
+    metrics,
     reports,
     students,
     templates,
@@ -37,3 +38,4 @@ api_router.include_router(ws.router, tags=["WebSocket"])
 api_router.include_router(admin.router, prefix="/admin", tags=["Admin"])
 api_router.include_router(templates.router, prefix="/templates", tags=["Templates"])
 api_router.include_router(webhooks_config.router, prefix="/webhooks", tags=["Webhooks Config"])
+api_router.include_router(metrics.router, prefix="/metrics", tags=["Metrics"])

@@ -10,6 +10,8 @@ import {
   Settings,
   UserCog,
   Bot,
+  Brain,
+  TrendingUp,
   X,
 } from 'lucide-react'
 import clsx from 'clsx'
@@ -22,6 +24,8 @@ const navItems = [
   { to: '/employees', icon: Users, label: 'Funcionários' },
   { to: '/knowledge-base', icon: BookOpen, label: 'Base de Conhecimento' },
   { to: '/reports', icon: BarChart2, label: 'Relatórios' },
+  { to: '/metrics', icon: TrendingUp, label: 'Métricas IA vs Humano' },
+  { to: '/learning', icon: Brain, label: 'Aprendizado IA' },
   { to: '/users', icon: UserCog, label: 'Usuários' },
   { to: '/settings', icon: Settings, label: 'Configurações' },
 ]

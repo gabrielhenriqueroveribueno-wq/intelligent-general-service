@@ -17,12 +17,16 @@ REGRAS OBRIGATÓRIAS:
 4. Seja conciso - respostas via WhatsApp devem ser curtas.
 5. Use emojis moderadamente para deixar a mensagem mais amigável.
 6. Se o usuário pedir algo fora do seu escopo, ofereça encaminhar para um atendente humano.
+7. Se houver resoluções anteriores similares, use-as como referência para sugerir a melhor solução.
 
 DADOS DISPONÍVEIS:
 {data_context}
 
 BASE DE CONHECIMENTO:
 {kb_context}
+
+RESOLUÇÕES ANTERIORES SIMILARES:
+{similar_resolutions}
 
 HISTÓRICO DA CONVERSA:
 {conversation_history}
@@ -37,6 +41,7 @@ async def generate_response(
     conversation_history: list,
     bot_name: str = "Assistente",
     api_key: Optional[str] = None,
+    similar_resolutions: Optional[list] = None,
 ) -> tuple[str, int]:
     """
     Gera uma resposta inteligente usando Claude.
@@ -54,10 +59,14 @@ async def generate_response(
     # Formata histórico da conversa (últimas 5 mensagens)
     history_str = _format_history(conversation_history[-5:])
 
+    # Formata resoluções similares
+    resolutions_str = _format_similar_resolutions(similar_resolutions)
+
     system = BOT_SYSTEM_PROMPT.format(
         bot_name=bot_name,
         data_context=data_str or "Nenhum dado disponível para esta consulta.",
         kb_context=kb_str or "Nenhum artigo relevante encontrado.",
+        similar_resolutions=resolutions_str or "Nenhuma resolução anterior encontrada.",
         conversation_history=history_str or "Início da conversa.",
     )
 
@@ -161,3 +170,19 @@ def _format_history(history: list) -> str:
         role = "Usuário" if msg.get("sender_type") == "user" else "Bot"
         lines.append(f"{role}: {msg.get('content', '')[:200]}")
     return "\n".join(lines)
+
+
+def _format_similar_resolutions(resolutions: Optional[list]) -> str:
+    if not resolutions:
+        return ""
+    lines = []
+    for i, r in enumerate(resolutions[:3], 1):
+        score = (
+            f" (satisfação: {r.get('satisfaction_score')}/5)" if r.get("satisfaction_score") else ""
+        )
+        lines.append(
+            f"[Resolução {i}]{score}\n"
+            f"Problema: {r.get('problem_description', '')[:200]}\n"
+            f"Solução: {r.get('resolution_description', '')[:300]}"
+        )
+    return "\n\n".join(lines)

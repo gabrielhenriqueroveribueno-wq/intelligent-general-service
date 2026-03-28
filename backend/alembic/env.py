@@ -19,6 +19,11 @@ from app.models.knowledge_base import KBCategory, KBArticle  # noqa: F401
 from app.models.billing import Boleto  # noqa: F401
 from app.models.schedule import ClassSchedule  # noqa: F401
 from app.models.audit import AuditLog, SLAConfig  # noqa: F401
+from app.models.metrics import ResponseTimeMetric, WhatsAppMonitoredAccount  # noqa: F401
+from app.models.notification import MessageTemplate, ScheduledNotification  # noqa: F401
+from app.models.satisfaction import OnboardingSession, SatisfactionSurvey  # noqa: F401
+from app.models.service_request import ServiceRequest  # noqa: F401
+from app.models.ticket_learning import TicketResolution  # noqa: F401
 from app.config import settings
 
 config = context.config

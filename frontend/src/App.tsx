@@ -13,6 +13,8 @@ import Employees from './pages/Employees'
 import EmployeeDetail from './pages/EmployeeDetail'
 import KnowledgeBase from './pages/KnowledgeBase'
 import Reports from './pages/Reports'
+import MetricsDashboard from './pages/MetricsDashboard'
+import LearningInsights from './pages/LearningInsights'
 import UserManagement from './pages/UserManagement'
 import Settings from './pages/Settings'
 
@@ -40,6 +42,8 @@ export default function App() {
           <Route path="employees/:id" element={<EmployeeDetail />} />
           <Route path="knowledge-base" element={<KnowledgeBase />} />
           <Route path="reports" element={<Reports />} />
+          <Route path="metrics" element={<MetricsDashboard />} />
+          <Route path="learning" element={<LearningInsights />} />
           <Route path="users" element={<UserManagement />} />
           <Route path="settings" element={<Settings />} />
         </Route>

@@ -88,8 +88,12 @@ async def _process_message_async(message_id: str):
         employee_service,
         intent_classifier,
         knowledge_service,
+        learning_service,
+        metrics_service,
         student_service,
+        task_executor,
         ticket_service,
+        transcription_service,
         whatsapp_service,
     )
 
@@ -129,6 +133,25 @@ async def _process_message_async(message_id: str):
         token = tenant.whatsapp_token  # em produção, descriptografar aqui
         to = contact.phone_number
         tenant_id = message.tenant_id
+
+        # ── 0. Transcrição de áudio ────────────────────────────────────────
+        if message.message_type == "audio" and message.whatsapp_media_id:
+            try:
+                from app.services import media_service
+
+                audio_bytes = await media_service.download_media(message.whatsapp_media_id, token)
+                if audio_bytes:
+                    transcription = await transcription_service.transcribe_audio(
+                        audio_bytes, message.media_mime_type or "audio/ogg"
+                    )
+                    await db.execute(
+                        update(Message)
+                        .where(Message.id == message.id)
+                        .values(content=transcription, message_type="audio_transcribed")
+                    )
+                    message.content = transcription
+            except Exception as audio_exc:
+                logger.warning("Falha ao transcrever áudio: %s", audio_exc)
 
         # ── 1. Verificação de identidade (primeiro contato) ────────────────
         if not contact.is_verified:
@@ -233,11 +256,46 @@ async def _process_message_async(message_id: str):
                         else None,
                     }
 
+        # ── 4b. Execução de ações (intents de ação) ─────────────────────
+        action_result = None
+        if task_executor.is_action_intent(intent):
+            try:
+                action_result = await task_executor.execute_action(
+                    db=db,
+                    tenant_id=tenant_id,
+                    contact_id=contact.id,
+                    conversation_id=conversation.id,
+                    intent=intent,
+                    entities=entities,
+                    student_id=contact.student_id if contact.contact_type == "student" else None,
+                )
+                if action_result:
+                    data_context["action_result"] = action_result
+            except Exception as action_exc:
+                logger.warning("Erro ao executar ação %s: %s", intent, action_exc)
+
         # ── 5. Busca KB ───────────────────────────────────────────────────
         kb_articles = await knowledge_service.search_articles(
             db, tenant_id, message.content, applies_to=contact.contact_type, limit=3
         )
         kb_data = [{"title": a.title, "content": a.content} for a in kb_articles]
+
+        # ── 5b. Busca resoluções similares (aprendizado) ──────────────────
+        similar_resolutions_data = []
+        try:
+            similar = await learning_service.find_similar_resolutions(
+                db, tenant_id, message.content, limit=3
+            )
+            similar_resolutions_data = [
+                {
+                    "problem_description": r.problem_description,
+                    "resolution_description": r.resolution_description,
+                    "satisfaction_score": r.satisfaction_score,
+                }
+                for r in similar
+            ]
+        except Exception as lr_exc:
+            logger.warning("Erro ao buscar resoluções similares: %s", lr_exc)
 
         # ── 6. Gera resposta ───────────────────────────────────────────────
         if not data_context and not kb_data and intent not in ("greeting", "faq"):
@@ -270,6 +328,7 @@ async def _process_message_async(message_id: str):
                 conversation_history=history,
                 bot_name=bot_name,
                 api_key=api_key,
+                similar_resolutions=similar_resolutions_data,
             )
             resolution_type = "auto"
 
@@ -304,6 +363,19 @@ async def _process_message_async(message_id: str):
             resolution_type=resolution_type,
         ).inc()
         response_time_histogram.labels(tenant_id=str(tenant_id)).observe(elapsed)
+
+        # Registra métrica de tempo de resposta
+        try:
+            await metrics_service.record_response_time(
+                db=db,
+                tenant_id=tenant_id,
+                conversation_id=conversation.id,
+                message_id=message.id,
+                responder_type="bot",
+                response_time=elapsed,
+            )
+        except Exception as met_exc:
+            logger.warning("Erro ao registrar métrica: %s", met_exc)
 
         await db.commit()
         logger.info("Mensagem %s processada em %.2fs (intent=%s)", message_id, elapsed, intent)
