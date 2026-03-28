@@ -1,5 +1,5 @@
-﻿from typing import AsyncGenerator
 import os
+from typing import AsyncGenerator
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
@@ -12,10 +12,7 @@ from app.models.tenant import Tenant
 from app.models.user import User
 from app.utils.security import hash_password
 
-TEST_DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "sqlite+aiosqlite:///:memory:"
-)
+TEST_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 
 # Para SQLite, não podemos usar pool_pre_ping
 connect_args = {}
