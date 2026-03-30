@@ -6,7 +6,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-
 # ── Template ─────────────────────────────────────────────────────────────────
 
 
@@ -71,7 +70,9 @@ class SlideGenerateRequest(BaseModel):
         ...,
         min_length=10,
         max_length=2000,
-        json_schema_extra={"example": "Crie uma aula sobre fotossíntese para o 3º ano do ensino médio, com 8 slides"},
+        json_schema_extra={
+            "example": "Crie uma aula sobre fotossíntese para o 3º ano do ensino médio, com 8 slides"
+        },
     )
     subject: str = Field(
         ...,

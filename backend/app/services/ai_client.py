@@ -120,9 +120,8 @@ async def _gemini_complete(
 
         tokens = 0
         if hasattr(response, "usage_metadata") and response.usage_metadata:
-            tokens = (
-                getattr(response.usage_metadata, "prompt_token_count", 0)
-                + getattr(response.usage_metadata, "candidates_token_count", 0)
+            tokens = getattr(response.usage_metadata, "prompt_token_count", 0) + getattr(
+                response.usage_metadata, "candidates_token_count", 0
             )
 
         return AIResponse(text=text, tokens_used=tokens)

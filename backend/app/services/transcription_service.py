@@ -5,7 +5,6 @@ Serviço de transcrição de áudio do WhatsApp usando IA.
 import base64
 import logging
 
-from app.config import settings
 from app.services.ai_client import ai_complete
 
 logger = logging.getLogger(__name__)
@@ -23,10 +22,7 @@ async def transcribe_audio(audio_bytes: bytes, mime_type: str = "audio/ogg") -> 
         "Transcreva o áudio a seguir para texto em português brasileiro. "
         "Retorne APENAS o texto transcrito, sem explicações adicionais."
     )
-    message = (
-        f"Transcreva este áudio (formato: {mime_type}, "
-        f"codificado em base64):\n\n{audio_b64}"
-    )
+    message = f"Transcreva este áudio (formato: {mime_type}, codificado em base64):\n\n{audio_b64}"
 
     try:
         result = await ai_complete(

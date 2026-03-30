@@ -144,9 +144,7 @@ def _format_data_context(intent: str, data: Dict[str, Any]) -> str:
     elif intent == "hr_request" and "hr_requests" in data:
         lines.append("=== SOLICITAÇÕES RH ===")
         for r in data["hr_requests"]:
-            lines.append(
-                f"- {r['type']}: {r.get('description', '')[:100]} [{r['status']}]"
-            )
+            lines.append(f"- {r['type']}: {r.get('description', '')[:100]} [{r['status']}]")
             if r.get("response"):
                 lines.append(f"  → Resposta: {r['response'][:150]}")
     elif "student" in data:

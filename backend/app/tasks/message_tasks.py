@@ -239,7 +239,9 @@ async def _process_message_async(message_id: str):
                 days = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
                 data_context["schedules"] = [
                     {
-                        "day": days[s.day_of_week] if s.day_of_week < len(days) else str(s.day_of_week),
+                        "day": days[s.day_of_week]
+                        if s.day_of_week < len(days)
+                        else str(s.day_of_week),
                         "subject_name": s.subject_name,
                         "start_time": str(s.start_time)[:5] if s.start_time else "",
                         "end_time": str(s.end_time)[:5] if s.end_time else "",

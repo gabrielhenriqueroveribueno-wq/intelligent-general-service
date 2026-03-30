@@ -190,9 +190,7 @@ async def list_presentations(
 
     # Paginação
     result = await db.execute(
-        query.order_by(SlidePresentation.updated_at.desc())
-        .offset((page - 1) * size)
-        .limit(size)
+        query.order_by(SlidePresentation.updated_at.desc()).offset((page - 1) * size).limit(size)
     )
     items = result.scalars().all()
 

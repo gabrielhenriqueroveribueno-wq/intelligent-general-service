@@ -6,7 +6,7 @@ apresentações seguindo o padrão institucional (ex.: Anchieta).
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, Boolean, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -18,9 +18,7 @@ class SlideTemplate(Base, TenantMixin, TimestampMixin):
 
     __tablename__ = "slide_templates"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     template_rules: Mapped[dict] = mapped_column(
@@ -45,9 +43,7 @@ class SlidePresentation(Base, TenantMixin, TimestampMixin):
 
     __tablename__ = "slide_presentations"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     teacher_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
     )
@@ -73,7 +69,9 @@ class SlidePresentation(Base, TenantMixin, TimestampMixin):
     teacher = relationship("User", foreign_keys=[teacher_id])
     template = relationship("SlideTemplate", back_populates="presentations")
     generation_logs = relationship(
-        "SlideGenerationLog", back_populates="presentation", order_by="SlideGenerationLog.created_at.desc()"
+        "SlideGenerationLog",
+        back_populates="presentation",
+        order_by="SlideGenerationLog.created_at.desc()",
     )
 
 
@@ -82,9 +80,7 @@ class SlideGenerationLog(Base, TenantMixin):
 
     __tablename__ = "slide_generation_logs"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     teacher_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
     )

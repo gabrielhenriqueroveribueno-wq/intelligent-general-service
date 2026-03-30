@@ -12,7 +12,6 @@ from uuid import UUID
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.models.conversation import Conversation, Message
 from app.models.ticket import Ticket
 from app.models.ticket_learning import TicketResolution

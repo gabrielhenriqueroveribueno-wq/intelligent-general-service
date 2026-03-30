@@ -7,10 +7,9 @@ o padrão institucional armazenado em SlideTemplate.
 
 import json
 import logging
-from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -266,9 +265,7 @@ async def update_slides(
 async def get_template_stats(db: AsyncSession, tenant_id: UUID) -> dict:
     """Estatísticas de uso dos templates."""
     total_presentations = await db.scalar(
-        select(func.count(SlidePresentation.id)).where(
-            SlidePresentation.tenant_id == tenant_id
-        )
+        select(func.count(SlidePresentation.id)).where(SlidePresentation.tenant_id == tenant_id)
     )
     total_tokens = await db.scalar(
         select(func.coalesce(func.sum(SlideGenerationLog.tokens_used), 0)).where(

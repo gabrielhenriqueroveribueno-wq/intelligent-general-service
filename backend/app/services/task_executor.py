@@ -272,9 +272,8 @@ async def _handle_slide_update(
         return {"success": False, "message": "Nenhuma apresentação encontrada para atualizar."}
 
     from app.models.user import User
-    teacher_result = await db.execute(
-        select(User).where(User.id == presentation.teacher_id)
-    )
+
+    teacher_result = await db.execute(select(User).where(User.id == presentation.teacher_id))
     teacher = teacher_result.scalar_one_or_none()
 
     try:
