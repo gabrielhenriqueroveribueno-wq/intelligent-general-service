@@ -10,6 +10,7 @@ from app.api.v1 import (
     knowledge_base,
     metrics,
     reports,
+    slides,
     students,
     templates,
     tenants,
@@ -39,3 +40,4 @@ api_router.include_router(admin.router, prefix="/admin", tags=["Admin"])
 api_router.include_router(templates.router, prefix="/templates", tags=["Templates"])
 api_router.include_router(webhooks_config.router, prefix="/webhooks", tags=["Webhooks Config"])
 api_router.include_router(metrics.router, prefix="/metrics", tags=["Metrics"])
+api_router.include_router(slides.router, prefix="/slides", tags=["Slides"])

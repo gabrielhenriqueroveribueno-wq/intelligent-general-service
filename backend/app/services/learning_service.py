@@ -9,14 +9,14 @@ import logging
 from typing import Any
 from uuid import UUID
 
-import anthropic
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.conversation import Conversation, Message
 from app.models.ticket import Ticket
 from app.models.ticket_learning import TicketResolution
+from app.services.ai_client import ai_complete
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 async def index_resolved_ticket(db: AsyncSession, ticket_id: UUID) -> TicketResolution | None:
     """
     Quando um ticket é fechado, extrai a conversa completa,
-    usa Claude para gerar um resumo e salva em ticket_resolutions.
+    usa IA para gerar um resumo e salva em ticket_resolutions.
     """
     result = await db.execute(select(Ticket).where(Ticket.id == ticket_id))
     ticket = result.scalar_one_or_none()
@@ -46,12 +46,9 @@ async def index_resolved_ticket(db: AsyncSession, ticket_id: UUID) -> TicketReso
 
     conv_text = "\n".join(conversation_messages) if conversation_messages else "Sem conversa."
 
-    # Usa Claude para gerar resumo estruturado
+    # Usa IA para gerar resumo estruturado
     try:
-        client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
-        response = await client.messages.create(
-            model=settings.CLAUDE_MODEL,
-            max_tokens=500,
+        ai_result = await ai_complete(
             system=(
                 "Analise a conversa de suporte abaixo e retorne um resumo estruturado.\n"
                 "Formato:\n"
@@ -61,11 +58,12 @@ async def index_resolved_ticket(db: AsyncSession, ticket_id: UUID) -> TicketReso
                 "TAGS: (palavras-chave separadas por virgula)\n"
                 "RESUMO_IA: (texto curto para matching de similaridade)"
             ),
-            messages=[{"role": "user", "content": conv_text}],
+            message=conv_text,
+            max_tokens=500,
         )
-        raw = response.content[0].text.strip()
+        raw = ai_result.text
     except Exception as e:
-        logger.warning("Erro ao gerar resumo com Claude: %s", e)
+        logger.warning("Erro ao gerar resumo com IA: %s", e)
         raw = ""
 
     # Parse do resumo
@@ -143,8 +141,6 @@ async def find_similar_resolutions(
         pattern = f"%{kw}%"
         conditions.append(TicketResolution.problem_description.ilike(pattern))
         conditions.append(TicketResolution.ai_embedding_summary.ilike(pattern))
-
-    from sqlalchemy import or_
 
     stmt = (
         select(TicketResolution)

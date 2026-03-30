@@ -11,41 +11,151 @@
     h2 { page-break-after: avoid; }
     table { page-break-inside: avoid; }
     pre { page-break-inside: avoid; }
+    .theme-toggle { display: none !important; }
+  }
+  :root {
+    --bg: #0d1117;
+    --bg-card: #161b22;
+    --bg-card-alt: #1c2333;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-secondary: #8b949e;
+    --text-muted: #6e7681;
+    --heading: #58a6ff;
+    --heading-h3: #c9d1d9;
+    --accent: #58a6ff;
+    --accent-purple: #bc8cff;
+    --link: #58a6ff;
+    --code-bg: #1f2937;
+    --code-text: #bc8cff;
+    --pre-bg: #0d1117;
+    --pre-text: #e6edf3;
+    --table-header: #161b22;
+    --table-border: #30363d;
+    --table-even: #0d1117;
+    --endpoint-get-bg: #0d1f12;
+    --endpoint-get-border: #238636;
+    --endpoint-post-bg: #2a1f00;
+    --endpoint-post-border: #d29922;
+    --endpoint-patch-bg: #1a0d2e;
+    --endpoint-patch-border: #8b5cf6;
+    --endpoint-delete-bg: #2d0000;
+    --endpoint-delete-border: #f85149;
+    --badge-green-bg: #0d2818; --badge-green-text: #3fb950;
+    --badge-yellow-bg: #2a1f00; --badge-yellow-text: #d29922;
+    --badge-red-bg: #2d0000; --badge-red-text: #f85149;
+    --badge-blue-bg: #0c2d6b; --badge-blue-text: #58a6ff;
+    --badge-purple-bg: #1a0d2e; --badge-purple-text: #bc8cff;
+    --badge-gray-bg: #21262d; --badge-gray-text: #8b949e;
+    --cover-border: #58a6ff;
+    --logo-gradient-1: #58a6ff;
+    --logo-gradient-2: #bc8cff;
+    --flow-num-bg: #58a6ff;
+    --hr-color: #30363d;
+    --new-badge-bg: #0d2818;
+    --new-badge-text: #3fb950;
+    --new-badge-border: #238636;
+  }
+  [data-theme="light"] {
+    --bg: #ffffff;
+    --bg-card: #f8fafc;
+    --bg-card-alt: #f1f5f9;
+    --border: #e2e8f0;
+    --text: #334155;
+    --text-secondary: #64748b;
+    --text-muted: #94a3b8;
+    --heading: #1e3a5f;
+    --heading-h3: #334155;
+    --accent: #2563eb;
+    --accent-purple: #7c3aed;
+    --link: #2563eb;
+    --code-bg: #f1f5f9;
+    --code-text: #7c3aed;
+    --pre-bg: #0f172a;
+    --pre-text: #e2e8f0;
+    --table-header: #f1f5f9;
+    --table-border: #e2e8f0;
+    --table-even: #f8fafc;
+    --endpoint-get-bg: #f0fdf4;
+    --endpoint-get-border: #22c55e;
+    --endpoint-post-bg: #fffbeb;
+    --endpoint-post-border: #f59e0b;
+    --endpoint-patch-bg: #faf5ff;
+    --endpoint-patch-border: #8b5cf6;
+    --endpoint-delete-bg: #fef2f2;
+    --endpoint-delete-border: #ef4444;
+    --badge-green-bg: #dcfce7; --badge-green-text: #166534;
+    --badge-yellow-bg: #fef9c3; --badge-yellow-text: #854d0e;
+    --badge-red-bg: #fee2e2; --badge-red-text: #991b1b;
+    --badge-blue-bg: #dbeafe; --badge-blue-text: #1e40af;
+    --badge-purple-bg: #f3e8ff; --badge-purple-text: #6b21a8;
+    --badge-gray-bg: #f1f5f9; --badge-gray-text: #475569;
+    --cover-border: #2563eb;
+    --logo-gradient-1: #2563eb;
+    --logo-gradient-2: #7c3aed;
+    --flow-num-bg: #2563eb;
+    --hr-color: #e2e8f0;
+    --new-badge-bg: #dcfce7;
+    --new-badge-text: #166534;
+    --new-badge-border: #22c55e;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-    color: #1a1a2e;
-    background: #fff;
+    color: var(--text);
+    background: var(--bg);
     line-height: 1.6;
     max-width: 1000px;
     margin: 0 auto;
     padding: 40px 32px;
+    transition: background 0.3s, color 0.3s;
+  }
+  .theme-toggle {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text);
+    font-size: 22px;
+    cursor: pointer;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .theme-toggle:hover {
+    transform: scale(1.1);
+    border-color: var(--accent);
   }
   .cover {
     text-align: center;
     padding: 80px 0 60px;
-    border-bottom: 3px solid #2563eb;
+    border-bottom: 3px solid var(--cover-border);
     margin-bottom: 40px;
   }
   .cover h1 {
     font-size: 36px;
-    color: #1e3a5f;
+    color: var(--heading);
     margin-bottom: 8px;
   }
   .cover .subtitle {
     font-size: 18px;
-    color: #64748b;
+    color: var(--text-secondary);
     margin-bottom: 24px;
   }
   .cover .meta {
     font-size: 13px;
-    color: #94a3b8;
+    color: var(--text-muted);
   }
   .logo {
     display: inline-block;
     width: 80px; height: 80px;
-    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    background: linear-gradient(135deg, var(--logo-gradient-1), var(--logo-gradient-2));
     border-radius: 20px;
     color: #fff;
     font-size: 36px;
@@ -56,36 +166,36 @@
   }
   h2 {
     font-size: 22px;
-    color: #1e3a5f;
-    border-bottom: 2px solid #e2e8f0;
+    color: var(--heading);
+    border-bottom: 2px solid var(--border);
     padding-bottom: 8px;
     margin: 40px 0 16px;
   }
   h3 {
     font-size: 16px;
-    color: #334155;
+    color: var(--heading-h3);
     margin: 20px 0 8px;
   }
   h4 {
     font-size: 14px;
-    color: #475569;
+    color: var(--text-secondary);
     margin: 14px 0 6px;
   }
-  p, li { font-size: 14px; color: #334155; }
+  p, li { font-size: 14px; color: var(--text); }
   ul, ol { padding-left: 24px; margin: 8px 0; }
   li { margin: 4px 0; }
-  strong { color: #1e293b; }
+  strong { color: var(--text); }
   code {
-    background: #f1f5f9;
+    background: var(--code-bg);
     padding: 2px 6px;
     border-radius: 4px;
     font-size: 13px;
-    color: #7c3aed;
+    color: var(--code-text);
     font-family: 'Cascadia Code', 'Fira Code', monospace;
   }
   pre {
-    background: #0f172a;
-    color: #e2e8f0;
+    background: var(--pre-bg);
+    color: var(--pre-text);
     padding: 16px 20px;
     border-radius: 8px;
     overflow-x: auto;
@@ -93,6 +203,7 @@
     line-height: 1.5;
     margin: 12px 0;
     font-family: 'Cascadia Code', 'Fira Code', monospace;
+    border: 1px solid var(--border);
   }
   table {
     width: 100%;
@@ -101,19 +212,20 @@
     font-size: 13px;
   }
   th {
-    background: #f1f5f9;
-    color: #334155;
+    background: var(--table-header);
+    color: var(--text);
     font-weight: 600;
     text-align: left;
     padding: 10px 12px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--table-border);
   }
   td {
     padding: 8px 12px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--table-border);
     vertical-align: top;
+    color: var(--text);
   }
-  tr:nth-child(even) { background: #f8fafc; }
+  tr:nth-child(even) { background: var(--table-even); }
   .badge {
     display: inline-block;
     padding: 2px 10px;
@@ -121,15 +233,28 @@
     font-size: 12px;
     font-weight: 600;
   }
-  .badge-green { background: #dcfce7; color: #166534; }
-  .badge-yellow { background: #fef9c3; color: #854d0e; }
-  .badge-red { background: #fee2e2; color: #991b1b; }
-  .badge-blue { background: #dbeafe; color: #1e40af; }
-  .badge-purple { background: #f3e8ff; color: #6b21a8; }
-  .badge-gray { background: #f1f5f9; color: #475569; }
+  .badge-green { background: var(--badge-green-bg); color: var(--badge-green-text); }
+  .badge-yellow { background: var(--badge-yellow-bg); color: var(--badge-yellow-text); }
+  .badge-red { background: var(--badge-red-bg); color: var(--badge-red-text); }
+  .badge-blue { background: var(--badge-blue-bg); color: var(--badge-blue-text); }
+  .badge-purple { background: var(--badge-purple-bg); color: var(--badge-purple-text); }
+  .badge-gray { background: var(--badge-gray-bg); color: var(--badge-gray-text); }
+  .badge-new {
+    background: var(--new-badge-bg);
+    color: var(--new-badge-text);
+    border: 1px solid var(--new-badge-border);
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
   .card {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
     border-radius: 10px;
     padding: 16px 20px;
     margin: 12px 0;
@@ -149,7 +274,7 @@
   .flow-num {
     flex-shrink: 0;
     width: 28px; height: 28px;
-    background: #2563eb;
+    background: var(--flow-num-bg);
     color: #fff;
     border-radius: 50%;
     font-size: 13px;
@@ -158,25 +283,41 @@
     text-align: center;
   }
   .toc { column-count: 2; column-gap: 32px; }
-  .toc a { color: #2563eb; text-decoration: none; }
+  .toc a { color: var(--link); text-decoration: none; }
   .toc a:hover { text-decoration: underline; }
   .toc li { margin: 4px 0; font-size: 14px; }
   .endpoint {
     font-family: monospace;
-    background: #f0fdf4;
-    border-left: 3px solid #22c55e;
+    background: var(--endpoint-get-bg);
+    border-left: 3px solid var(--endpoint-get-border);
     padding: 4px 10px;
     margin: 4px 0;
     font-size: 13px;
+    color: var(--text);
   }
-  .endpoint-post { border-left-color: #f59e0b; background: #fffbeb; }
-  .endpoint-patch { border-left-color: #8b5cf6; background: #faf5ff; }
-  .endpoint-delete { border-left-color: #ef4444; background: #fef2f2; }
-  hr { border: none; border-top: 1px solid #e2e8f0; margin: 32px 0; }
+  .endpoint-post { border-left-color: var(--endpoint-post-border); background: var(--endpoint-post-bg); }
+  .endpoint-patch { border-left-color: var(--endpoint-patch-border); background: var(--endpoint-patch-bg); }
+  .endpoint-delete { border-left-color: var(--endpoint-delete-border); background: var(--endpoint-delete-bg); }
+  hr { border: none; border-top: 1px solid var(--hr-color); margin: 32px 0; }
   .section-icon { font-size: 20px; margin-right: 8px; }
+  a { color: var(--link); }
+  .ascii-diagram {
+    background: var(--bg-card);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 16px 20px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 12px;
+    line-height: 1.5;
+    margin: 12px 0;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+  }
 </style>
 </head>
 <body>
+
+<button class="theme-toggle" onclick="toggleTheme()" title="Alternar tema">&#127769;</button>
 
 <!-- CAPA -->
 <div class="cover">
@@ -184,7 +325,7 @@
   <h1>Intelligent General Service</h1>
   <p class="subtitle">Mapa Completo de Funcionalidades e Interface Visual</p>
   <p class="meta">SaaS de Atendimento Inteligente via WhatsApp para Instituicoes de Ensino</p>
-  <p class="meta" style="margin-top: 8px;">Documento gerado em Marco 2026 | Versao 1.0</p>
+  <p class="meta" style="margin-top: 8px;">Documento atualizado em Marco 2026 | Versao 2.0</p>
 </div>
 
 <!-- SUMARIO -->
@@ -203,6 +344,12 @@
   <li><a href="#users">Gestao de Usuarios</a></li>
   <li><a href="#settings">Configuracoes</a></li>
   <li><a href="#whatsapp-flow">Fluxo WhatsApp (Backend)</a></li>
+  <li><a href="#ai-learning">Aprendizado da IA</a> <span class="badge-new">NOVO</span></li>
+  <li><a href="#audio-transcription">Transcricao de Audio</a> <span class="badge-new">NOVO</span></li>
+  <li><a href="#metrics-ai-human">Metricas IA vs Humano</a> <span class="badge-new">NOVO</span></li>
+  <li><a href="#task-automation">Automacao de Tarefas</a> <span class="badge-new">NOVO</span></li>
+  <li><a href="#onboarding">Autocadastro de Aluno</a> <span class="badge-new">NOVO</span></li>
+  <li><a href="#satisfaction">Pesquisa de Satisfacao</a> <span class="badge-new">NOVO</span></li>
   <li><a href="#dlq">Dead Letter Queue</a></li>
   <li><a href="#webhooks">Webhooks de Saida</a></li>
   <li><a href="#monitoring">Monitoramento</a></li>
@@ -249,7 +396,7 @@
 
 <h3>Sidebar (Barra Lateral)</h3>
 <div class="card">
-  <strong>Visual:</strong> Barra escura (gray-900) fixa a esquerda com 9 links de navegacao:
+  <strong>Visual:</strong> Barra escura (gray-900) fixa a esquerda com 11 links de navegacao:
   <table style="margin-top:8px;">
     <tr><th>Icone</th><th>Label</th><th>Rota</th></tr>
     <tr><td>&#128202;</td><td>Dashboard</td><td><code>/dashboard</code></td></tr>
@@ -259,6 +406,8 @@
     <tr><td>&#128101;</td><td>Funcionarios</td><td><code>/employees</code></td></tr>
     <tr><td>&#128214;</td><td>Base de Conhecimento</td><td><code>/knowledge-base</code></td></tr>
     <tr><td>&#128200;</td><td>Relatorios</td><td><code>/reports</code></td></tr>
+    <tr><td>&#128200;</td><td>Metricas IA vs Humano <span class="badge-new">NOVO</span></td><td><code>/metrics</code></td></tr>
+    <tr><td>&#129504;</td><td>Aprendizado IA <span class="badge-new">NOVO</span></td><td><code>/learning</code></td></tr>
     <tr><td>&#9881;</td><td>Usuarios</td><td><code>/users</code></td></tr>
     <tr><td>&#128295;</td><td>Configuracoes</td><td><code>/settings</code></td></tr>
   </table>
@@ -294,7 +443,7 @@
 <h2 id="dashboard"><span class="section-icon">&#128202;</span> 3. Dashboard</h2>
 
 <div class="card">
-<pre style="background:#f8fafc;color:#334155;border:1px solid #e2e8f0;">
+<pre class="ascii-diagram">
 +------------------------------------------------------------------+
 |  Dashboard -- Visao geral do atendimento                         |
 |                                                                  |
@@ -333,7 +482,7 @@
 
 <h3>4a. Lista de Conversas (<code>/conversations</code>)</h3>
 <div class="card">
-<pre style="background:#f8fafc;color:#334155;border:1px solid #e2e8f0;">
+<pre class="ascii-diagram">
 Filtros: [Todas] [Ativa] [Aguardando agente] [Encerrada]
 
 +---------+----------+---------+------------+----------+
@@ -354,9 +503,9 @@ Filtros: [Todas] [Ativa] [Aguardando agente] [Encerrada]
 
 <h3>4b. Detalhe da Conversa (<code>/conversations/:id</code>)</h3>
 <div class="card">
-<pre style="background:#f8fafc;color:#334155;border:1px solid #e2e8f0;">
+<pre class="ascii-diagram">
 +------------------------------------------+---------------+
-| [<-] Joao Silva  +5511999  [Ativa]   [X] | Informacoes   |
+| [&lt;-] Joao Silva  +5511999  [Ativa]   [X] | Informacoes   |
 |                                          |               |
 |  +-------------------+                   | Canal: wpp    |
 |  | Usuario:          |                   | Tipo: student |
@@ -395,7 +544,7 @@ Filtros: [Todas] [Ativa] [Aguardando agente] [Encerrada]
 <h2 id="tickets"><span class="section-icon">&#127915;</span> 5. Tickets</h2>
 
 <div class="card">
-<pre style="background:#f8fafc;color:#334155;border:1px solid #e2e8f0;">
+<pre class="ascii-diagram">
 Filtros: [Todos] [open] [in_progress] [resolved] [closed]
 
 +-----------+---------+-----------+----------+-------+------+
@@ -437,7 +586,7 @@ Filtros: [Todos] [open] [in_progress] [resolved] [closed]
 
 <h3>6a. Lista (<code>/students</code>)</h3>
 <div class="card">
-<pre style="background:#f8fafc;color:#334155;border:1px solid #e2e8f0;">
+<pre class="ascii-diagram">
 Busca: [Buscar por nome ou RA...]
 
 +----------+----------+----------+----------+----------+
@@ -462,16 +611,16 @@ Busca: [Buscar por nome ou RA...]
 <table>
   <tr><th>Disciplina</th><th>Periodo</th><th>Tipo</th><th>Nota</th><th>Status</th></tr>
   <tr><td>Calculo I</td><td>2026.1</td><td>P1</td><td><strong>8.5</strong></td><td><span class="badge badge-green">Aprovado</span></td></tr>
-  <tr><td>Fisica II</td><td>2026.1</td><td>P2</td><td><strong style="color:#dc2626;">3.0</strong></td><td><span class="badge badge-red">Reprovado</span></td></tr>
+  <tr><td>Fisica II</td><td>2026.1</td><td>P2</td><td><strong style="color:var(--badge-red-text);">3.0</strong></td><td><span class="badge badge-red">Reprovado</span></td></tr>
 </table>
 
 <h4>Tabela: Frequencia</h4>
 <table>
   <tr><th>Disciplina</th><th>Periodo</th><th>Presentes</th><th>Total</th><th>Faltas %</th></tr>
-  <tr><td>Calculo I</td><td>2026.1</td><td>28</td><td>30</td><td><strong style="color:#16a34a;">6.7%</strong></td></tr>
-  <tr><td>Fisica II</td><td>2026.1</td><td>18</td><td>30</td><td><strong style="color:#dc2626;">40.0%</strong></td></tr>
+  <tr><td>Calculo I</td><td>2026.1</td><td>28</td><td>30</td><td><strong style="color:var(--badge-green-text);">6.7%</strong></td></tr>
+  <tr><td>Fisica II</td><td>2026.1</td><td>18</td><td>30</td><td><strong style="color:var(--badge-red-text);">40.0%</strong></td></tr>
 </table>
-<p>Cores: <span style="color:#16a34a;">Verde &le;15%</span> | <span style="color:#ca8a04;">Amarelo 15-25%</span> | <span style="color:#dc2626;">Vermelho &gt;25%</span></p>
+<p>Cores: <span style="color:var(--badge-green-text);">Verde &le;15%</span> | <span style="color:var(--badge-yellow-text);">Amarelo 15-25%</span> | <span style="color:var(--badge-red-text);">Vermelho &gt;25%</span></p>
 
 <h4>Tabela: Boletos</h4>
 <table>
@@ -506,16 +655,16 @@ Busca: [Buscar por nome ou RA...]
 <div class="card" style="text-align:center;">
   <div class="card-grid" style="grid-template-columns: 1fr 1fr 1fr; text-align:center;">
     <div><strong style="font-size:24px;">30</strong><br><small>Dias totais</small></div>
-    <div><strong style="font-size:24px;color:#ea580c;">10</strong><br><small>Utilizados</small></div>
-    <div><strong style="font-size:24px;color:#16a34a;">20</strong><br><small>Disponiveis</small></div>
+    <div><strong style="font-size:24px;color:var(--badge-yellow-text);">10</strong><br><small>Utilizados</small></div>
+    <div><strong style="font-size:24px;color:var(--badge-green-text);">20</strong><br><small>Disponiveis</small></div>
   </div>
-  <p style="color:#94a3b8;font-size:12px;margin-top:8px;">Prazo limite: 01/06/2027</p>
+  <p style="color:var(--text-muted);font-size:12px;margin-top:8px;">Prazo limite: 01/06/2027</p>
 </div>
 
 <h4>Tabela: Holerites</h4>
 <table>
   <tr><th>Competencia</th><th>Sal. Bruto</th><th>Descontos</th><th>Sal. Liquido</th><th>PDF</th></tr>
-  <tr><td>2026-03</td><td>R$ 5.000,00</td><td style="color:#dc2626;">R$ 800,00</td><td><strong style="color:#16a34a;">R$ 4.200,00</strong></td><td><a href="#">Baixar</a></td></tr>
+  <tr><td>2026-03</td><td>R$ 5.000,00</td><td style="color:var(--badge-red-text);">R$ 800,00</td><td><strong style="color:var(--badge-green-text);">R$ 4.200,00</strong></td><td><a href="#">Baixar</a></td></tr>
 </table>
 
 <h4>Tabela: Solicitacoes de RH</h4>
@@ -625,44 +774,60 @@ Busca: [Buscar por nome ou RA...]
 <div class="page-break"></div>
 <h2 id="whatsapp-flow"><span class="section-icon">&#128241;</span> 12. Fluxo de Mensagens WhatsApp</h2>
 
-<h3>Fluxo Completo (Backend)</h3>
-<div class="flow-step"><div class="flow-num">1</div><div>Usuario envia mensagem no WhatsApp</div></div>
+<h3>Fluxo Completo (Backend) -- Atualizado v2.0</h3>
+<div class="flow-step"><div class="flow-num">1</div><div>Usuario envia mensagem no WhatsApp (texto ou audio)</div></div>
 <div class="flow-step"><div class="flow-num">2</div><div>Meta Cloud API &rarr; <code>POST /api/v1/webhook/whatsapp</code> (verifica HMAC-SHA256)</div></div>
 <div class="flow-step"><div class="flow-num">3</div><div>Cria/encontra Contact &rarr; Cria/encontra Conversation &rarr; Salva Message</div></div>
 <div class="flow-step"><div class="flow-num">4</div><div>Enfileira task Celery <code>process_incoming_message</code></div></div>
-<div class="flow-step"><div class="flow-num">5</div><div>Se contato nao verificado &rarr; pede RA/matricula, retorna</div></div>
-<div class="flow-step"><div class="flow-num">6</div><div>Classifica intent via Claude (~50 tokens): grade_query, boleto_query, payslip_query, etc.</div></div>
-<div class="flow-step"><div class="flow-num">7</div><div>Se <code>human_handoff</code> &rarr; cria Ticket + status <code>waiting_agent</code></div></div>
-<div class="flow-step"><div class="flow-num">8</div><div>Carrega dados do BD conforme intent (notas, boletos, holerites, etc.)</div></div>
-<div class="flow-step"><div class="flow-num">9</div><div>Busca artigos KB relevantes (ILIKE full-text)</div></div>
-<div class="flow-step"><div class="flow-num">10</div><div>Gera resposta via Claude com RAG (~200-500 tokens)</div></div>
-<div class="flow-step"><div class="flow-num">11</div><div>Envia resposta via WhatsApp Cloud API</div></div>
-<div class="flow-step"><div class="flow-num">12</div><div>Salva Message (sender_type: bot) + atualiza metricas Prometheus</div></div>
-<div class="flow-step"><div class="flow-num">13</div><div>Broadcast via Redis pub/sub &rarr; WebSocket &rarr; painel em tempo real</div></div>
+<div class="flow-step"><div class="flow-num">5</div><div><span class="badge-new">NOVO</span> Se mensagem de audio &rarr; transcreve via Claude API &rarr; salva texto</div></div>
+<div class="flow-step"><div class="flow-num">6</div><div>Se contato nao verificado &rarr; pede RA/matricula ou inicia autocadastro</div></div>
+<div class="flow-step"><div class="flow-num">7</div><div>Classifica intent via Claude (~50 tokens): 27 intents suportados</div></div>
+<div class="flow-step"><div class="flow-num">8</div><div>Se <code>human_handoff</code> &rarr; cria Ticket + status <code>waiting_agent</code></div></div>
+<div class="flow-step"><div class="flow-num">9</div><div>Carrega dados do BD conforme intent (notas, boletos, holerites, etc.)</div></div>
+<div class="flow-step"><div class="flow-num">10</div><div><span class="badge-new">NOVO</span> Se intent de acao &rarr; executa tarefa real (gerar boleto, solicitar documento...)</div></div>
+<div class="flow-step"><div class="flow-num">11</div><div>Busca artigos KB relevantes (ILIKE full-text)</div></div>
+<div class="flow-step"><div class="flow-num">12</div><div><span class="badge-new">NOVO</span> Busca resolucoes similares de tickets anteriores (aprendizado IA)</div></div>
+<div class="flow-step"><div class="flow-num">13</div><div>Gera resposta via Claude com RAG (dados + KB + resolucoes + historico)</div></div>
+<div class="flow-step"><div class="flow-num">14</div><div>Envia resposta via WhatsApp Cloud API</div></div>
+<div class="flow-step"><div class="flow-num">15</div><div><span class="badge-new">NOVO</span> Registra metrica de tempo de resposta (IA vs Humano)</div></div>
+<div class="flow-step"><div class="flow-num">16</div><div>Broadcast via Redis pub/sub &rarr; WebSocket &rarr; painel em tempo real</div></div>
 
-<h3>Intents Suportados</h3>
+<h3>Intents Suportados (27 intents)</h3>
 <table>
-  <tr><th>Intent</th><th>Descricao</th><th>Dados consultados</th></tr>
-  <tr><td><code>grade_query</code></td><td>Consulta de notas</td><td>Tabela grades</td></tr>
-  <tr><td><code>attendance_query</code></td><td>Consulta de frequencia</td><td>Tabela attendance_records</td></tr>
-  <tr><td><code>boleto_query</code></td><td>Consulta de boletos</td><td>Tabela boletos</td></tr>
-  <tr><td><code>schedule_query</code></td><td>Horario de aulas</td><td>Tabela schedules</td></tr>
-  <tr><td><code>enrollment_query</code></td><td>Situacao da matricula</td><td>Tabela students</td></tr>
-  <tr><td><code>payslip_query</code></td><td>Consulta de holerite</td><td>Tabela payslips</td></tr>
-  <tr><td><code>vacation_query</code></td><td>Saldo de ferias</td><td>Tabela vacation_balances</td></tr>
-  <tr><td><code>time_record_query</code></td><td>Ponto eletronico</td><td>Tabela time_records</td></tr>
-  <tr><td><code>hr_request</code></td><td>Solicitacao RH</td><td>Tabela hr_requests</td></tr>
-  <tr><td><code>human_handoff</code></td><td>Transferir para agente</td><td>Cria ticket</td></tr>
-  <tr><td><code>faq</code></td><td>Pergunta geral</td><td>KB articles</td></tr>
-  <tr><td><code>greeting</code></td><td>Saudacao</td><td>&mdash;</td></tr>
-  <tr><td><code>verification</code></td><td>Identificacao inicial</td><td>students/employees</td></tr>
+  <tr><th>Intent</th><th>Tipo</th><th>Descricao</th><th>Dados/Acao</th></tr>
+  <tr><td><code>grade_query</code></td><td><span class="badge badge-blue">Consulta</span></td><td>Consulta de notas</td><td>Tabela grades</td></tr>
+  <tr><td><code>attendance_query</code></td><td><span class="badge badge-blue">Consulta</span></td><td>Consulta de frequencia</td><td>Tabela attendance_records</td></tr>
+  <tr><td><code>boleto_query</code></td><td><span class="badge badge-blue">Consulta</span></td><td>Consulta de boletos</td><td>Tabela boletos</td></tr>
+  <tr><td><code>schedule_query</code></td><td><span class="badge badge-blue">Consulta</span></td><td>Horario de aulas</td><td>Tabela schedules</td></tr>
+  <tr><td><code>enrollment_query</code></td><td><span class="badge badge-blue">Consulta</span></td><td>Situacao da matricula</td><td>Tabela students</td></tr>
+  <tr><td><code>payslip_query</code></td><td><span class="badge badge-blue">Consulta</span></td><td>Consulta de holerite</td><td>Tabela payslips</td></tr>
+  <tr><td><code>vacation_query</code></td><td><span class="badge badge-blue">Consulta</span></td><td>Saldo de ferias</td><td>Tabela vacation_balances</td></tr>
+  <tr><td><code>time_record_query</code></td><td><span class="badge badge-blue">Consulta</span></td><td>Ponto eletronico</td><td>Tabela time_records</td></tr>
+  <tr><td><code>hr_request</code></td><td><span class="badge badge-blue">Consulta</span></td><td>Solicitacao RH</td><td>Tabela hr_requests</td></tr>
+  <tr><td><code>generate_boleto</code></td><td><span class="badge badge-yellow">Acao</span> <span class="badge-new">NOVO</span></td><td>Gerar boleto de pagamento</td><td>Cria boleto real</td></tr>
+  <tr><td><code>enrollment_request</code></td><td><span class="badge badge-yellow">Acao</span> <span class="badge-new">NOVO</span></td><td>Pedido de matricula/rematricula</td><td>Registra solicitacao</td></tr>
+  <tr><td><code>document_request</code></td><td><span class="badge badge-yellow">Acao</span> <span class="badge-new">NOVO</span></td><td>Solicitar documentos</td><td>Registra solicitacao</td></tr>
+  <tr><td><code>class_enrollment</code></td><td><span class="badge badge-yellow">Acao</span> <span class="badge-new">NOVO</span></td><td>Inscricao em disciplinas</td><td>Registra inscricao</td></tr>
+  <tr><td><code>grade_appeal</code></td><td><span class="badge badge-yellow">Acao</span> <span class="badge-new">NOVO</span></td><td>Recurso de nota</td><td>Registra recurso</td></tr>
+  <tr><td><code>transfer_request</code></td><td><span class="badge badge-yellow">Acao</span> <span class="badge-new">NOVO</span></td><td>Pedido de transferencia</td><td>Registra solicitacao</td></tr>
+  <tr><td><code>scholarship_query</code></td><td><span class="badge badge-blue">Consulta</span> <span class="badge-new">NOVO</span></td><td>Consulta sobre bolsas</td><td>KB articles</td></tr>
+  <tr><td><code>internship_query</code></td><td><span class="badge badge-blue">Consulta</span> <span class="badge-new">NOVO</span></td><td>Estagio/TCC</td><td>KB articles</td></tr>
+  <tr><td><code>event_registration</code></td><td><span class="badge badge-yellow">Acao</span> <span class="badge-new">NOVO</span></td><td>Inscricao em eventos</td><td>Registra inscricao</td></tr>
+  <tr><td><code>library_query</code></td><td><span class="badge badge-blue">Consulta</span> <span class="badge-new">NOVO</span></td><td>Biblioteca (emprestimo, multa)</td><td>KB articles</td></tr>
+  <tr><td><code>financial_negotiation</code></td><td><span class="badge badge-yellow">Acao</span> <span class="badge-new">NOVO</span></td><td>Negociacao de debitos</td><td>Registra negociacao</td></tr>
+  <tr><td><code>certificate_request</code></td><td><span class="badge badge-yellow">Acao</span> <span class="badge-new">NOVO</span></td><td>Solicitar certificados</td><td>Registra solicitacao</td></tr>
+  <tr><td><code>human_handoff</code></td><td><span class="badge badge-red">Handoff</span></td><td>Transferir para agente</td><td>Cria ticket</td></tr>
+  <tr><td><code>faq</code></td><td><span class="badge badge-gray">Geral</span></td><td>Pergunta geral</td><td>KB articles</td></tr>
+  <tr><td><code>greeting</code></td><td><span class="badge badge-gray">Geral</span></td><td>Saudacao</td><td>&mdash;</td></tr>
+  <tr><td><code>verification</code></td><td><span class="badge badge-gray">Geral</span></td><td>Identificacao inicial</td><td>students/employees</td></tr>
 </table>
 
 <h3>Suporte a Midia</h3>
 <div class="card">
   Tipos aceitos: <code>image</code>, <code>document</code>, <code>audio</code>, <code>video</code>, <code>sticker</code><br>
   Download da Meta Graph API &rarr; salva em <code>/app/media/</code><br>
-  Campos: <code>whatsapp_media_id</code>, <code>media_url</code>, <code>media_mime_type</code>
+  Campos: <code>whatsapp_media_id</code>, <code>media_url</code>, <code>media_mime_type</code><br>
+  <strong><span class="badge-new">NOVO</span> Audio:</strong> Transcricao automatica via Claude API antes de classificar intent
 </div>
 
 <h3>Templates WhatsApp (HSM) -- Envio Proativo</h3>
@@ -677,8 +842,304 @@ Busca: [Buscar por nome ou RA...]
 
 <hr>
 
-<!-- 13. DLQ -->
-<h2 id="dlq"><span class="section-icon">&#128680;</span> 13. Dead Letter Queue</h2>
+<!-- 13. APRENDIZADO IA -->
+<div class="page-break"></div>
+<h2 id="ai-learning"><span class="section-icon">&#129504;</span> 13. Aprendizado da IA com Tickets Resolvidos <span class="badge-new">NOVO</span></h2>
+
+<div class="card">
+  <strong>Conceito:</strong> A IA aprende com tickets resolvidos anteriormente para sugerir solucoes melhores e mais rapidas.
+  Quando um ticket e fechado, o sistema extrai a conversa, gera um resumo estruturado via Claude e indexa para consulta futura.
+</div>
+
+<h3>Como Funciona</h3>
+<div class="flow-step"><div class="flow-num">1</div><div>Ticket e fechado com resolucao</div></div>
+<div class="flow-step"><div class="flow-num">2</div><div><code>index_resolved_ticket()</code> extrai conversa completa (ate 50 mensagens)</div></div>
+<div class="flow-step"><div class="flow-num">3</div><div>Claude gera resumo estruturado: CATEGORIA, PROBLEMA, SOLUCAO, TAGS, RESUMO_IA</div></div>
+<div class="flow-step"><div class="flow-num">4</div><div>Resolucao salva em <code>ticket_resolutions</code> com pontuacao de satisfacao</div></div>
+<div class="flow-step"><div class="flow-num">5</div><div>Em mensagens futuras, <code>find_similar_resolutions()</code> busca resolucoes parecidas</div></div>
+<div class="flow-step"><div class="flow-num">6</div><div>Resolucoes similares sao incluidas no contexto do Claude para gerar respostas melhores</div></div>
+
+<h3>Tela: Aprendizado IA (<code>/learning</code>)</h3>
+<div class="card">
+<pre class="ascii-diagram">
++------------------------------------------------------------------+
+|  Aprendizado da IA                                               |
+|                                                                  |
+|  +-----------+-----------+-----------+-----------+               |
+|  | Total     | Satisfacao| Tempo Med.|Categorias |  4 cards KPI  |
+|  | Resolucoes|   Media   |  Resolucao|  Indexadas|               |
+|  |   (azul)  |  (verde)  | (laranja) |  (roxo)  |               |
+|  +-----------+-----------+-----------+-----------+               |
+|                                                                  |
+|  +-- Categorias Mais Comuns -----------------------+             |
+|  |  matricula   =============================== 42 |  Barras    |
+|  |  boleto      ======================== 35        |  horiz.    |
+|  |  nota        ==================== 28             |             |
+|  |  documento   ============== 18                   |             |
+|  +--------------------------------------------------+            |
+|                                                                  |
+|  +-- Como a IA Aprende --------------------------------+         |
+|  |  [Explicacao do processo de aprendizado]             |         |
+|  +------------------------------------------------------+        |
++------------------------------------------------------------------+
+</pre>
+</div>
+
+<h4>Model: <code>TicketResolution</code></h4>
+<table>
+  <tr><th>Campo</th><th>Tipo</th><th>Descricao</th></tr>
+  <tr><td>problem_category</td><td>String</td><td>Categoria: matricula, boleto, nota, frequencia, documento, rh, geral</td></tr>
+  <tr><td>problem_description</td><td>Text</td><td>Resumo do problema (gerado por Claude)</td></tr>
+  <tr><td>resolution_description</td><td>Text</td><td>Como foi resolvido (gerado por Claude)</td></tr>
+  <tr><td>resolution_steps</td><td>JSONB</td><td>Passos detalhados da resolucao</td></tr>
+  <tr><td>resolution_type</td><td>String</td><td>auto | human | escalated</td></tr>
+  <tr><td>satisfaction_score</td><td>Integer (1-5)</td><td>Avaliacao do atendimento</td></tr>
+  <tr><td>tags</td><td>ARRAY Text</td><td>Tags para busca por similaridade</td></tr>
+  <tr><td>ai_embedding_summary</td><td>Text</td><td>Resumo otimizado para matching</td></tr>
+  <tr><td>times_used_as_reference</td><td>Integer</td><td>Contador de usos como referencia</td></tr>
+</table>
+
+<h4>Service: <code>learning_service.py</code></h4>
+<ul>
+  <li><code>index_resolved_ticket(db, ticket_id)</code> &rarr; Gera resumo e salva resolucao</li>
+  <li><code>find_similar_resolutions(db, tenant_id, problem_description, limit=5)</code> &rarr; Busca ILIKE em problem_description + ai_embedding_summary</li>
+  <li><code>get_resolution_stats(db, tenant_id)</code> &rarr; Estatisticas: total, media satisfacao, tempo medio, top categorias</li>
+</ul>
+
+<hr>
+
+<!-- 14. TRANSCRICAO DE AUDIO -->
+<h2 id="audio-transcription"><span class="section-icon">&#127908;</span> 14. Transcricao de Audio do WhatsApp <span class="badge-new">NOVO</span></h2>
+
+<div class="card">
+  <strong>Fluxo:</strong>
+  <ul>
+    <li>Mensagem de audio recebida (type=<code>audio</code>, mime: <code>audio/ogg</code>)</li>
+    <li>Download do audio via Media Service (<code>download_media()</code>)</li>
+    <li>Audio convertido para base64 e enviado ao Claude API para transcricao</li>
+    <li>Texto transcrito salvo no campo <code>content</code> da Message</li>
+    <li><code>message_type</code> atualizado para <code>audio_transcribed</code></li>
+    <li>Texto transcrito usado como input para classificacao de intent e geracao de resposta</li>
+  </ul>
+</div>
+
+<h4>Service: <code>transcription_service.py</code></h4>
+<div class="card">
+  <code>transcribe_audio(audio_bytes: bytes, mime_type: str) -> str</code><br>
+  <ul>
+    <li>Converte audio para base64</li>
+    <li>Envia ao Claude como mensagem multimodal (content type: audio)</li>
+    <li>Prompt: "Transcreva o audio a seguir para texto em portugues"</li>
+    <li>Retorna texto transcrito</li>
+    <li>Fallback: "[Audio recebido - transcricao indisponivel]" em caso de erro</li>
+  </ul>
+</div>
+
+<h4>Service: <code>media_service.py</code></h4>
+<div class="card">
+  <ul>
+    <li><code>get_media_url(media_id, token)</code> &rarr; URL temporario da Graph API</li>
+    <li><code>download_media(media_id, token)</code> &rarr; bytes do arquivo</li>
+    <li><code>upload_to_storage(file_bytes, filename, content_type)</code> &rarr; salva localmente com hash</li>
+    <li>Tipos suportados: jpg, png, webp, pdf, ogg, mp3, mp4</li>
+  </ul>
+</div>
+
+<hr>
+
+<!-- 15. METRICAS IA vs HUMANO -->
+<div class="page-break"></div>
+<h2 id="metrics-ai-human"><span class="section-icon">&#128200;</span> 15. Metricas IA vs Humano e ROI <span class="badge-new">NOVO</span></h2>
+
+<h3>Tela: Metricas IA vs Humano (<code>/metrics</code>)</h3>
+<div class="card">
+<pre class="ascii-diagram">
++------------------------------------------------------------------+
+|  Metricas IA vs Humano                                           |
+|                                                                  |
+|  +-----------+-----------+-----------+-----------+               |
+|  |  Total    | Economia  |    ROI    |  Tempo    |  4 cards KPI  |
+|  |Interacoes |  Mensal   |    (%)    | Economiz. |               |
+|  |   (azul)  |  (verde)  | (laranja) |  (roxo)  |               |
+|  +-----------+-----------+-----------+-----------+               |
+|                                                                  |
+|  +-- Comparativo Bot vs Humano -------------------------+        |
+|  |  Metrica    |     Bot      |     Humano              |        |
+|  |  Tempo Med. |    2.3s      |     180s                | Tabela |
+|  |  Interacoes |    850       |     120                 |        |
+|  |  Resolucao  |    78%       |     95%                 |        |
+|  |  Satisfacao |    4.2/5     |     4.5/5               |        |
+|  +---------------------------------------------------+---+      |
+|                                                                  |
+|  +-- Custos -----------------------------------------------+     |
+|  |  IA Mensal: R$ 45,00  | Humano: R$ 6.000  | Sem IA: 15k|     |
+|  +----------------------------------------------------------+    |
+|                                                                  |
+|  +-- Contas WhatsApp Monitoradas --+  [+ Adicionar Conta]  |     |
+|  |  Conta IGS Bot  | AI Bot | On  |                        |     |
+|  |  Atend. Maria   | Humano | On  |                        |     |
+|  +----------------------------------+                       |     |
++------------------------------------------------------------------+
+</pre>
+</div>
+
+<h4>Calculo de ROI</h4>
+<div class="card">
+  <ul>
+    <li><strong>Custo IA mensal:</strong> interacoes_bot x tokens_medios x custo_por_token</li>
+    <li><strong>Custo humano mensal:</strong> atendentes_necessarios x salario_mensal</li>
+    <li><strong>Custo hipotetico (sem IA):</strong> total_interacoes / capacidade_humana x salario</li>
+    <li><strong>Economia:</strong> custo_hipotetico - (custo_IA + custo_humano)</li>
+    <li><strong>% Economia:</strong> economia / custo_hipotetico x 100</li>
+    <li><strong>Tempo economizado:</strong> tempo_medio_humano - tempo_medio_IA</li>
+  </ul>
+</div>
+
+<h4>Endpoints</h4>
+<div class="endpoint"><strong>GET</strong> /api/v1/metrics/comparison &rarr; Relatorio comparativo IA vs Humano (filtro por periodo)</div>
+<div class="endpoint"><strong>GET</strong> /api/v1/metrics/roi &rarr; Calculo de ROI detalhado</div>
+<div class="endpoint"><strong>GET</strong> /api/v1/metrics/dashboard &rarr; Dados consolidados (comparison + ROI + total)</div>
+<div class="endpoint"><strong>GET</strong> /api/v1/metrics/monitored-accounts &rarr; Lista contas monitoradas</div>
+<div class="endpoint endpoint-post"><strong>POST</strong> /api/v1/metrics/monitored-accounts &rarr; Adiciona conta para monitorar</div>
+
+<h4>Model: <code>ResponseTimeMetric</code></h4>
+<table>
+  <tr><th>Campo</th><th>Tipo</th><th>Descricao</th></tr>
+  <tr><td>responder_type</td><td>String</td><td>"bot", "human", "agent"</td></tr>
+  <tr><td>response_time_seconds</td><td>Float</td><td>Tempo entre mensagem do usuario e resposta</td></tr>
+  <tr><td>message_count_in_conversation</td><td>Integer</td><td>Quantas mensagens ate resolver</td></tr>
+  <tr><td>was_resolved</td><td>Boolean</td><td>Se o problema foi resolvido</td></tr>
+  <tr><td>resolution_time_total_seconds</td><td>Float</td><td>Tempo total ate resolucao</td></tr>
+</table>
+
+<h4>Model: <code>WhatsAppMonitoredAccount</code></h4>
+<table>
+  <tr><th>Campo</th><th>Tipo</th><th>Descricao</th></tr>
+  <tr><td>account_name</td><td>String</td><td>Nome da conta monitorada</td></tr>
+  <tr><td>phone_number</td><td>String</td><td>Numero da conta</td></tr>
+  <tr><td>account_type</td><td>String</td><td>"human_agent", "ai_bot", "mixed"</td></tr>
+  <tr><td>is_active</td><td>Boolean</td><td>Se o monitoramento esta ativo</td></tr>
+</table>
+
+<hr>
+
+<!-- 16. AUTOMACAO DE TAREFAS -->
+<h2 id="task-automation"><span class="section-icon">&#9889;</span> 16. Automacao de Tarefas pelo WhatsApp <span class="badge-new">NOVO</span></h2>
+
+<div class="card">
+  <strong>Conceito:</strong> O sistema NAO e um robo de respostas prontas. E uma IA que executa tarefas reais no sistema
+  acadêmico baseado no que o aluno solicita via WhatsApp.
+</div>
+
+<h3>Tarefas Executaveis</h3>
+<table>
+  <tr><th>Intent</th><th>Acao Executada</th><th>Resultado</th></tr>
+  <tr><td><code>generate_boleto</code></td><td>Gera boleto real no BD</td><td>Protocolo + valor + vencimento</td></tr>
+  <tr><td><code>enrollment_request</code></td><td>Registra pedido de matricula</td><td>Protocolo + status "pending"</td></tr>
+  <tr><td><code>document_request</code></td><td>Solicita documento (declaracao, historico, diploma)</td><td>Protocolo + prazo estimado</td></tr>
+  <tr><td><code>class_enrollment</code></td><td>Inscreve em disciplina</td><td>Protocolo + confirmacao</td></tr>
+  <tr><td><code>grade_appeal</code></td><td>Registra recurso de nota</td><td>Protocolo + prazo analise</td></tr>
+  <tr><td><code>certificate_request</code></td><td>Solicita certificado</td><td>Protocolo + prazo</td></tr>
+</table>
+
+<h4>Service: <code>task_executor.py</code></h4>
+<div class="card">
+  <ul>
+    <li><code>is_action_intent(intent)</code> &rarr; Verifica se intent requer execucao real</li>
+    <li><code>execute_action(db, tenant_id, contact_id, conversation_id, intent, entities, student_id)</code> &rarr; Executa acao e retorna resultado</li>
+    <li>Cada acao gera numero de protocolo unico (<code>SRQ-YYYYMMDD-XXXX</code>)</li>
+    <li>Resultado registrado em <code>service_requests</code> para acompanhamento</li>
+    <li>Resultado formatado pela IA para envio ao usuario via WhatsApp</li>
+  </ul>
+</div>
+
+<h4>Model: <code>ServiceRequest</code></h4>
+<table>
+  <tr><th>Campo</th><th>Tipo</th><th>Descricao</th></tr>
+  <tr><td>request_type</td><td>String</td><td>Tipo da solicitacao (generate_boleto, document_request, etc.)</td></tr>
+  <tr><td>status</td><td>String</td><td>pending | processing | completed | rejected</td></tr>
+  <tr><td>request_data</td><td>JSONB</td><td>Dados do pedido (entidades extraidas)</td></tr>
+  <tr><td>result_data</td><td>JSONB</td><td>Resultado/resposta da execucao</td></tr>
+  <tr><td>processed_by</td><td>String</td><td>"ai" ou "human"</td></tr>
+  <tr><td>processing_time_seconds</td><td>Float</td><td>Tempo de processamento</td></tr>
+</table>
+
+<hr>
+
+<!-- 17. ONBOARDING -->
+<h2 id="onboarding"><span class="section-icon">&#128100;</span> 17. Autocadastro de Aluno pelo WhatsApp <span class="badge-new">NOVO</span></h2>
+
+<div class="card">
+  <strong>Conceito:</strong> Alunos podem se cadastrar diretamente pelo WhatsApp, sem precisar ir ao campus. O bot coleta
+  informacoes step-by-step e cria o registro preliminar no sistema.
+</div>
+
+<h3>Fluxo de Autocadastro</h3>
+<div class="flow-step"><div class="flow-num">1</div><div>Aluno envia primeira mensagem e escolhe "desejo me inscrever"</div></div>
+<div class="flow-step"><div class="flow-num">2</div><div>Bot coleta: <strong>Nome completo</strong></div></div>
+<div class="flow-step"><div class="flow-num">3</div><div>Bot coleta: <strong>CPF</strong> (validacao de formato e digitos verificadores)</div></div>
+<div class="flow-step"><div class="flow-num">4</div><div>Bot coleta: <strong>E-mail</strong> (validacao de formato)</div></div>
+<div class="flow-step"><div class="flow-num">5</div><div>Bot coleta: <strong>Curso desejado</strong></div></div>
+<div class="flow-step"><div class="flow-num">6</div><div>Bot exibe resumo e pede <strong>confirmacao</strong></div></div>
+<div class="flow-step"><div class="flow-num">7</div><div>Cria registro em <code>students</code> com status <code>pending_enrollment</code></div></div>
+<div class="flow-step"><div class="flow-num">8</div><div>Gera RA automatico e vincula ao Contact</div></div>
+
+<h4>Model: <code>OnboardingSession</code></h4>
+<table>
+  <tr><th>Campo</th><th>Tipo</th><th>Descricao</th></tr>
+  <tr><td>contact_id</td><td>UUID FK</td><td>Contato do WhatsApp</td></tr>
+  <tr><td>current_step</td><td>String</td><td>welcome | name | cpf | email | course | confirm</td></tr>
+  <tr><td>collected_data</td><td>JSONB</td><td>Dados coletados ate o momento</td></tr>
+  <tr><td>status</td><td>String</td><td>in_progress | completed | cancelled</td></tr>
+</table>
+
+<h4>Service: <code>student_onboarding.py</code></h4>
+<div class="card">
+  <ul>
+    <li><code>get_or_create_session(db, tenant_id, contact_id)</code> &rarr; Cria ou recupera sessao</li>
+    <li><code>process_onboarding_step(db, session, user_input)</code> &rarr; Processa passo atual e avanca</li>
+    <li>Validacao de CPF com digitos verificadores</li>
+    <li>Validacao de e-mail com regex</li>
+    <li>Suporte a correcao ("corrigir") e reinicio ("recomecar")</li>
+    <li>Geracao automatica de RA (<code>20260001</code>, <code>20260002</code>...)</li>
+  </ul>
+</div>
+
+<hr>
+
+<!-- 18. SATISFACAO -->
+<h2 id="satisfaction"><span class="section-icon">&#11088;</span> 18. Pesquisa de Satisfacao <span class="badge-new">NOVO</span></h2>
+
+<div class="card">
+  <strong>Conceito:</strong> Ao encerrar uma conversa, o sistema envia pesquisa de satisfacao. A nota e usada
+  para ranquear resolucoes no sistema de aprendizado (resolucoes com melhor avaliacao aparecem primeiro).
+</div>
+
+<h4>Model: <code>SatisfactionSurvey</code></h4>
+<table>
+  <tr><th>Campo</th><th>Tipo</th><th>Descricao</th></tr>
+  <tr><td>conversation_id</td><td>UUID FK</td><td>Conversa avaliada</td></tr>
+  <tr><td>contact_id</td><td>UUID FK</td><td>Quem avaliou</td></tr>
+  <tr><td>score</td><td>Integer (1-5)</td><td>Nota do atendimento</td></tr>
+  <tr><td>feedback_text</td><td>Text</td><td>Comentario opcional</td></tr>
+  <tr><td>responder_type</td><td>String</td><td>Quem atendeu: "bot" ou "human"</td></tr>
+  <tr><td>survey_sent_at</td><td>DateTime</td><td>Quando a pesquisa foi enviada</td></tr>
+  <tr><td>responded_at</td><td>DateTime</td><td>Quando o usuario respondeu</td></tr>
+</table>
+
+<h4>Integracao com Metricas</h4>
+<div class="card">
+  <ul>
+    <li>Satisfacao media por tipo de responder (bot vs humano) no relatorio comparativo</li>
+    <li>Score de satisfacao usado para ranquear resolucoes no sistema de aprendizado</li>
+    <li>Historico de satisfacao exibido nos dashboards de metricas</li>
+  </ul>
+</div>
+
+<hr>
+
+<!-- 19. DLQ -->
+<h2 id="dlq"><span class="section-icon">&#128680;</span> 19. Dead Letter Queue</h2>
 
 <div class="card">
   Quando <code>process_incoming_message</code> falha 3 vezes:
@@ -694,8 +1155,8 @@ Busca: [Buscar por nome ou RA...]
 
 <hr>
 
-<!-- 14. WEBHOOKS -->
-<h2 id="webhooks"><span class="section-icon">&#128279;</span> 14. Webhooks de Saida (Integracao ERP)</h2>
+<!-- 20. WEBHOOKS -->
+<h2 id="webhooks"><span class="section-icon">&#128279;</span> 20. Webhooks de Saida (Integracao ERP)</h2>
 
 <div class="card">
   <ul>
@@ -715,9 +1176,9 @@ Busca: [Buscar por nome ou RA...]
 
 <hr>
 
-<!-- 15. MONITORAMENTO -->
+<!-- 21. MONITORAMENTO -->
 <div class="page-break"></div>
-<h2 id="monitoring"><span class="section-icon">&#128201;</span> 15. Monitoramento</h2>
+<h2 id="monitoring"><span class="section-icon">&#128201;</span> 21. Monitoramento</h2>
 
 <h3>Grafana (<code>localhost:3001</code>)</h3>
 <div class="card">
@@ -748,8 +1209,8 @@ Busca: [Buscar por nome ou RA...]
 
 <hr>
 
-<!-- 16. INFRA -->
-<h2 id="infra"><span class="section-icon">&#9881;</span> 16. Infraestrutura e DevOps</h2>
+<!-- 22. INFRA -->
+<h2 id="infra"><span class="section-icon">&#9881;</span> 22. Infraestrutura e DevOps</h2>
 
 <h3>Servicos Docker (14 containers)</h3>
 <table>
@@ -773,7 +1234,7 @@ Busca: [Buscar por nome ou RA...]
 <h3>CI/CD (GitHub Actions)</h3>
 <div class="card">
   <ul>
-    <li><strong>ci.yml:</strong> testes backend (pytest + postgres + redis), lint (ruff), build frontend (tsc + vite)</li>
+    <li><strong>ci.yml:</strong> testes backend (pytest + postgres + redis), lint (ruff check + ruff format), build frontend (tsc + vite)</li>
     <li><strong>deploy.yml:</strong> tag <code>v*</code> &rarr; SSH &rarr; docker compose pull/up com rolling update zero-downtime</li>
   </ul>
 </div>
@@ -814,14 +1275,13 @@ Busca: [Buscar por nome ou RA...]
 
 <hr>
 
-<!-- 17. MODELOS -->
+<!-- 23. MODELOS -->
 <div class="page-break"></div>
-<h2 id="models"><span class="section-icon">&#128451;</span> 17. Modelos de Dados</h2>
+<h2 id="models"><span class="section-icon">&#128451;</span> 23. Modelos de Dados</h2>
 
 <table>
   <tr><th>Modelo</th><th>Campos-chave</th><th>Relacoes</th></tr>
   <tr><td><strong>Tenant</strong></td><td>name, slug, whatsapp_phone/token, claude_api_key, plan</td><td>&rarr; users, students, employees</td></tr>
-  <tr><td><strong>TenantSettings</strong></td><td>bot_name, welcome_message, business_hours, language</td><td>&rarr; tenant</td></tr>
   <tr><td><strong>User</strong></td><td>email, password_hash, full_name, role</td><td>&rarr; tenant</td></tr>
   <tr><td><strong>Contact</strong></td><td>phone_number, name, contact_type, is_verified</td><td>&rarr; student/employee</td></tr>
   <tr><td><strong>Conversation</strong></td><td>channel, status, context_type, assigned_agent_id</td><td>&rarr; contact, messages</td></tr>
@@ -841,6 +1301,12 @@ Busca: [Buscar por nome ou RA...]
   <tr><td><strong>WebhookEndpoint</strong></td><td>url, secret, events, is_active</td><td>&rarr; deliveries, tenant</td></tr>
   <tr><td><strong>WebhookDelivery</strong></td><td>event_type, payload, status_code, success</td><td>&rarr; endpoint</td></tr>
   <tr><td><strong>FailedTask</strong></td><td>task_name, args, error_message, resolved</td><td>DLQ</td></tr>
+  <tr style="background:var(--new-badge-bg);"><td><strong>TicketResolution</strong> <span class="badge-new">NOVO</span></td><td>problem_category, problem_description, resolution_description, satisfaction_score, tags</td><td>&rarr; ticket, conversation</td></tr>
+  <tr style="background:var(--new-badge-bg);"><td><strong>ResponseTimeMetric</strong> <span class="badge-new">NOVO</span></td><td>responder_type, response_time_seconds, was_resolved</td><td>&rarr; conversation, message</td></tr>
+  <tr style="background:var(--new-badge-bg);"><td><strong>WhatsAppMonitoredAccount</strong> <span class="badge-new">NOVO</span></td><td>account_name, phone_number, account_type, is_active</td><td>&rarr; tenant</td></tr>
+  <tr style="background:var(--new-badge-bg);"><td><strong>ServiceRequest</strong> <span class="badge-new">NOVO</span></td><td>request_type, status, request_data, result_data, processed_by</td><td>&rarr; contact, conversation</td></tr>
+  <tr style="background:var(--new-badge-bg);"><td><strong>SatisfactionSurvey</strong> <span class="badge-new">NOVO</span></td><td>score (1-5), feedback_text, responder_type</td><td>&rarr; conversation, contact</td></tr>
+  <tr style="background:var(--new-badge-bg);"><td><strong>OnboardingSession</strong> <span class="badge-new">NOVO</span></td><td>current_step, collected_data, status</td><td>&rarr; contact</td></tr>
 </table>
 
 <hr>
@@ -853,11 +1319,41 @@ Busca: [Buscar por nome ou RA...]
 </table>
 
 <hr>
-<div style="text-align:center; padding: 40px 0; color: #94a3b8; font-size: 12px;">
+<div style="text-align:center; padding: 40px 0; color: var(--text-muted); font-size: 12px;">
   <p><strong>IGS - Intelligent General Service</strong></p>
-  <p>Documento gerado automaticamente | Marco 2026</p>
+  <p>Documento atualizado em Marco 2026 | Versao 2.0</p>
   <p>FastAPI + React + Celery + Claude AI + WhatsApp Cloud API</p>
+  <p style="margin-top:12px;">
+    <span class="badge-new">6 novas funcionalidades</span> |
+    <span class="badge badge-blue">27 intents</span> |
+    <span class="badge badge-purple">25 modelos</span> |
+    <span class="badge badge-green">14 containers</span>
+  </p>
 </div>
+
+<script>
+function toggleTheme() {
+  const html = document.documentElement;
+  const btn = document.querySelector('.theme-toggle');
+  if (html.getAttribute('data-theme') === 'light') {
+    html.removeAttribute('data-theme');
+    btn.innerHTML = '&#127769;';
+    localStorage.setItem('igs-theme', 'dark');
+  } else {
+    html.setAttribute('data-theme', 'light');
+    btn.innerHTML = '&#9728;';
+    localStorage.setItem('igs-theme', 'light');
+  }
+}
+// Load saved theme
+(function() {
+  const saved = localStorage.getItem('igs-theme');
+  if (saved === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    document.querySelector('.theme-toggle').innerHTML = '&#9728;';
+  }
+})();
+</script>
 
 </body>
 </html>

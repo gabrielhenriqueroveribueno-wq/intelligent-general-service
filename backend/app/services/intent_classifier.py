@@ -2,9 +2,8 @@ import json
 import logging
 from typing import Optional
 
-import anthropic
-
 from app.config import settings
+from app.services.ai_client import ai_complete
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +33,8 @@ VALID_INTENTS = [
     "library_query",  # Consulta biblioteca (empréstimo, renovação, multa)
     "financial_negotiation",  # Negociação de débitos
     "certificate_request",  # Solicitar certificados
+    "slide_generate",  # Professor solicita criação de slides/apresentação
+    "slide_update",  # Professor solicita atualização de slides existentes
     "unknown",  # Intenção não reconhecida
 ]
 
@@ -44,7 +45,8 @@ grade_query, attendance_query, schedule_query, boleto_query, enrollment_query,
 payslip_query, vacation_query, time_record_query, hr_request, faq, human_handoff,
 greeting, verification, generate_boleto, enrollment_request, document_request,
 class_enrollment, grade_appeal, transfer_request, scholarship_query, internship_query,
-event_registration, library_query, financial_negotiation, certificate_request, unknown
+event_registration, library_query, financial_negotiation, certificate_request,
+slide_generate, slide_update, unknown
 
 Responda APENAS com um JSON no formato: {"intent": "nome_da_intencao", "entities": {}}
 Para entities, extraia dados relevantes como: subject (matéria), period (período), month (mês), type (tipo), amount (valor).
@@ -53,35 +55,34 @@ Não adicione explicações."""
 
 async def classify_intent(message: str, context_type: Optional[str] = None) -> dict:
     """
-    Classifica a intenção da mensagem usando Claude.
+    Classifica a intenção da mensagem usando o provider de IA configurado.
     Retorna: {"intent": str, "entities": dict}
     """
-    client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
-
     context_hint = ""
     if context_type == "student":
         context_hint = "\nContexto: usuário é um aluno."
     elif context_type == "employee":
         context_hint = "\nContexto: usuário é um funcionário/RH."
+    elif context_type == "teacher":
+        context_hint = "\nContexto: usuário é um professor. Se pedir para criar/gerar slides ou apresentação, use slide_generate. Se pedir para atualizar/modificar slides existentes, use slide_update."
 
     try:
-        response = await client.messages.create(
-            model=settings.CLAUDE_MODEL,
-            max_tokens=settings.CLAUDE_CLASSIFIER_MAX_TOKENS,
+        result = await ai_complete(
             system=CLASSIFIER_SYSTEM_PROMPT + context_hint,
-            messages=[{"role": "user", "content": message}],
+            message=message,
+            max_tokens=settings.CLAUDE_CLASSIFIER_MAX_TOKENS,
         )
 
-        raw = response.content[0].text.strip()
+        raw = result.text
 
         # Extrai JSON da resposta
         if "{" in raw:
             json_str = raw[raw.index("{") : raw.rindex("}") + 1]
-            result = json.loads(json_str)
-            intent = result.get("intent", "unknown")
+            parsed = json.loads(json_str)
+            intent = parsed.get("intent", "unknown")
             if intent not in VALID_INTENTS:
                 intent = "unknown"
-            return {"intent": intent, "entities": result.get("entities", {})}
+            return {"intent": intent, "entities": parsed.get("entities", {})}
 
     except Exception as e:
         logger.warning("Erro ao classificar intenção: %s", e)

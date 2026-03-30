@@ -9,6 +9,7 @@ from app.models.notification import MessageTemplate, ScheduledNotification
 from app.models.satisfaction import OnboardingSession, SatisfactionSurvey
 from app.models.schedule import ClassSchedule
 from app.models.service_request import ServiceRequest
+from app.models.slide import SlideGenerationLog, SlidePresentation, SlideTemplate
 from app.models.student import AttendanceRecord, Grade, Student
 from app.models.tenant import Tenant, TenantSettings
 from app.models.ticket import Ticket, TicketComment
@@ -48,4 +49,7 @@ __all__ = [
     "ServiceRequest",
     "SatisfactionSurvey",
     "OnboardingSession",
+    "SlideTemplate",
+    "SlidePresentation",
+    "SlideGenerationLog",
 ]

@@ -24,6 +24,8 @@ from app.models.notification import MessageTemplate, ScheduledNotification  # no
 from app.models.satisfaction import OnboardingSession, SatisfactionSurvey  # noqa: F401
 from app.models.service_request import ServiceRequest  # noqa: F401
 from app.models.ticket_learning import TicketResolution  # noqa: F401
+from app.models.webhook import WebhookEndpoint, WebhookDelivery  # noqa: F401
+from app.models.slide import SlideTemplate, SlidePresentation, SlideGenerationLog  # noqa: F401
 from app.config import settings
 
 config = context.config
@@ -34,7 +36,7 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 # Sobrescreve a URL do banco com a variável de ambiente
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("+asyncpg", ""))
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 
 def run_migrations_offline() -> None:

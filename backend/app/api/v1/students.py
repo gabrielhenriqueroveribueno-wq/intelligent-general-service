@@ -8,6 +8,7 @@ from app.dependencies import get_db, get_tenant_id, require_roles
 from app.schemas.student import (
     AttendanceResponse,
     BoletoResponse,
+    ClassScheduleResponse,
     GradeResponse,
     StudentListResponse,
     StudentResponse,
@@ -69,6 +70,19 @@ async def get_student_attendance(
 ):
     records = await student_service.get_attendance(db, tenant_id, student_id, period)
     return [AttendanceResponse.model_validate(r) for r in records]
+
+
+@router.get("/schedules/{course}/{semester}", response_model=list[ClassScheduleResponse])
+async def get_class_schedule(
+    course: str,
+    semester: int,
+    db: AsyncSession = Depends(get_db),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
+    _=Depends(require_roles("super_admin", "admin", "manager", "agent")),
+    period: str = Query(default="2026.1"),
+):
+    schedules = await student_service.get_schedule(db, tenant_id, course, semester, period)
+    return [ClassScheduleResponse.model_validate(s) for s in schedules]
 
 
 @router.get("/{student_id}/boletos", response_model=list[BoletoResponse])

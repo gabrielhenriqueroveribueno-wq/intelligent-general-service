@@ -1,9 +1,7 @@
 import logging
 from typing import Any, Dict, Optional
 
-import anthropic
-
-from app.config import settings
+from app.services.ai_client import ai_complete
 
 logger = logging.getLogger(__name__)
 
@@ -44,12 +42,9 @@ async def generate_response(
     similar_resolutions: Optional[list] = None,
 ) -> tuple[str, int]:
     """
-    Gera uma resposta inteligente usando Claude.
+    Gera uma resposta inteligente usando o provider de IA configurado.
     Retorna: (resposta, tokens_usados)
     """
-    effective_api_key = api_key or settings.ANTHROPIC_API_KEY
-    client = anthropic.AsyncAnthropic(api_key=effective_api_key)
-
     # Formata contexto de dados
     data_str = _format_data_context(intent, data_context)
 
@@ -71,19 +66,18 @@ async def generate_response(
     )
 
     try:
-        response = await client.messages.create(
-            model=settings.CLAUDE_MODEL,
-            max_tokens=settings.CLAUDE_MAX_TOKENS,
+        from app.config import settings
+
+        result = await ai_complete(
             system=system,
-            messages=[{"role": "user", "content": message}],
+            message=message,
+            max_tokens=settings.CLAUDE_MAX_TOKENS,
+            api_key=api_key,
         )
+        return result.text, result.tokens_used
 
-        text = response.content[0].text.strip()
-        tokens = response.usage.input_tokens + response.usage.output_tokens
-        return text, tokens
-
-    except anthropic.APIError as e:
-        logger.error("Erro na API Claude: %s", e)
+    except Exception as e:
+        logger.error("Erro na API de IA: %s", e)
         return (
             "Desculpe, estou com dificuldades técnicas no momento. "
             "Tente novamente em alguns instantes ou fale com um atendente. 🙏",
@@ -132,6 +126,29 @@ def _format_data_context(intent: str, data: Dict[str, Any]) -> str:
         lines.append(f"- Dias disponíveis: {v.get('remaining_days', 0)}")
         lines.append(f"- Dias usados: {v.get('used_days', 0)}")
         lines.append(f"- Prazo limite: {v.get('deadline_date', 'N/A')}")
+    elif intent == "schedule_query" and "schedules" in data:
+        lines.append("=== GRADE HORÁRIA ===")
+        for s in data["schedules"]:
+            lines.append(
+                f"- {s['day']}: {s['subject_name']} — "
+                f"{s['start_time']}-{s['end_time']} — "
+                f"Sala: {s.get('room', 'N/A')} — Prof: {s.get('professor', 'N/A')}"
+            )
+    elif intent == "time_record_query" and "time_records" in data:
+        lines.append("=== REGISTROS DE PONTO ===")
+        for r in data["time_records"]:
+            lines.append(
+                f"- {r['date']}: {r['clock_in']}→{r['clock_out']} "
+                f"({r['total_hours']}h) [{r['status']}]"
+            )
+    elif intent == "hr_request" and "hr_requests" in data:
+        lines.append("=== SOLICITAÇÕES RH ===")
+        for r in data["hr_requests"]:
+            lines.append(
+                f"- {r['type']}: {r.get('description', '')[:100]} [{r['status']}]"
+            )
+            if r.get("response"):
+                lines.append(f"  → Resposta: {r['response'][:150]}")
     elif "student" in data:
         s = data["student"]
         lines.append("=== DADOS DO ALUNO ===")

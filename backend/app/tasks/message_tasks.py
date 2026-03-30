@@ -231,6 +231,23 @@ async def _process_message_async(message_id: str):
                     }
                     for b in boletos[:3]
                 ]
+            elif intent == "schedule_query":
+                student = await student_service.get_student_by_id(db, tenant_id, student_id)
+                schedules = await student_service.get_schedule(
+                    db, tenant_id, student.course, student.semester, "2026.1"
+                )
+                days = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
+                data_context["schedules"] = [
+                    {
+                        "day": days[s.day_of_week] if s.day_of_week < len(days) else str(s.day_of_week),
+                        "subject_name": s.subject_name,
+                        "start_time": str(s.start_time)[:5] if s.start_time else "",
+                        "end_time": str(s.end_time)[:5] if s.end_time else "",
+                        "room": s.room,
+                        "professor": s.professor,
+                    }
+                    for s in schedules
+                ]
 
         elif contact.contact_type == "employee" and contact.employee_id:
             emp_id = contact.employee_id
@@ -255,6 +272,29 @@ async def _process_message_async(message_id: str):
                         if vacation.deadline_date
                         else None,
                     }
+            elif intent == "time_record_query":
+                records = await employee_service.get_time_records(db, tenant_id, emp_id)
+                data_context["time_records"] = [
+                    {
+                        "date": str(r.record_date) if r.record_date else "",
+                        "clock_in": str(r.clock_in.strftime("%H:%M")) if r.clock_in else "",
+                        "clock_out": str(r.clock_out.strftime("%H:%M")) if r.clock_out else "",
+                        "total_hours": float(r.total_hours) if r.total_hours else 0,
+                        "status": r.status,
+                    }
+                    for r in records[:10]
+                ]
+            elif intent == "hr_request":
+                requests = await employee_service.get_hr_requests(db, tenant_id, emp_id)
+                data_context["hr_requests"] = [
+                    {
+                        "type": r.request_type,
+                        "description": r.description,
+                        "status": r.status,
+                        "response": r.response_text,
+                    }
+                    for r in requests[:5]
+                ]
 
         # ── 4b. Execução de ações (intents de ação) ─────────────────────
         action_result = None

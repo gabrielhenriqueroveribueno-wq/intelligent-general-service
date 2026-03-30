@@ -60,6 +60,20 @@ class HRRequestResponse(BaseModel):
         from_attributes = True
 
 
+class TimeRecordResponse(BaseModel):
+    id: uuid.UUID
+    record_date: Optional[object]
+    clock_in: Optional[object]
+    clock_out: Optional[object]
+    break_start: Optional[object]
+    break_end: Optional[object]
+    total_hours: Optional[Decimal]
+    status: str
+
+    class Config:
+        from_attributes = True
+
+
 class EmployeeListResponse(BaseModel):
     items: List[EmployeeResponse]
     total: int

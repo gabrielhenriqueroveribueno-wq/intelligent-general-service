@@ -29,6 +29,10 @@ ENV/
 # Docker
 docker-compose.override.yml
 
+# Celery
+celerybeat-schedule
+celerybeat-schedule.db
+
 # Logs
 *.log
 logs/

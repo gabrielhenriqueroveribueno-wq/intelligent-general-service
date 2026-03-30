@@ -12,6 +12,7 @@ from app.schemas.employee import (
     HRRequestCreate,
     HRRequestResponse,
     PayslipResponse,
+    TimeRecordResponse,
     VacationBalanceResponse,
 )
 from app.services import employee_service
@@ -74,6 +75,18 @@ async def get_vacation(
     if vacation:
         return VacationBalanceResponse.model_validate(vacation)
     return None
+
+
+@router.get("/{employee_id}/time-records", response_model=list[TimeRecordResponse])
+async def get_time_records(
+    employee_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
+    _=Depends(require_roles("super_admin", "admin", "manager", "agent")),
+    month: Optional[str] = Query(default=None),
+):
+    records = await employee_service.get_time_records(db, tenant_id, employee_id, month)
+    return [TimeRecordResponse.model_validate(r) for r in records]
 
 
 @router.get("/{employee_id}/requests", response_model=list[HRRequestResponse])

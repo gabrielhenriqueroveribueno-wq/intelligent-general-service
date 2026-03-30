@@ -34,7 +34,7 @@ async def whatsapp_verify(
     """Verificação do webhook pela Meta."""
     if hub_mode == "subscribe" and hub_verify_token == settings.WHATSAPP_VERIFY_TOKEN:
         logger.info("Webhook WhatsApp verificado com sucesso")
-        return int(hub_challenge)
+        return int(hub_challenge) if hub_challenge.isdigit() else hub_challenge
     raise HTTPException(status_code=403, detail="Verificação falhou")
 
 

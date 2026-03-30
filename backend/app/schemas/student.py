@@ -58,6 +58,23 @@ class BoletoResponse(BaseModel):
         from_attributes = True
 
 
+class ClassScheduleResponse(BaseModel):
+    id: uuid.UUID
+    course: str
+    semester: Optional[int]
+    subject_name: str
+    subject_code: Optional[str]
+    day_of_week: int
+    start_time: Optional[object]
+    end_time: Optional[object]
+    room: Optional[str]
+    professor: Optional[str]
+    academic_period: str
+
+    class Config:
+        from_attributes = True
+
+
 class StudentListResponse(BaseModel):
     items: List[StudentResponse]
     total: int

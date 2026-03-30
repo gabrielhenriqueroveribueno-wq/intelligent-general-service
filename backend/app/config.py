@@ -35,9 +35,14 @@ class Settings(BaseSettings):
     WHATSAPP_VERIFY_TOKEN: str = "igs-verify-token"
     WHATSAPP_API_URL: str = "https://graph.facebook.com/v20.0"
 
-    # Claude API
+    # AI Provider (anthropic, gemini or groq)
+    AI_PROVIDER: str = "groq"
     ANTHROPIC_API_KEY: str = ""
+    GOOGLE_API_KEY: str = ""
+    GROQ_API_KEY: str = ""
     CLAUDE_MODEL: str = "claude-opus-4-6"
+    GEMINI_MODEL: str = "gemini-2.0-flash"
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
     CLAUDE_MAX_TOKENS: int = 1024
     CLAUDE_CLASSIFIER_MAX_TOKENS: int = 50
 

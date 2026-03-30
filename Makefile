@@ -1,4 +1,4 @@
-.PHONY: help up down build restart logs shell migrate seed test lint format backup ssl
+.PHONY: help up down build restart logs shell migrate seed seed-demo test lint format backup ssl
 
 # Exibe ajuda
 help:
@@ -13,6 +13,7 @@ help:
 	@echo "  make shell      - Abre shell no container da API"
 	@echo "  make migrate    - Executa migrações do banco de dados"
 	@echo "  make seed       - Popula o banco com dados iniciais"
+	@echo "  make seed-demo  - Popula com dados completos para demo/pitch"
 	@echo "  make test       - Executa os testes"
 	@echo "  make lint       - Executa linting (ruff)"
 	@echo "  make format     - Formata o código (ruff format)"
@@ -48,6 +49,9 @@ migrate-create:
 
 seed:
 	docker compose exec api python scripts/seed_db.py
+
+seed-demo:
+	docker compose exec api python scripts/seed_demo.py
 
 test:
 	docker compose exec api pytest app/tests/ -v
