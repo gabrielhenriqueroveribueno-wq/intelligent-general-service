@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **IMPORTANTE:** Leia `docs/CONTEXT.md` para o historico completo do projeto,
+> decisoes tomadas, estado atual e proximos passos. Esse arquivo e mantido
+> atualizado para que o contexto nao se perca entre conversas.
+
 ## Project Overview
 
 **IGS — Intelligent General Service**
