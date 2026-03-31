@@ -17,6 +17,7 @@ import MetricsDashboard from './pages/MetricsDashboard'
 import LearningInsights from './pages/LearningInsights'
 import UserManagement from './pages/UserManagement'
 import Settings from './pages/Settings'
+import Slides from './pages/Slides'
 
 export default function App() {
   return (
@@ -44,6 +45,7 @@ export default function App() {
           <Route path="reports" element={<Reports />} />
           <Route path="metrics" element={<MetricsDashboard />} />
           <Route path="learning" element={<LearningInsights />} />
+          <Route path="slides" element={<Slides />} />
           <Route path="users" element={<UserManagement />} />
           <Route path="settings" element={<Settings />} />
         </Route>

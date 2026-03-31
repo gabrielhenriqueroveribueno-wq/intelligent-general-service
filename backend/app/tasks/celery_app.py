@@ -38,6 +38,16 @@ celery_app.conf.update(
             "task": "app.tasks.notification_tasks.send_boleto_reminders_task",
             "schedule": crontab(hour=9, minute=0),
         },
+        # Alertas de frequência — todo dia às 10h
+        "send-attendance-alerts": {
+            "task": "app.tasks.notification_tasks.send_attendance_alerts_task",
+            "schedule": crontab(hour=10, minute=0),
+        },
+        # Notificações de notas — a cada 6 horas
+        "send-grade-notifications": {
+            "task": "app.tasks.notification_tasks.send_grade_notifications_task",
+            "schedule": crontab(hour="*/6", minute=30),
+        },
         # Backup semanal do banco — toda segunda-feira às 3h
         "weekly-db-backup": {
             "task": "app.tasks.backup_tasks.backup_database_task",

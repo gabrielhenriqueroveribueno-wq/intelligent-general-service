@@ -90,6 +90,7 @@ async def _process_message_async(message_id: str):
         knowledge_service,
         learning_service,
         metrics_service,
+        student_onboarding,
         student_service,
         task_executor,
         ticket_service,
@@ -155,6 +156,31 @@ async def _process_message_async(message_id: str):
 
         # ── 1. Verificação de identidade (primeiro contato) ────────────────
         if not contact.is_verified:
+            text_lower = (message.content or "").strip().lower()
+            onboarding_triggers = ("inscri", "cadastr", "novo aluno", "quero me matricular")
+            is_onboarding = any(t in text_lower for t in onboarding_triggers)
+
+            # Check if there's an active onboarding session
+            from app.models.satisfaction import OnboardingSession
+
+            ob_result = await db.execute(
+                select(OnboardingSession).where(
+                    OnboardingSession.tenant_id == tenant_id,
+                    OnboardingSession.contact_id == contact.id,
+                    OnboardingSession.status == "in_progress",
+                )
+            )
+            has_active_session = ob_result.scalar_one_or_none()
+
+            if is_onboarding or has_active_session:
+                reply = await student_onboarding.process_onboarding_step(
+                    db, tenant_id, contact.id, message.content or ""
+                )
+                await whatsapp_service.send_text_message(phone_id, token, to, reply)
+                _save_bot_message(db, conversation, reply, tenant_id)
+                await db.commit()
+                return
+
             await whatsapp_service.send_text_message(phone_id, token, to, WELCOME_MSG)
             _save_bot_message(db, conversation, WELCOME_MSG, tenant_id)
             await db.commit()
@@ -422,7 +448,26 @@ async def _process_message_async(message_id: str):
         await db.commit()
         logger.info("Mensagem %s processada em %.2fs (intent=%s)", message_id, elapsed, intent)
 
-        # ── 8. Notifica painel via WebSocket (Redis pub/sub) ──────────────
+        # ── 8. Dispatch webhook outbound ──────────────────────────────────
+        try:
+            from app.services.webhook_delivery_service import dispatch_event
+
+            await dispatch_event(
+                db,
+                tenant_id,
+                "message.processed",
+                {
+                    "conversation_id": str(conversation.id),
+                    "message_id": str(message.id),
+                    "intent": intent,
+                    "resolution_type": resolution_type,
+                    "contact_phone": contact.phone_number,
+                },
+            )
+        except Exception as _wh_exc:
+            logger.warning("Falha ao despachar webhook: %s", _wh_exc)
+
+        # ── 9. Notifica painel via WebSocket (Redis pub/sub) ──────────────
         try:
             import json as _json
 

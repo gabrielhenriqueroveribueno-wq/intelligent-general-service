@@ -129,6 +129,45 @@ async def send_template_message(
             return None
 
 
+async def send_document_message(
+    phone_number_id: str,
+    access_token: str,
+    to: str,
+    media_url: str,
+    filename: str,
+    caption: str = "",
+) -> Optional[str]:
+    """Envia documento (PDF, etc.) via WhatsApp Business Cloud API."""
+    url = f"{settings.WHATSAPP_API_URL}/{phone_number_id}/messages"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+    payload: dict = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": to,
+        "type": "document",
+        "document": {
+            "link": media_url,
+            "filename": filename,
+        },
+    }
+    if caption:
+        payload["document"]["caption"] = caption
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        try:
+            response = await client.post(url, json=payload, headers=headers)
+            response.raise_for_status()
+            msg_id = response.json().get("messages", [{}])[0].get("id")
+            logger.info("Documento '%s' enviado para %s: %s", filename, to, msg_id)
+            return msg_id
+        except Exception as e:
+            logger.error("Erro ao enviar documento: %s", e)
+            return None
+
+
 async def mark_message_read(phone_number_id: str, access_token: str, message_id: str) -> bool:
     """Marca mensagem como lida."""
     url = f"{settings.WHATSAPP_API_URL}/{phone_number_id}/messages"

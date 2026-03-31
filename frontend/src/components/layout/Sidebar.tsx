@@ -12,6 +12,7 @@ import {
   Bot,
   Brain,
   TrendingUp,
+  Presentation,
   X,
 } from 'lucide-react'
 import clsx from 'clsx'
@@ -23,6 +24,7 @@ const navItems = [
   { to: '/students', icon: GraduationCap, label: 'Alunos' },
   { to: '/employees', icon: Users, label: 'Funcionários' },
   { to: '/knowledge-base', icon: BookOpen, label: 'Base de Conhecimento' },
+  { to: '/slides', icon: Presentation, label: 'Slides IA' },
   { to: '/reports', icon: BarChart2, label: 'Relatórios' },
   { to: '/metrics', icon: TrendingUp, label: 'Métricas IA vs Humano' },
   { to: '/learning', icon: Brain, label: 'Aprendizado IA' },

@@ -119,6 +119,152 @@ async def _send_boleto_reminders_async():
         logger.info("Lembretes de boleto enviados: %d/%d", sent, len(boletos))
 
 
+@celery_app.task
+def send_attendance_alerts_task():
+    """Alerta alunos com frequência abaixo de 75% em alguma disciplina."""
+    asyncio.run(_send_attendance_alerts_async())
+
+
+@celery_app.task
+def send_grade_notifications_task():
+    """Notifica alunos quando novas notas são lançadas."""
+    asyncio.run(_send_grade_notifications_async())
+
+
+async def _send_attendance_alerts_async():
+    """Busca alunos com faltas acima de 25% e envia alerta via WhatsApp."""
+    from sqlalchemy import select
+
+    from app.dependencies import AsyncSessionLocal
+    from app.models.conversation import Contact
+    from app.models.student import AttendanceRecord, Student
+    from app.models.tenant import Tenant
+    from app.services import whatsapp_service
+
+    async with AsyncSessionLocal() as db:
+        # Busca registros de frequência com ausência >= 25%
+        records = await db.execute(
+            select(AttendanceRecord).where(AttendanceRecord.absence_pct >= 25.0)
+        )
+        alerts = records.scalars().all()
+        sent = 0
+
+        for record in alerts:
+            try:
+                student_result = await db.execute(
+                    select(Student).where(Student.id == record.student_id)
+                )
+                student = student_result.scalar_one_or_none()
+                if not student:
+                    continue
+
+                contact_result = await db.execute(
+                    select(Contact).where(
+                        Contact.tenant_id == student.tenant_id,
+                        Contact.student_id == student.id,
+                        Contact.is_verified,
+                    )
+                )
+                contact = contact_result.scalar_one_or_none()
+                if not contact:
+                    continue
+
+                tenant_result = await db.execute(
+                    select(Tenant).where(Tenant.id == student.tenant_id)
+                )
+                tenant = tenant_result.scalar_one_or_none()
+                if not tenant or not tenant.whatsapp_phone_number_id or not tenant.whatsapp_token:
+                    continue
+
+                msg = (
+                    f"Oi, {student.full_name.split()[0]}! "
+                    f"Sua frequencia em *{record.subject_name}* esta em "
+                    f"{100 - float(record.absence_pct):.0f}%. "
+                    f"Fique atento para nao ultrapassar o limite de faltas!"
+                )
+                await whatsapp_service.send_text_message(
+                    tenant.whatsapp_phone_number_id,
+                    tenant.whatsapp_token,
+                    contact.phone_number,
+                    msg,
+                )
+                sent += 1
+            except Exception as exc:
+                logger.error("Erro ao enviar alerta frequencia: %s", exc)
+
+        logger.info("Alertas de frequencia enviados: %d/%d", sent, len(alerts))
+
+
+async def _send_grade_notifications_async():
+    """Notifica alunos sobre notas recentemente lançadas (últimas 24h)."""
+    from datetime import datetime, timedelta, timezone
+
+    from sqlalchemy import select
+
+    from app.dependencies import AsyncSessionLocal
+    from app.models.conversation import Contact
+    from app.models.student import Grade, Student
+    from app.models.tenant import Tenant
+    from app.services import whatsapp_service
+
+    since = datetime.now(timezone.utc) - timedelta(hours=24)
+
+    async with AsyncSessionLocal() as db:
+        grades = await db.execute(
+            select(Grade).where(
+                Grade.created_at >= since,
+                Grade.grade_value.isnot(None),
+            )
+        )
+        new_grades = grades.scalars().all()
+        sent = 0
+
+        for grade in new_grades:
+            try:
+                student_result = await db.execute(
+                    select(Student).where(Student.id == grade.student_id)
+                )
+                student = student_result.scalar_one_or_none()
+                if not student:
+                    continue
+
+                contact_result = await db.execute(
+                    select(Contact).where(
+                        Contact.tenant_id == student.tenant_id,
+                        Contact.student_id == student.id,
+                        Contact.is_verified,
+                    )
+                )
+                contact = contact_result.scalar_one_or_none()
+                if not contact:
+                    continue
+
+                tenant_result = await db.execute(
+                    select(Tenant).where(Tenant.id == student.tenant_id)
+                )
+                tenant = tenant_result.scalar_one_or_none()
+                if not tenant or not tenant.whatsapp_phone_number_id or not tenant.whatsapp_token:
+                    continue
+
+                msg = (
+                    f"Oi, {student.full_name.split()[0]}! "
+                    f"Uma nova nota foi lancada: *{grade.subject_name}* — "
+                    f"{grade.grade_type}: *{grade.grade_value}*. "
+                    f"Acesse o sistema para mais detalhes."
+                )
+                await whatsapp_service.send_text_message(
+                    tenant.whatsapp_phone_number_id,
+                    tenant.whatsapp_token,
+                    contact.phone_number,
+                    msg,
+                )
+                sent += 1
+            except Exception as exc:
+                logger.error("Erro ao notificar nota: %s", exc)
+
+        logger.info("Notificacoes de notas enviadas: %d/%d", sent, len(new_grades))
+
+
 async def _check_sla_async():
     from app.dependencies import AsyncSessionLocal
     from app.services.sla_service import check_sla_breaches

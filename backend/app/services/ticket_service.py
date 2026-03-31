@@ -60,6 +60,26 @@ async def create_ticket(
     )
     db.add(ticket)
     await db.flush()
+
+    # Dispatch webhook event
+    try:
+        from app.services.webhook_delivery_service import dispatch_event
+
+        await dispatch_event(
+            db,
+            tenant_id,
+            "ticket.created",
+            {
+                "ticket_id": str(ticket.id),
+                "protocol": ticket.protocol_number,
+                "subject": ticket.subject,
+                "priority": ticket.priority,
+                "status": ticket.status,
+            },
+        )
+    except Exception:
+        pass  # webhook dispatch is best-effort
+
     return ticket
 
 

@@ -2,6 +2,8 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import Response
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_db, get_tenant_id, require_roles
@@ -95,3 +97,48 @@ async def get_student_boletos(
 ):
     boletos = await student_service.get_boletos(db, tenant_id, student_id, status)
     return [BoletoResponse.model_validate(b) for b in boletos]
+
+
+@router.get("/{student_id}/boletos/{boleto_id}/pdf")
+async def download_boleto_pdf(
+    student_id: uuid.UUID,
+    boleto_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
+    _=Depends(require_roles("super_admin", "admin", "manager", "agent")),
+):
+    """Gera e retorna PDF do boleto."""
+    from app.models.billing import Boleto
+    from app.services.boleto_pdf_service import generate_boleto_pdf
+
+    student = await student_service.get_student_by_id(db, tenant_id, student_id)
+    result = await db.execute(
+        select(Boleto).where(
+            Boleto.id == boleto_id,
+            Boleto.student_id == student_id,
+            Boleto.tenant_id == tenant_id,
+        )
+    )
+    boleto = result.scalar_one_or_none()
+    if not boleto:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=404, detail="Boleto nao encontrado")
+
+    pdf_bytes = generate_boleto_pdf(
+        student_name=student.full_name,
+        registration_number=student.registration_number,
+        course=student.course or "",
+        reference_month=boleto.reference_month,
+        amount=boleto.amount,
+        due_date=boleto.due_date,
+        barcode=boleto.barcode,
+    )
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="boleto_{boleto.reference_month}.pdf"'
+        },
+    )

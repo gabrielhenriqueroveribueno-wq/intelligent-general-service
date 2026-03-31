@@ -17,6 +17,12 @@ class DashboardOverview(BaseModel):
     open_tickets: int
     sla_breached_tickets: int
     active_agents: int
+    avg_satisfaction_score: float = 0.0
+    total_students: int = 0
+    total_employees: int = 0
+    total_messages_month: int = 0
+    ai_tokens_month: int = 0
+    estimated_cost_savings: float = 0.0
 
 
 class SLAMetrics(BaseModel):

@@ -85,6 +85,8 @@ backend/app/services/
   student_onboarding.py  — Autocadastro de aluno via WhatsApp
   webhook_delivery_service.py — Despacho de eventos com HMAC
   ws_manager.py          — WebSocket via Redis pub/sub
+  pptx_service.py        — Export de slides JSON para .pptx (python-pptx)
+  boleto_pdf_service.py  — Geracao de boleto em PDF (ReportLab)
 ```
 
 ### Backend API Routes (20 modulos)
@@ -267,7 +269,7 @@ Trigger: push de tag `v*` → SSH para servidor → `docker compose pull` + `ale
 - Sistema de aprendizado IA (TicketResolution)
 - Metricas IA vs Humano
 
-### Fase 3 — Slides + Demo (atual)
+### Fase 3 — Slides + Demo
 - Sistema de slides via IA (models, schemas, routes, service)
 - 2 intents novos: slide_generate, slide_update
 - Handlers de slides no task_executor (gerar/atualizar via WhatsApp)
@@ -276,17 +278,30 @@ Trigger: push de tag `v*` → SSH para servidor → `docker compose pull` + `ale
 - Seed completo para demo/pitch deck (seed_demo.py)
 - CI verde em todos os 3 jobs
 
+### Fase 4 — Completude para Pitch Deck (atual)
+- **PPTX Export:** python-pptx para gerar .pptx a partir do JSON de slides (pptx_service.py)
+- **Endpoint download:** GET /api/v1/slides/presentations/{id}/download retorna .pptx
+- **Pagina de Slides no Frontend:** Slides.tsx com listagem, preview, geracao via IA, download PPTX
+- **Dashboard KPIs expandidos:** satisfacao media, total alunos/funcionarios, mensagens/mes, tokens IA, economia estimada
+- **Boleto PDF:** boleto_pdf_service.py gera PDF via ReportLab; endpoint GET /students/{id}/boletos/{id}/pdf
+- **send_document_message:** nova funcao no whatsapp_service para envio de documentos via WhatsApp
+- **Notificacoes Proativas:** tasks de alerta de frequencia (diario 10h), notificacao de notas (a cada 6h), alem do lembrete de boleto ja existente
+- **Onboarding via WhatsApp:** integracao do student_onboarding.py no message_tasks.py; contatos nao verificados que pedem inscricao/cadastro entram no fluxo step-by-step
+- **Settings funcional:** API GET/PUT /tenants/settings/current; Settings.tsx com state management e chamadas API reais; salva bot_name, horarios, mensagens, chaves de integracao
+- **Relatorios PDF/Excel:** rows_to_pdf (ReportLab) e rows_to_excel (openpyxl) no report_service; endpoints /reports/{conversations,tickets}/{pdf,excel}
+- **Webhook Outbound funcional:** dispatch_event chamado ao criar ticket (ticket.created) e ao processar mensagem (message.processed); entrega via Celery com HMAC-SHA256
+
 ---
 
 ## 11. Proximos Passos Sugeridos
 
 1. **WhatsApp:** testar envio apos 48h do bloqueio de spam (~01/04/2026)
-2. **Slides:** adicionar export para PPTX (python-pptx) a partir do JSON
-3. **Frontend:** criar pagina de Slides no painel (listar/visualizar apresentacoes)
-4. **Onboarding:** fluxo completo de autocadastro de aluno via WhatsApp
-5. **Notificacoes proativas:** implementar envio de lembretes de boleto via templates HSM
-6. **Deploy:** configurar servidor de producao e primeiro deploy
-7. **Pitch Deck:** preparar demonstracao end-to-end com dados do seed_demo
+2. **Deploy:** configurar servidor de producao e primeiro deploy
+3. **Pitch Deck:** preparar demonstracao end-to-end com dados do seed_demo
+4. **Frontend Slides:** adicionar preview visual estilo PowerPoint (render HTML dos slides)
+5. **Notificacoes:** criar templates HSM na Meta para boleto_lembrete, frequencia_alerta
+6. **Relatorios agendados:** envio automatico de relatorios semanais via Celery Beat
+7. **Seguranca:** criptografar tokens do tenant em repouso (Fernet)
 
 ---
 

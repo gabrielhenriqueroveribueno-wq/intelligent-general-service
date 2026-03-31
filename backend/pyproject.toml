@@ -40,6 +40,8 @@ dependencies = [
     # Reports
     "reportlab==4.2.5",
     "openpyxl==3.1.5",
+    # Slides export
+    "python-pptx==1.0.2",
     # Utilities
     "python-dateutil==2.9.0",
     "pytz==2024.2",

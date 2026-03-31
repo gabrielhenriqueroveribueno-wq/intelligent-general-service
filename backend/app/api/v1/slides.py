@@ -9,6 +9,7 @@ import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +25,7 @@ from app.schemas.slide import (
     SlideTemplateUpdate,
     SlideUpdateRequest,
 )
+from app.services.pptx_service import generate_pptx
 from app.services.slide_service import generate_slides, update_slides
 
 logger = logging.getLogger(__name__)
@@ -217,6 +219,50 @@ async def get_presentation(
     if not presentation:
         raise HTTPException(status_code=404, detail="Apresentação não encontrada")
     return presentation
+
+
+@router.get("/presentations/{presentation_id}/download")
+async def download_presentation_pptx(
+    presentation_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_id: UUID = Depends(get_tenant_id),
+    user=Depends(require_roles("super_admin", "admin", "manager", "teacher")),
+):
+    """Exporta apresentação como arquivo .pptx."""
+    query = select(SlidePresentation).where(
+        SlidePresentation.id == presentation_id,
+        SlidePresentation.tenant_id == tenant_id,
+    )
+    if user.role == "teacher":
+        query = query.where(SlidePresentation.teacher_id == user.id)
+
+    result = await db.execute(query)
+    presentation = result.scalar_one_or_none()
+    if not presentation:
+        raise HTTPException(status_code=404, detail="Apresentação não encontrada")
+
+    # Busca template_rules se houver template associado
+    template_rules = None
+    if presentation.template_id:
+        tmpl_result = await db.execute(
+            select(SlideTemplate).where(SlideTemplate.id == presentation.template_id)
+        )
+        tmpl = tmpl_result.scalar_one_or_none()
+        if tmpl:
+            template_rules = tmpl.template_rules
+
+    pptx_bytes = generate_pptx(
+        title=presentation.title,
+        slides_content=presentation.slides_content,
+        template_rules=template_rules,
+    )
+
+    safe_name = presentation.title.replace(" ", "_")[:50]
+    return Response(
+        content=pptx_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        headers={"Content-Disposition": f'attachment; filename="{safe_name}.pptx"'},
+    )
 
 
 @router.patch("/presentations/{presentation_id}", response_model=SlidePresentationResponse)
