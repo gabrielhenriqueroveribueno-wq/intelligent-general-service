@@ -291,17 +291,28 @@ Trigger: push de tag `v*` → SSH para servidor → `docker compose pull` + `ale
 - **Relatorios PDF/Excel:** rows_to_pdf (ReportLab) e rows_to_excel (openpyxl) no report_service; endpoints /reports/{conversations,tickets}/{pdf,excel}
 - **Webhook Outbound funcional:** dispatch_event chamado ao criar ticket (ticket.created) e ao processar mensagem (message.processed); entrega via Celery com HMAC-SHA256
 
+### Fase 5 — Security Hardening (Enterprise)
+- **Row-Level Security (RLS):** migration Alembic (b7e2a9f3c1d8) habilita RLS em 32 tabelas tenant-scoped; 4 policies por tabela (SELECT/INSERT/UPDATE/DELETE) usando current_setting('app.current_tenant', true)
+- **Dual Database Roles:** igs_app (RLS-enforced, usado pela API FastAPI) e igs_worker (BYPASSRLS, usado pelo Celery para tarefas cross-tenant como SLA e notificacoes)
+- **dependencies.py reescrito:** dois engines (engine + worker_engine), dois session factories (AsyncSessionLocal + WorkerSessionLocal); _set_tenant_context() injeta tenant_id via set_config no PostgreSQL antes de cada query
+- **Celery tasks migrados:** dlq_tasks, message_tasks, notification_tasks, report_tasks, webhook_tasks usam WorkerSessionLocal (BYPASSRLS) em vez de AsyncSessionLocal
+- **config.py:** adicionados RLS_ENABLED (bool), RLS_APP_PASSWORD, RLS_WORKER_PASSWORD
+- **Docker hardening (docker-compose.prod.yml):** PostgreSQL e Redis com ZERO portas publicadas (expose only); Redis com --requirepass, comandos perigosos renomeados/desabilitados (FLUSHDB, FLUSHALL, DEBUG); Tailscale sidecar para acesso admin remoto via VPN; Nginx como unico servico public-facing (80/443); Certbot para renovacao SSL automatica; resource limits em todos os containers
+- **PostgreSQL hardening:** pg_hba.conf com SCRAM-SHA-256, acesso restrito a redes Docker internas (172.16.0.0/12, 10.0.0.0/8), reject total para IPs externos; postgresql.conf com row_security=on, logging de DDL e queries lentas >1s
+- **Cloudflare WAF (3 regras free tier):** Regra 1 bloqueia SQLi/XSS em /api/ (exceto webhook para evitar falso-positivo da Meta); Regra 2 rate-limit + challenge no POST /auth/login (10 req/min/IP); Regra 3 whitelist de IPs Meta (AS32934) no webhook WhatsApp
+- **Novos arquivos:** infra/pg_hba.conf, infra/postgresql.conf, infra/cloudflare-waf-rules.md, .env.prod.example
+
 ---
 
 ## 11. Proximos Passos Sugeridos
 
 1. **WhatsApp:** testar envio apos 48h do bloqueio de spam (~01/04/2026)
-2. **Deploy:** configurar servidor de producao e primeiro deploy
+2. **Deploy:** configurar servidor de producao e primeiro deploy com docker-compose.prod.yml
 3. **Pitch Deck:** preparar demonstracao end-to-end com dados do seed_demo
 4. **Frontend Slides:** adicionar preview visual estilo PowerPoint (render HTML dos slides)
 5. **Notificacoes:** criar templates HSM na Meta para boleto_lembrete, frequencia_alerta
 6. **Relatorios agendados:** envio automatico de relatorios semanais via Celery Beat
-7. **Seguranca:** criptografar tokens do tenant em repouso (Fernet)
+7. **Seguranca adicional:** criptografar tokens do tenant em repouso (Fernet), audit logging de acessos RLS
 
 ---
 

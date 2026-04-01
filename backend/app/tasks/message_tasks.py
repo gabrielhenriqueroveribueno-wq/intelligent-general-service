@@ -75,7 +75,7 @@ def _persist_failed_task(task, message_id: str, exc: Exception):
 async def _process_message_async(message_id: str):
     from sqlalchemy import select, update
 
-    from app.dependencies import AsyncSessionLocal
+    from app.dependencies import WorkerSessionLocal as AsyncSessionLocal
     from app.middleware.metrics_middleware import (
         ai_tokens_used_total,
         messages_processed_total,

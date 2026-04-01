@@ -49,6 +49,11 @@ class Settings(BaseSettings):
     # Encryption (Fernet key for CPF, tokens)
     ENCRYPTION_KEY: str = ""
 
+    # Row-Level Security
+    RLS_ENABLED: bool = False  # Set True in production after running RLS migration
+    RLS_APP_PASSWORD: str = "igs_app_secure_2026"
+    RLS_WORKER_PASSWORD: str = "igs_worker_secure_2026"
+
     # CORS
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
 

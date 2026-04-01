@@ -27,7 +27,7 @@ async def _send_boleto_reminders_async():
 
     from sqlalchemy import select
 
-    from app.dependencies import AsyncSessionLocal
+    from app.dependencies import WorkerSessionLocal as AsyncSessionLocal
     from app.models.billing import Boleto
     from app.models.conversation import Contact
     from app.models.notification import MessageTemplate
@@ -135,7 +135,7 @@ async def _send_attendance_alerts_async():
     """Busca alunos com faltas acima de 25% e envia alerta via WhatsApp."""
     from sqlalchemy import select
 
-    from app.dependencies import AsyncSessionLocal
+    from app.dependencies import WorkerSessionLocal as AsyncSessionLocal
     from app.models.conversation import Contact
     from app.models.student import AttendanceRecord, Student
     from app.models.tenant import Tenant
@@ -201,7 +201,7 @@ async def _send_grade_notifications_async():
 
     from sqlalchemy import select
 
-    from app.dependencies import AsyncSessionLocal
+    from app.dependencies import WorkerSessionLocal as AsyncSessionLocal
     from app.models.conversation import Contact
     from app.models.student import Grade, Student
     from app.models.tenant import Tenant
@@ -266,7 +266,7 @@ async def _send_grade_notifications_async():
 
 
 async def _check_sla_async():
-    from app.dependencies import AsyncSessionLocal
+    from app.dependencies import WorkerSessionLocal as AsyncSessionLocal
     from app.services.sla_service import check_sla_breaches
 
     async with AsyncSessionLocal() as db:

@@ -23,7 +23,7 @@ def deliver_webhook_task(self, delivery_id: str) -> None:
 
 
 async def _deliver(task, delivery_id: uuid.UUID) -> None:
-    from app.dependencies import AsyncSessionLocal
+    from app.dependencies import WorkerSessionLocal as AsyncSessionLocal
     from app.services.webhook_delivery_service import send_delivery
 
     async with AsyncSessionLocal() as db:

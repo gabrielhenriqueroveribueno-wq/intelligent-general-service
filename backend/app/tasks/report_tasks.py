@@ -27,7 +27,7 @@ async def _generate_report(
     start_date: datetime,
     end_date: datetime,
 ) -> str:
-    from app.dependencies import AsyncSessionLocal
+    from app.dependencies import WorkerSessionLocal as AsyncSessionLocal
     from app.services.report_service import get_conversation_report, get_ticket_report, rows_to_csv
 
     async with AsyncSessionLocal() as db:
