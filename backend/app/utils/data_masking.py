@@ -11,31 +11,21 @@ from typing import Optional
 # ── Padrões Regex ────────────────────────────────────────────────────────────
 
 # CPF: 123.456.789-00 ou 12345678900
-_CPF_PATTERN = re.compile(
-    r"\b(\d{3})[.\s]?(\d{3})[.\s]?(\d{3})[-.\s]?(\d{2})\b"
-)
+_CPF_PATTERN = re.compile(r"\b(\d{3})[.\s]?(\d{3})[.\s]?(\d{3})[-.\s]?(\d{2})\b")
 
 # E-mail: user@domain.com
-_EMAIL_PATTERN = re.compile(
-    r"\b([a-zA-Z0-9._%+-]+)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b"
-)
+_EMAIL_PATTERN = re.compile(r"\b([a-zA-Z0-9._%+-]+)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b")
 
 # Telefone BR: +55 11 91234-5678, (11) 91234-5678, 11912345678, etc.
 _PHONE_PATTERN = re.compile(
-    r"(?:\+55\s?)?"
-    r"(?:\(?\d{2}\)?\s?)"
-    r"(?:9\s?\d{4}[-.\s]?\d{4}|\d{4}[-.\s]?\d{4})\b"
+    r"(?:\+55\s?)?" r"(?:\(?\d{2}\)?\s?)" r"(?:9\s?\d{4}[-.\s]?\d{4}|\d{4}[-.\s]?\d{4})\b"
 )
 
 # Cartão de crédito: 4 grupos de 4 dígitos (com ou sem separadores)
-_CARD_PATTERN = re.compile(
-    r"\b(\d{4})[-.\s]?(\d{4})[-.\s]?(\d{4})[-.\s]?(\d{4})\b"
-)
+_CARD_PATTERN = re.compile(r"\b(\d{4})[-.\s]?(\d{4})[-.\s]?(\d{4})[-.\s]?(\d{4})\b")
 
 # RG: 12.345.678-9 ou 123456789
-_RG_PATTERN = re.compile(
-    r"\b(\d{2})[.]?(\d{3})[.]?(\d{3})[-]?(\d{1})\b"
-)
+_RG_PATTERN = re.compile(r"\b(\d{2})[.]?(\d{3})[.]?(\d{3})[-]?(\d{1})\b")
 
 
 def mask_cpf(text: str) -> str:

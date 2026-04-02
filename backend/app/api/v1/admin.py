@@ -9,7 +9,7 @@ from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_db, get_current_user, require_roles
+from app.dependencies import get_db, require_roles
 from app.models.audit import FailedTask
 from app.utils.exceptions import NotFoundError
 

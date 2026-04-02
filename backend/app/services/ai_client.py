@@ -16,7 +16,7 @@ Uso:
 
 import logging
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 from tenacity import (

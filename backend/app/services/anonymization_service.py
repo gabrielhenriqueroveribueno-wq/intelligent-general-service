@@ -132,9 +132,7 @@ async def anonymize_student(
 
             # Limpa metadata das conversas
             await db.execute(
-                update(Conversation)
-                .where(Conversation.id.in_(conv_ids))
-                .values(metadata_=None)
+                update(Conversation).where(Conversation.id.in_(conv_ids)).values(metadata_=None)
             )
             stats["conversations"] = len(conv_ids)
 
@@ -284,9 +282,7 @@ async def anonymize_employee(
             stats["messages"] = msg_update.rowcount or 0
 
             await db.execute(
-                update(Conversation)
-                .where(Conversation.id.in_(conv_ids))
-                .values(metadata_=None)
+                update(Conversation).where(Conversation.id.in_(conv_ids)).values(metadata_=None)
             )
             stats["conversations"] = len(conv_ids)
 
