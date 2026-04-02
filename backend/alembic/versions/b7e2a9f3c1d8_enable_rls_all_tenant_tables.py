@@ -31,7 +31,6 @@ RLS_TABLES = [
     "conversations",
     "messages",
     "tickets",
-    "ticket_comments",
     "kb_categories",
     "kb_articles",
     "slide_templates",
@@ -50,7 +49,6 @@ RLS_TABLES = [
     "sla_configs",
     "webhook_endpoints",
     "webhook_deliveries",
-    "tenant_settings",
 ]
 
 

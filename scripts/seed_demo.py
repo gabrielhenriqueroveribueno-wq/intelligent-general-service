@@ -1040,19 +1040,19 @@ async def seed_demo():
             TicketResolution(
                 tenant_id=tenant_id,
                 ticket_id=all_tickets[2].id,
+                problem_category="billing",
                 problem_description="Aluno reportou boleto duplicado para o mesmo mês de referência",
                 resolution_description="Identificado boleto duplicado no sistema. Cancelado o boleto mais recente e mantido o original. Aluno confirmou resolução.",
-                resolved_by=agent2.id,
-                intent="boleto_query",
+                resolution_type="human",
                 satisfaction_score=5,
             ),
             TicketResolution(
                 tenant_id=tenant_id,
                 ticket_id=all_tickets[3].id,
+                problem_category="hr_documents",
                 problem_description="Funcionária solicitou declaração de vínculo empregatício para financiamento imobiliário",
                 resolution_description="Declaração gerada pelo sistema de RH com dados atualizados. Enviada por e-mail e cópia física entregue na secretaria.",
-                resolved_by=agent1.id,
-                intent="document_request",
+                resolution_type="human",
                 satisfaction_score=5,
             ),
         ]
