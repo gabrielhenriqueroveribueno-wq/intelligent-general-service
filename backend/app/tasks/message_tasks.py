@@ -496,12 +496,13 @@ async def _process_message_async(message_id: str):
 
 def _save_bot_message(db, conversation, content: str, tenant_id, whatsapp_msg_id=None):
     from app.models.conversation import Message
+    from app.utils.data_masking import mask_pii
 
     msg = Message(
         tenant_id=tenant_id,
         conversation_id=conversation.id,
         sender_type="bot",
-        content=content,
+        content=mask_pii(content),
         whatsapp_msg_id=whatsapp_msg_id,
     )
     db.add(msg)

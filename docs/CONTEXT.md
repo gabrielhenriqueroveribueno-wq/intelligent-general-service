@@ -87,6 +87,7 @@ backend/app/services/
   ws_manager.py          — WebSocket via Redis pub/sub
   pptx_service.py        — Export de slides JSON para .pptx (python-pptx)
   boleto_pdf_service.py  — Geracao de boleto em PDF (ReportLab)
+  anonymization_service.py — LGPD: anonimizacao de alunos/funcionarios (direito ao esquecimento)
 ```
 
 ### Backend API Routes (20 modulos)
@@ -301,6 +302,14 @@ Trigger: push de tag `v*` → SSH para servidor → `docker compose pull` + `ale
 - **PostgreSQL hardening:** pg_hba.conf com SCRAM-SHA-256, acesso restrito a redes Docker internas (172.16.0.0/12, 10.0.0.0/8), reject total para IPs externos; postgresql.conf com row_security=on, logging de DDL e queries lentas >1s
 - **Cloudflare WAF (3 regras free tier):** Regra 1 bloqueia SQLi/XSS em /api/ (exceto webhook para evitar falso-positivo da Meta); Regra 2 rate-limit + challenge no POST /auth/login (10 req/min/IP); Regra 3 whitelist de IPs Meta (AS32934) no webhook WhatsApp
 - **Novos arquivos:** infra/pg_hba.conf, infra/postgresql.conf, infra/cloudflare-waf-rules.md, .env.prod.example
+
+### Fase 6 — LGPD + Resiliencia IA
+- **Data Masking (LGPD):** utils/data_masking.py com funcoes mask_cpf, mask_email, mask_phone, mask_credit_card, mask_pii; integrado no webhook (salvamento de mensagens do usuario) e em _save_bot_message (respostas do bot); todas as mensagens salvas no banco ja tem PII mascarado
+- **Direito ao Esquecimento (LGPD Art. 18):** services/anonymization_service.py com anonymize_student() e anonymize_employee(); substitui PII por hashes irreversiveis mantendo integridade referencial; anonimiza student/employee, contacts, messages (sender_type=user), boletos, hr_requests, payslips; registra audit log com detalhes da operacao
+- **Endpoints de anonimizacao:** POST /api/v1/admin/lgpd/anonymize/student/{id} e /employee/{id}; requer role super_admin ou admin; recebe motivo da solicitacao
+- **Circuit Breaker (ai_client.py):** tenacity retry (2 tentativas com backoff exponencial) em cada provider; CircuitState por provider (threshold=3 falhas, recovery=60s); fallback automatico entre providers (groq→gemini→anthropic); detecta timeout, 429, 500/502/503; AIResponse agora inclui provider_used para rastreabilidade
+- **Novos arquivos:** utils/data_masking.py, services/anonymization_service.py
+- **Dependencia adicionada:** tenacity==9.0.0
 
 ---
 

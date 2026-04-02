@@ -18,6 +18,7 @@ from app.dependencies import get_db
 from app.models.conversation import Contact, Conversation, Message
 from app.models.tenant import Tenant
 from app.tasks.message_tasks import process_incoming_message
+from app.utils.data_masking import mask_pii
 from app.utils.whatsapp_crypto import verify_webhook_signature
 
 logger = logging.getLogger(__name__)
@@ -173,12 +174,12 @@ async def _handle_incoming_message(
         db.add(conversation)
         await db.flush()
 
-    # Persiste a mensagem do usuário
+    # Persiste a mensagem do usuário (com PII mascarado — LGPD)
     message = Message(
         tenant_id=tenant_id,
         conversation_id=conversation.id,
         sender_type="user",
-        content=text_body,
+        content=mask_pii(text_body),
         message_type=msg_type if msg_type in ("image", "document", "audio", "video") else "text",
         whatsapp_msg_id=whatsapp_msg_id,
         whatsapp_media_id=media_id,

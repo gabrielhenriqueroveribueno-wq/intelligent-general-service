@@ -5,11 +5,11 @@ Endpoints administrativos (super_admin apenas).
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_db, require_roles
+from app.dependencies import get_db, get_current_user, require_roles
 from app.models.audit import FailedTask
 from app.utils.exceptions import NotFoundError
 
@@ -72,3 +72,46 @@ async def retry_failed_task(
     _retry.delay(str(task_id))
 
     return {"message": "Tarefa reenfileirada para reprocessamento", "task_id": str(task_id)}
+
+
+# ── LGPD: Direito ao Esquecimento ────────────────────────────────────────────
+
+
+@router.post("/lgpd/anonymize/student/{student_id}")
+async def anonymize_student_endpoint(
+    student_id: uuid.UUID,
+    reason: str = Body(default="Solicitação do titular (Art. 18, LGPD)"),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_roles("super_admin", "admin")),
+):
+    """Anonimiza todos os dados PII de um aluno (LGPD Art. 18 — Direito ao Esquecimento)."""
+    from app.services.anonymization_service import anonymize_student
+
+    result = await anonymize_student(
+        db=db,
+        tenant_id=current_user.tenant_id,
+        student_id=student_id,
+        reason=reason,
+        requested_by=current_user.id,
+    )
+    return result
+
+
+@router.post("/lgpd/anonymize/employee/{employee_id}")
+async def anonymize_employee_endpoint(
+    employee_id: uuid.UUID,
+    reason: str = Body(default="Solicitação do titular (Art. 18, LGPD)"),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_roles("super_admin", "admin")),
+):
+    """Anonimiza todos os dados PII de um funcionário (LGPD Art. 18 — Direito ao Esquecimento)."""
+    from app.services.anonymization_service import anonymize_employee
+
+    result = await anonymize_employee(
+        db=db,
+        tenant_id=current_user.tenant_id,
+        employee_id=employee_id,
+        reason=reason,
+        requested_by=current_user.id,
+    )
+    return result
