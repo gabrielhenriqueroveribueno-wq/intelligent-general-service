@@ -160,3 +160,41 @@ See `.env.example` for full list. Critical variables:
 - `WHATSAPP_VERIFY_TOKEN` — Token for Meta webhook verification challenge
 - `JWT_SECRET_KEY` — JWT signing key (change in production!)
 - `ENCRYPTION_KEY` — Fernet key for encrypting CPF/tokens in DB
+
+---
+
+## Skills & Plugins Configurados
+
+### Skills Globais Disponíveis (~/.claude/skills/)
+- `backend-patterns` — Padrões de API, banco, cache para os 23 serviços
+- `postgres-patterns` — Otimização das 19 tabelas, queries async, índices
+- `docker-patterns` — Docker Compose 12 containers, networking, volumes
+- `api-design` — Design dos 20 módulos de rotas REST
+- `deployment-patterns` — CI/CD GitHub Actions, rolling restart
+- `security-review` — HMAC, JWT, multi-tenancy, OWASP Top 10
+- `python-patterns` — Python 3.12, async/await, SQLAlchemy 2.0
+- `tdd-workflow` — Pytest com asyncio, PostgreSQL de teste
+- `database-migrations` — Alembic migrations com SQLAlchemy async
+- `cost-aware-llm-pipeline` — Otimizar custo Groq/Gemini/Anthropic
+- `frontend-patterns` — React 18, TypeScript, TailwindCSS
+- `security-trailofbits` — Auditoria de segurança profissional (CodeQL, Semgrep)
+
+### Agents Globais Disponíveis (~/.claude/agents/)
+- `python-reviewer` — Code review especializado em Python/FastAPI
+- `database-reviewer` — Review de queries, models, migrations
+- `security-reviewer` — Auditoria de segurança (OWASP, injection, auth)
+- `tdd-guide` — Enforcer de TDD (RED-GREEN-REFACTOR)
+- `planner` — Feature planning com planos detalhados
+- `build-error-resolver` — Resolver erros de build/lint/test
+
+### Rules Globais (~/.claude/rules/)
+- `common` — Regras de código linguagem-agnóstica
+- `python` — Regras específicas Python/FastAPI
+
+### Skills Locais do Projeto (.claude/skills/)
+- `igs-context` — Contexto arquitetural completo do IGS (carregar sempre)
+
+### Commands Locais do Projeto (.claude/commands/)
+- `/review-intent <nome>` — Revisar implementação completa de um intent
+- `/add-intent <nome>` — Adicionar novo intent seguindo o padrão existente
+- `/debug-celery <problema>` — Debugar problemas no pipeline Celery
