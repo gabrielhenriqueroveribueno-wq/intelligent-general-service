@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '../api/client'
-import { Bot, Clock, Key, MessageSquare, Loader2, Check } from 'lucide-react'
+import { Bot, Clock, Key, MessageSquare, Loader2, Check, Send } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface SettingsData {
@@ -30,6 +30,8 @@ export default function Settings() {
   const [waPhoneId, setWaPhoneId] = useState('')
   const [waToken, setWaToken] = useState('')
   const [aiKey, setAiKey] = useState('')
+  const [testPhone, setTestPhone] = useState('')
+  const [testing, setTesting] = useState(false)
 
   useEffect(() => {
     loadSettings()
@@ -69,6 +71,24 @@ export default function Settings() {
       /* interceptor handles */
     }
     setSaving(false)
+  }
+
+  async function handleTestWhatsApp() {
+    if (!testPhone.trim()) {
+      toast.error('Digite um numero de telefone para teste')
+      return
+    }
+    setTesting(true)
+    try {
+      const res = await api.post('/api/v1/tenants/whatsapp/test', {
+        phone_number: testPhone.trim(),
+      })
+      toast.success(res.data.message || 'Mensagem de teste enviada!')
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { detail?: string } } }
+      toast.error(error?.response?.data?.detail || 'Erro ao enviar teste')
+    }
+    setTesting(false)
   }
 
   if (loading) {
@@ -219,6 +239,36 @@ export default function Settings() {
             <p className="text-xs text-gray-400">
               Deixe em branco para manter o valor atual
             </p>
+            {data.has_whatsapp_config && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Testar conexao WhatsApp
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    className="input flex-1"
+                    placeholder="11999998888"
+                    value={testPhone}
+                    onChange={(e) => setTestPhone(e.target.value)}
+                  />
+                  <button
+                    onClick={handleTestWhatsApp}
+                    disabled={testing}
+                    className="btn-primary flex items-center gap-1 text-sm px-3"
+                  >
+                    {testing ? (
+                      <Loader2 className="animate-spin" size={14} />
+                    ) : (
+                      <Send size={14} />
+                    )}
+                    Testar
+                  </button>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  Envia uma mensagem de teste para validar a configuracao
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -155,4 +155,51 @@ async def update_current_settings(
         out_of_hours_message=ts.out_of_hours_message,
         has_whatsapp_config=bool(tenant and tenant.whatsapp_phone_number_id),
         has_ai_key=bool(tenant and tenant.claude_api_key),
+    )
+
+
+@router.post("/whatsapp/test")
+async def test_whatsapp_connection(
+    phone_number: str = Body(..., embed=True),
+    db: AsyncSession = Depends(get_db),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
+    _=Depends(require_roles("super_admin", "admin")),
+):
+    """Envia mensagem de teste para validar configuração WhatsApp do tenant."""
+    from app.services import whatsapp_service
+
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = result.scalar_one_or_none()
+
+    if not tenant or not tenant.whatsapp_phone_number_id or not tenant.whatsapp_token:
+        raise HTTPException(
+            status_code=400,
+            detail="WhatsApp nao configurado. Salve o Phone Number ID e Access Token primeiro.",
+        )
+
+    phone = phone_number.strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+    if not phone.startswith("55"):
+        phone = "55" + phone
+
+    msg_id = await whatsapp_service.send_text_message(
+        phone_number_id=tenant.whatsapp_phone_number_id,
+        access_token=tenant.whatsapp_token,
+        to=phone,
+        body=(
+            f"Teste IGS - {tenant.name}\n\n"
+            "Se voce recebeu esta mensagem, o WhatsApp Business API "
+            "esta configurado corretamente! Pode comecar a usar o sistema."
+        ),
+    )
+
+    if msg_id:
+        return {
+            "status": "success",
+            "message": f"Mensagem de teste enviada para {phone}",
+            "whatsapp_msg_id": msg_id,
+        }
+
+    raise HTTPException(
+        status_code=502,
+        detail="Falha ao enviar mensagem. Verifique o Access Token e Phone Number ID.",
     )
