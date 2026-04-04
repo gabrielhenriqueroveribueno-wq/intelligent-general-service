@@ -29,7 +29,7 @@ automaticas via IA (Groq/Gemini/Anthropic).
 | WhatsApp | Meta Business Cloud API |
 | AI | Multi-provider: Groq (llama-3.3-70b), Gemini (2.0-flash), Anthropic (claude-opus-4-6) |
 | Monitoring | Prometheus + Grafana + Loki + Promtail |
-| Infra | Docker + Docker Compose (12 containers) |
+| Infra | Docker + Docker Compose (13 containers) |
 | Auth | JWT (access 15min + refresh 7d) |
 | Proxy | Nginx |
 
@@ -60,6 +60,26 @@ backend/app/models/
   audit.py           — AuditLog, FailedTask, SLAConfig
   ticket_learning.py — TicketResolution
   webhook.py         — WebhookEndpoint, WebhookDelivery
+```
+
+### Backend Utils
+```
+backend/app/utils/
+  security.py         — Hash, JWT helpers, HMAC validation
+  exceptions.py       — Custom exception classes
+  pagination.py       — Paginated response helper
+  data_masking.py     — LGPD: mascaramento de PII (CPF, email, telefone, cartao)
+```
+
+### Claude Code Commands & Skills
+```
+.claude/
+  commands/
+    add-intent.md       — Slash command para adicionar novo intent ao IGS
+    review-intent.md    — Slash command para revisar implementacao de um intent
+    debug-celery.md     — Slash command para debugar problemas no worker Celery
+  skills/
+    igs-context/SKILL.md — Skill com contexto arquitetural completo do IGS
 ```
 
 ### Backend Services (21 servicos)
@@ -223,13 +243,15 @@ Cria dados completos para demonstracao/pitch deck:
 
 ---
 
-## 8. Estado do WhatsApp (marco 2026)
+## 8. Estado do WhatsApp (abril 2026)
 
 - WHATSAPP_APP_SECRET configurado no .env
-- Meta WhatsApp Phone Number ID configurado
-- **Problema:** envio de mensagens retorna erro de SPAM
-- **Acao:** aguardar 48h (a partir de 30/03/2026) e testar novamente (~01/04/2026)
+- Access Token temporario configurado
+- **Numero:** usuario vai comprar novo chip SIM dedicado ao IGS para testes
+- **Endpoint de teste:** POST `/api/v1/tenants/whatsapp/test` — envia mensagem de teste para numero informado; formata automaticamente numeros BR (adiciona 55, remove formatacao)
+- **Frontend:** botao "Testar Conexao" na pagina Settings (visivel quando has_whatsapp_config=true)
 - Webhook de recebimento funciona (verificacao HMAC ok)
+- **Proximo passo:** configurar Phone Number ID assim que novo chip estiver ativo
 
 ---
 
@@ -311,17 +333,27 @@ Trigger: push de tag `v*` → SSH para servidor → `docker compose pull` + `ale
 - **Novos arquivos:** utils/data_masking.py, services/anonymization_service.py
 - **Dependencia adicionada:** tenacity==9.0.0
 
+### Fase 7 — DevEx, WhatsApp Test & Tooling
+- **WhatsApp Test Endpoint:** POST /api/v1/tenants/whatsapp/test envia mensagem de teste para numero fornecido; formata automaticamente numeros BR (prefixo 55, remove caracteres); valida config do tenant antes do envio
+- **Settings UI — Testar Conexao:** botao na pagina Settings.tsx permite testar conexao WhatsApp informando numero de telefone; feedback visual de sucesso/erro
+- **Docker no segundo computador:** .dockerignore criados para backend e frontend (resolve erros de permissao .pytest_cache no Windows); 13 containers rodando (api, celery, postgres, redis, frontend, nginx, prometheus, grafana, loki, promtail, flower, beat, redis-exporter)
+- **Claude Code Skills & Commands:** skill igs-context (contexto arquitetural completo carregado automaticamente); commands add-intent, review-intent, debug-celery para workflows comuns do IGS
+- **CI fix:** corrigidos erros ruff (I001 imports nao ordenados, F401 imports nao usados) em admin.py e ai_client.py; 3 jobs verdes (Backend Lint, Backend Tests, Frontend Build)
+- **.gitignore cleanup:** adicionados backend/backups/, SETUP_PROMPT.md, PROMPT_EVOLUCAO_IGS.md, monitoring/grafana/data/, monitoring/prometheus/data/, monitoring/loki/data/
+- **Fixes menores:** RLS migration removeu ticket_comments e tenant_settings (nao tem tenant_id); seed_demo.py corrigido resolved_by → problem_category/resolution_type
+
 ---
 
 ## 11. Proximos Passos Sugeridos
 
-1. **WhatsApp:** testar envio apos 48h do bloqueio de spam (~01/04/2026)
+1. **WhatsApp:** comprar chip SIM novo → configurar Phone Number ID no Meta → testar envio end-to-end
 2. **Deploy:** configurar servidor de producao e primeiro deploy com docker-compose.prod.yml
 3. **Pitch Deck:** preparar demonstracao end-to-end com dados do seed_demo
 4. **Frontend Slides:** adicionar preview visual estilo PowerPoint (render HTML dos slides)
 5. **Notificacoes:** criar templates HSM na Meta para boleto_lembrete, frequencia_alerta
 6. **Relatorios agendados:** envio automatico de relatorios semanais via Celery Beat
 7. **Seguranca adicional:** criptografar tokens do tenant em repouso (Fernet), audit logging de acessos RLS
+8. **Portal do Aluno:** endpoint publico ou pagina para alunos consultarem notas, frequencia, boletos via login proprio
 
 ---
 
