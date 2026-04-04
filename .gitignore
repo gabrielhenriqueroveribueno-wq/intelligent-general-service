@@ -56,6 +56,13 @@ alembic/versions/*.pyc
 .DS_Store
 Thumbs.db
 
+# Backups
+backend/backups/
+
+# Setup prompts (one-time use)
+SETUP_PROMPT.md
+PROMPT_EVOLUCAO_IGS.md
+
 # Grafana
 monitoring/grafana/data/
 
