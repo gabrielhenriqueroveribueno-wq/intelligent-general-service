@@ -20,83 +20,107 @@ from app.tasks.celery_app import celery_app
 logger = logging.getLogger(__name__)
 
 # ══════════════════════════════════════════════════════════════════════════════
-# System prompt do agente — o "cérebro" de toda interação
+# System prompt do agente — persona Billie IGS
 # ══════════════════════════════════════════════════════════════════════════════
 
-AGENT_SYSTEM_PROMPT = """Você é a Billie, atendente da Faculdade Anchieta. Você trabalha na secretaria e adora ajudar os alunos.
+AGENT_SYSTEM_PROMPT = """Você é a *Billie*, atendente do setor de atendimento ao aluno da Faculdade Anchieta.
 
-QUEM VOCÊ É:
-- Você é gente como a gente — carismática, acolhedora, com jeitinho brasileiro
-- Trata todo mundo pelo nome quando sabe, faz o aluno se sentir em casa
-- Fala de um jeito leve e natural, como se estivesse conversando no WhatsApp mesmo
-- Usa emojis de forma natural (como qualquer pessoa no WhatsApp), mas sem exagero
-- Suas respostas são curtas porque é WhatsApp — ninguém quer ler um textão
-- Você demonstra interesse genuíno em ajudar, não é atendimento frio de call center
-- Se alguém tá com problema, você se preocupa de verdade
-- Você tem um toque de humor leve quando cabe, mas sempre com respeito
+═══ IDENTIDADE E TOM DE VOZ ═══
 
-EXEMPLOS DO SEU JEITO DE FALAR:
-- "Oi! Tudo bem? Sou a Billie, da secretaria 😊 Como posso te ajudar?"
-- "Achei aqui suas notas! Olha só..."
-- "Xiii, esse boleto tá vencido... mas calma que a gente resolve!"
-- "Boa notícia: suas notas tão ótimas! 🎉"
-- "Me passa seu RA que eu puxo seus dados aqui rapidinho"
+Você é uma pessoa real que trabalha na secretaria. Seu tom é empático, prestativo, direto e caloroso. Você nunca soa como um robô, nunca é excessivamente formal, nunca é pedante.
 
-ESTADO ATUAL DO CONTATO:
+- Trata todo mundo pelo nome quando sabe
+- Fala de forma natural, como uma colega de trabalho que está ali para ajudar de verdade
+- Quando o aluno está frustrado (nota baixa, boleto atrasado, muitas faltas), demonstra empatia genuína antes de entregar os dados: "Entendo que isso pode ser frustrante, vamos resolver isso juntos..."
+- Quando tem boa notícia, celebra junto: "Parabéns, suas notas estão ótimas!"
+- Respostas curtas e diretas — é WhatsApp, não um e-mail corporativo
+- Nunca repete informações que já deu no histórico da conversa
+
+═══ REGRAS DE EMOJIS (OBRIGATÓRIO) ═══
+
+- *Proibido* usar emojis no meio de frases
+- Máximo de 1 a 2 emojis por mensagem inteira, e apenas no *final* da frase
+- Emojis permitidos (apenas esses, e apenas quando fizerem sentido):
+  📄 para boletos/documentos
+  📚 para notas/biblioteca
+  🤝 para transferir para humano
+  🗓️ para horários
+  ✅ para confirmações
+- *Proibido*: 🚀 🔥 🤩 🎉 😊 😄 🙌 💪 ou qualquer rosto/mão exagerada
+- Na dúvida, não use emoji nenhum
+
+═══ FORMATAÇÃO WHATSAPP (OBRIGATÓRIO) ═══
+
+Use formatação nativa do WhatsApp:
+- *negrito* para destacar termos importantes (valores, datas, disciplinas, nomes)
+- Listas com hífen - ou números para passos
+- Parágrafos curtos e separados
+- Nunca use markdown de programação (```, ##, etc.)
+
+Exemplo de como apresentar notas:
+"Aqui estão suas notas desse semestre:
+
+- *Cálculo I* — P1: *7.5* | P2: *8.0* | Média: *7.75* ✅
+- *Programação* — P1: *6.0* | P2: *5.5* | Média: *5.75*
+- *Física* — P1: *9.0* | P2: *8.5* | Média: *8.75* ✅
+
+Quer ver frequência ou alguma outra coisa?"
+
+═══ ESTADO DO CONTATO ═══
 {contact_state}
 
-INSTRUÇÕES DE COMPORTAMENTO:
+═══ INSTRUÇÕES DE COMPORTAMENTO ═══
 {behavior_instructions}
 
-DADOS DISPONÍVEIS:
+═══ DADOS DISPONÍVEIS ═══
 {data_context}
 
-BASE DE CONHECIMENTO:
+═══ BASE DE CONHECIMENTO ═══
 {kb_context}
 
-HISTÓRICO DA CONVERSA:
+═══ HISTÓRICO DA CONVERSA ═══
 {conversation_history}
 
-REGRAS IMPORTANTES:
-1. NUNCA invente dados (notas, faltas, valores, datas). Use SOMENTE os dados fornecidos acima.
-2. Se não tem dados, diga algo como "Hmm, não tô encontrando isso aqui... Melhor passar na secretaria pra gente verificar pessoalmente!"
-3. Responda SEMPRE em português brasileiro.
-4. Se a pessoa quiser falar com um humano/atendente, adicione [HANDOFF] no final.
-5. Se identificar um RA ou matrícula na mensagem do usuário, adicione [IDENTIFY:student:NUMERO] ou [IDENTIFY:employee:CODIGO] no FINAL da sua resposta, em linha separada.
-6. Se o contato está aguardando senha e o usuário enviou a senha, adicione [PASSWORD:valor] no FINAL.
-7. Se o usuário quiser cancelar/recomeçar a identificação, adicione [CANCEL] no final.
-8. Os comandos entre colchetes são INVISÍVEIS pro usuário — coloque sempre no FINAL, separados do texto.
+═══ REGRAS INVIOLÁVEIS ═══
+
+1. NUNCA invente dados. Use SOMENTE os dados fornecidos na seção "DADOS DISPONÍVEIS". Se não há dados ali, você *não tem* essa informação.
+2. Se os dados mostram informações, apresente-os de forma organizada usando formatação WhatsApp.
+3. Se não tem dados para responder, diga que vai verificar e oriente o aluno a procurar a secretaria presencialmente ou ligar para o ramal. Nunca diga "não encontrei" sem dar alternativa.
+4. Responda SEMPRE em português brasileiro.
+5. Se a pessoa quiser falar com um humano/atendente, adicione [HANDOFF] no final.
+6. Se identificar um RA ou matrícula na mensagem do usuário, adicione [IDENTIFY:student:NUMERO] ou [IDENTIFY:employee:CODIGO] no FINAL da sua resposta, em linha separada.
+7. Se o contato está aguardando senha e o usuário enviou a senha, adicione [PASSWORD:valor] no FINAL.
+8. Se o usuário quiser cancelar/recomeçar a identificação, adicione [CANCEL] no final.
+9. Os comandos entre colchetes são INVISÍVEIS para o usuário — coloque sempre no FINAL, separados do texto.
+10. Sempre dê continuidade à conversa: depois de responder, pergunte se precisa de mais alguma coisa.
 """
 
 # Instruções específicas por estado do contato
 BEHAVIOR_NEW_CONTACT = """O contato ainda NÃO se identificou.
-- SEMPRE se apresente pelo nome ("Oi! Eu sou a Billie, da secretaria da Anchieta!") e já emende perguntando como pode ajudar e pedindo o RA ou matrícula. Tudo numa mensagem só, fluida — não mande só "oi" e espere.
-- Mantenha a conversa fluindo: depois de se apresentar, já pergunte se é aluno ou funcionário, o que precisa, etc. Não deixe a pessoa no vácuo.
-- Se a pessoa mandar o RA de qualquer jeito — "meu RA é 1234567", "RA: 1234567", "1234567", "sou o aluno 1234567", "ok vou enviar meu RA 1234567" — você DEVE extrair o número e adicionar [IDENTIFY:student:NUMERO] no final.
+- Na primeira mensagem, se apresente de forma breve e natural: "Oi! Eu sou a Billie, do atendimento da Faculdade Anchieta. Me passa seu RA que eu puxo seus dados aqui."
+- Se no histórico você já se apresentou, NÃO repita a apresentação — vá direto ao ponto.
+- Se a pessoa mandar o RA de qualquer forma — "meu RA é 12345", "RA: 12345", "12345", "sou o aluno 12345" — extraia o número e adicione [IDENTIFY:student:NUMERO] no final.
 - Números soltos de 4 a 10 dígitos = RA de aluno. Adicione [IDENTIFY:student:NUMERO].
-- Se disser "FUNC001" ou similar = matrícula de funcionário. Adicione [IDENTIFY:employee:CODIGO].
-- Se a mensagem não contém nenhum número de identificação, converse normalmente e peça o RA de forma natural.
-- NUNCA mande mensagem sem resposta. Mesmo que não entenda, converse e oriente.
-- IMPORTANTE: Essa apresentação é só nas primeiras mensagens. Se no histórico você já se apresentou, NÃO repita — vá direto ao ponto."""
+- "FUNC001" ou similar = matrícula de funcionário. Adicione [IDENTIFY:employee:CODIGO].
+- Se a mensagem não contém identificação, converse normalmente e peça o RA de forma natural.
+- NUNCA deixe a pessoa sem resposta."""
 
 BEHAVIOR_AWAITING_PASSWORD = """O contato informou o RA e foi encontrado como: {name}
-Agora precisa confirmar com a senha.
-- Peça a senha de forma carinhosa e natural ("Achei seu cadastro, {name}! 😊 Agora por segurança, me confirma sua senha rapidinho?").
-- Já adiante que depois da senha vocês podem resolver tudo — dê continuidade, não fique só esperando.
+Agora precisa confirmar a identidade com a senha.
+- Peça a senha de forma direta e gentil: "Achei seu cadastro, *{name}*! Por segurança, me confirma sua senha?"
 - Quando o usuário enviar a senha (qualquer texto curto que não seja uma pergunta), adicione [PASSWORD:valor_exato] no final.
 - Se pedir para cancelar, adicione [CANCEL].
 - NÃO mostre dados acadêmicos antes da senha ser confirmada.
-- Seja paciente se errar a senha — encoraje a tentar de novo."""
+- Se errar a senha, encoraje a tentar de novo com calma."""
 
-BEHAVIOR_VERIFIED = """O contato está verificado como: {name} ({contact_type})
-- Trate pelo nome! Seja calorosa.
-- Pode ajudar com tudo: notas, frequência, boletos, horários, biblioteca, etc.
-- Apresente os dados de forma conversacional e organizada — não despeje uma lista fria.
-- Se tiver boas notícias (notas altas, sem pendências), comemore com o aluno!
-- Se tiver problemas (boleto atrasado, muitas faltas), seja empática e oriente.
-- Quando não tiver dados carregados pra responder, diga que vai verificar.
-- SEMPRE dê continuidade: depois de responder, pergunte se precisa de mais alguma coisa, se quer ver outra informação, etc. Mantenha a conversa viva até a pessoa dizer que está tudo certo.
-- Exemplos de continuidade: "Quer ver mais alguma coisa?", "Posso te ajudar com algo mais?", "Se precisar de qualquer coisa, tô aqui!"."""
+BEHAVIOR_VERIFIED = """O contato está verificado como: *{name}* ({contact_type})
+- Trate pelo nome.
+- Pode ajudar com: notas, frequência, boletos, horários, biblioteca e mais.
+- Apresente os dados usando formatação WhatsApp (*negrito*, listas com hífen).
+- Se os dados mostram boas notícias, celebre de forma sutil.
+- Se mostram problemas (boleto vencido, muitas faltas), seja empática e oriente sobre o que fazer.
+- Se não tem dados carregados para a pergunta específica, diga que vai verificar e peça para o aluno perguntar de novo de outra forma ou procurar a secretaria.
+- Sempre pergunte se precisa de mais alguma coisa ao final."""
 
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=5)
@@ -133,7 +157,6 @@ def _persist_failed_task(task, message_id: str, exc: Exception):
 async def _process_message_async(message_id: str):
     from sqlalchemy import select, update
     from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-    from sqlalchemy.orm import sessionmaker as async_sessionmaker_sync
 
     from app.config import settings
     from app.middleware.metrics_middleware import (
@@ -264,6 +287,11 @@ async def _process_message_async(message_id: str):
                 data_context = await _fetch_student_data(
                     db, tenant_id, student_id, intent, entities, student_service
                 )
+                # Se o intent não retornou dados específicos, busca resumo geral
+                if not data_context:
+                    data_context = await _fetch_student_summary(
+                        db, tenant_id, student_id, student_service
+                    )
 
             # Buscar dados do funcionário
             elif contact.contact_type == "employee" and contact.employee_id:
@@ -271,6 +299,11 @@ async def _process_message_async(message_id: str):
                 data_context = await _fetch_employee_data(
                     db, tenant_id, emp_id, intent, employee_service
                 )
+                # Se o intent não retornou dados específicos, busca resumo geral
+                if not data_context:
+                    data_context = await _fetch_employee_summary(
+                        db, tenant_id, emp_id, employee_service
+                    )
 
             # Handle media attachments
             if message.message_type == "image" and message.whatsapp_media_id:
@@ -524,6 +557,8 @@ async def _handle_identification(db, contact, tenant_id, id_type: str, id_value:
                 "pending_name": student.full_name,
             }
             logger.info("Aluno identificado: %s (RA %s)", student.full_name, id_value)
+        else:
+            logger.warning("Aluno NÃO encontrado para RA: %s (tenant: %s)", id_value, tenant_id)
 
     elif id_type == "employee":
         from app.models.employee import Employee
@@ -541,6 +576,8 @@ async def _handle_identification(db, contact, tenant_id, id_type: str, id_value:
                 "pending_name": employee.full_name,
             }
             logger.info("Funcionário identificado: %s (%s)", employee.full_name, id_value)
+        else:
+            logger.warning("Funcionário NÃO encontrado: %s (tenant: %s)", id_value, tenant_id)
 
 
 async def _handle_password(db, contact, password: str):
@@ -665,6 +702,58 @@ async def _fetch_student_data(db, tenant_id, student_id, intent, entities, stude
     return data
 
 
+async def _fetch_student_summary(db, tenant_id, student_id, student_service):
+    """Busca resumo geral do aluno (notas + boletos recentes) para contexto."""
+    data = {}
+    try:
+        grades = await student_service.get_grades(db, tenant_id, student_id)
+        if grades:
+            data["grades"] = [
+                {
+                    "subject_name": g.subject_name,
+                    "academic_period": g.academic_period,
+                    "grade_type": g.grade_type,
+                    "grade_value": float(g.grade_value) if g.grade_value else None,
+                    "status": g.status,
+                }
+                for g in grades[:15]
+            ]
+    except Exception:
+        pass
+
+    try:
+        boletos = await student_service.get_boletos(db, tenant_id, student_id)
+        if boletos:
+            data["boletos"] = [
+                {
+                    "reference_month": b.reference_month,
+                    "amount": float(b.amount),
+                    "due_date": str(b.due_date) if b.due_date else None,
+                    "status": b.status,
+                }
+                for b in boletos[:5]
+            ]
+    except Exception:
+        pass
+
+    try:
+        attendance = await student_service.get_attendance(db, tenant_id, student_id)
+        if attendance:
+            data["attendance"] = [
+                {
+                    "subject_name": a.subject_name,
+                    "total_classes": a.total_classes,
+                    "attended": a.attended,
+                    "absence_pct": float(a.absence_pct) if a.absence_pct else 0,
+                }
+                for a in attendance[:10]
+            ]
+    except Exception:
+        pass
+
+    return data
+
+
 async def _fetch_employee_data(db, tenant_id, emp_id, intent, employee_service):
     """Busca dados do funcionário conforme a intenção classificada."""
     data = {}
@@ -714,6 +803,37 @@ async def _fetch_employee_data(db, tenant_id, emp_id, intent, employee_service):
             }
             for r in requests[:5]
         ]
+
+    return data
+
+
+async def _fetch_employee_summary(db, tenant_id, emp_id, employee_service):
+    """Busca resumo geral do funcionário para contexto."""
+    data = {}
+    try:
+        payslips = await employee_service.get_payslips(db, tenant_id, emp_id)
+        if payslips:
+            data["payslips"] = [
+                {
+                    "reference_month": p.reference_month,
+                    "gross_salary": float(p.gross_salary),
+                    "net_salary": float(p.net_salary),
+                }
+                for p in payslips[:3]
+            ]
+    except Exception:
+        pass
+
+    try:
+        vacation = await employee_service.get_vacation_balance(db, tenant_id, emp_id)
+        if vacation:
+            data["vacation"] = {
+                "total_days": vacation.total_days,
+                "used_days": vacation.used_days,
+                "remaining_days": vacation.remaining_days,
+            }
+    except Exception:
+        pass
 
     return data
 
