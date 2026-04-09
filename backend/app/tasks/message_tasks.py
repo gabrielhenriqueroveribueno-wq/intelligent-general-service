@@ -122,7 +122,7 @@ BEHAVIOR_NEW_CONTACT = """O contato ainda NÃO se identificou.
 
 BEHAVIOR_AWAITING_PASSWORD = """O contato informou o RA e foi encontrado como: *{name}*.
 Agora precisa confirmar a identidade com a senha.
-- Se no histórico a Billie JÁ pediu a senha (ex: "confirma sua senha"), o usuário está enviando a senha agora. Trate a mensagem inteira como senha. Adicione [PASSWORD:valor_exato] e responda algo como "Verificando..."
+- Se no histórico a Billie JÁ pediu a senha (ex: "confirma sua senha"), o usuário está enviando a senha agora. Trate a mensagem inteira como senha. Adicione [PASSWORD:valor_exato] e responda confirmando e oferecendo ajuda. Exemplo: "Senha confirmada, *{name}*! Como posso te ajudar hoje?"
 - Se ainda NÃO pediu a senha no histórico, peça agora: "Achei seu cadastro, *{name}*! Me confirma sua senha pra eu liberar o acesso?"
 - NÃO mostre dados antes da senha.
 - Pediu cancelar? Adicione [CANCEL].
