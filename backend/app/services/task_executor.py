@@ -37,6 +37,11 @@ ACTION_INTENTS = {
     "certificate_request",
     "slide_generate",
     "slide_update",
+    "generate_pix",
+    "facility_ticket",
+    "library_renewal",
+    "tutor_question",
+    "medical_certificate",
 }
 
 
@@ -301,6 +306,156 @@ async def _handle_slide_update(
         return {"success": False, "message": f"Erro ao atualizar slides: {str(e)}"}
 
 
+async def _handle_generate_pix(
+    db: AsyncSession,
+    tenant_id: UUID,
+    contact_id: UUID,
+    entities: dict,
+    student_id: UUID | None,
+) -> dict[str, Any]:
+    """Gera código PIX para o boleto pendente do aluno."""
+    if not student_id:
+        return {"success": False, "message": "Aluno não identificado para geração de PIX."}
+
+    # Tenant PIX key from settings
+    from app.models.tenant import TenantSettings
+    from app.services.payment_service import generate_pix_for_student
+
+    ts_result = await db.execute(
+        select(TenantSettings).where(TenantSettings.tenant_id == tenant_id)
+    )
+    ts = ts_result.scalar_one_or_none()
+    pix_key = ""
+    if ts and ts.settings:
+        pix_key = ts.settings.get("pix_key", "")
+
+    return await generate_pix_for_student(db, tenant_id, student_id, pix_key)
+
+
+async def _handle_financial_negotiation(
+    db: AsyncSession,
+    tenant_id: UUID,
+    contact_id: UUID,
+    entities: dict,
+    student_id: UUID | None,
+) -> dict[str, Any]:
+    """Negocia/parcela débitos do aluno."""
+    if not student_id:
+        return {"success": False, "message": "Aluno não identificado para negociação."}
+
+    from app.services.payment_service import negotiate_debt
+
+    num_installments = int(entities.get("installments", entities.get("parcelas", 3)))
+    reason = entities.get("reason", "Negociação solicitada via WhatsApp")
+
+    return await negotiate_debt(
+        db=db,
+        tenant_id=tenant_id,
+        student_id=student_id,
+        num_installments=num_installments,
+        reason=reason,
+        negotiated_by="ai",
+    )
+
+
+async def _handle_facility_ticket(
+    db: AsyncSession,
+    tenant_id: UUID,
+    contact_id: UUID,
+    entities: dict,
+    student_id: UUID | None,
+) -> dict[str, Any]:
+    """Cria chamado de infraestrutura."""
+    from app.services.ticket_service import create_ticket
+
+    description = entities.get("description", "Chamado de infraestrutura via WhatsApp")
+    location = entities.get("location", "")
+    if location:
+        description = f"Local: {location}\n{description}"
+
+    ticket = await create_ticket(
+        db=db,
+        tenant_id=tenant_id,
+        subject="Chamado de Infraestrutura",
+        priority=entities.get("priority", "medium"),
+        category="infrastructure",
+        description=description,
+        contact_id=contact_id,
+    )
+
+    return {
+        "success": True,
+        "ticket_id": str(ticket.id),
+        "protocol": ticket.protocol_number,
+        "message": (
+            f"Chamado de infraestrutura aberto com protocolo *{ticket.protocol_number}*. "
+            "Se quiser, envie uma foto do problema para anexar ao chamado. "
+            "A equipe de manutenção será notificada."
+        ),
+    }
+
+
+async def _handle_library_renewal(
+    db: AsyncSession,
+    tenant_id: UUID,
+    contact_id: UUID,
+    entities: dict,
+    student_id: UUID | None,
+) -> dict[str, Any]:
+    """Renova empréstimo de livro na biblioteca."""
+    if not student_id:
+        return {"success": False, "message": "Aluno não identificado."}
+
+    from app.services.library_service import renew_active_loans
+
+    return await renew_active_loans(db, tenant_id, student_id)
+
+
+async def _handle_tutor_question(
+    db: AsyncSession,
+    tenant_id: UUID,
+    contact_id: UUID,
+    entities: dict,
+    student_id: UUID | None,
+) -> dict[str, Any]:
+    """Responde dúvida acadêmica usando material do professor."""
+    if not student_id:
+        return {"success": False, "message": "Aluno não identificado."}
+
+    from app.services.tutor_service import answer_student_question
+
+    question = entities.get("question", entities.get("prompt", ""))
+    subject = entities.get("subject", "")
+
+    return await answer_student_question(
+        db=db,
+        tenant_id=tenant_id,
+        student_id=student_id,
+        question=question,
+        subject_hint=subject,
+    )
+
+
+async def _handle_medical_certificate(
+    db: AsyncSession,
+    tenant_id: UUID,
+    contact_id: UUID,
+    entities: dict,
+    student_id: UUID | None,
+) -> dict[str, Any]:
+    """Registra intenção de envio de atestado médico (processamento de imagem é feito em message_tasks)."""
+    protocol = f"ATST-{uuid.uuid4().hex[:8].upper()}"
+    return {
+        "success": True,
+        "message": (
+            f"Solicitação de atestado médico registrada (protocolo *{protocol}*). "
+            "Por favor, envie a *foto do atestado* nesta conversa para processamento automático."
+        ),
+        "protocol": protocol,
+        "awaiting_image": True,
+    }
+
+
 async def _handle_generic_request(
     db: AsyncSession,
     tenant_id: UUID,
@@ -331,8 +486,13 @@ _HANDLERS = {
     "internship_query": _handle_generic_request,
     "event_registration": _handle_generic_request,
     "library_query": _handle_generic_request,
-    "financial_negotiation": _handle_generic_request,
+    "financial_negotiation": _handle_financial_negotiation,
     "certificate_request": _handle_generic_request,
     "slide_generate": _handle_slide_generate,
     "slide_update": _handle_slide_update,
+    "generate_pix": _handle_generate_pix,
+    "facility_ticket": _handle_facility_ticket,
+    "library_renewal": _handle_library_renewal,
+    "tutor_question": _handle_tutor_question,
+    "medical_certificate": _handle_medical_certificate,
 }

@@ -250,6 +250,159 @@ async def _gemini_complete(
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# Multimodal (Image + Text) implementations
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+@retry(
+    retry=retry_if_exception(_is_retryable),
+    stop=stop_after_attempt(2),
+    wait=wait_exponential(multiplier=1, min=1, max=4),
+    reraise=True,
+)
+async def _anthropic_vision(
+    system: str,
+    message: str,
+    image_data: bytes,
+    media_type: str,
+    max_tokens: int,
+    api_key: Optional[str] = None,
+) -> AIResponse:
+    import base64
+
+    import anthropic
+
+    effective_key = api_key or settings.ANTHROPIC_API_KEY
+    client = anthropic.AsyncAnthropic(api_key=effective_key, timeout=60.0)
+
+    b64 = base64.b64encode(image_data).decode("utf-8")
+    response = await client.messages.create(
+        model=settings.CLAUDE_MODEL,
+        max_tokens=max_tokens,
+        system=system,
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": media_type,
+                            "data": b64,
+                        },
+                    },
+                    {"type": "text", "text": message},
+                ],
+            }
+        ],
+    )
+    text = response.content[0].text.strip()
+    tokens = response.usage.input_tokens + response.usage.output_tokens
+    return AIResponse(text=text, tokens_used=tokens, provider_used="anthropic")
+
+
+@retry(
+    retry=retry_if_exception(_is_retryable),
+    stop=stop_after_attempt(2),
+    wait=wait_exponential(multiplier=1, min=1, max=4),
+    reraise=True,
+)
+async def _gemini_vision(
+    system: str,
+    message: str,
+    image_data: bytes,
+    media_type: str,
+    max_tokens: int,
+) -> AIResponse:
+    import google.generativeai as genai
+
+    genai.configure(api_key=settings.GOOGLE_API_KEY)
+
+    model = genai.GenerativeModel(
+        model_name=settings.GEMINI_MODEL,
+        system_instruction=system,
+        generation_config=genai.types.GenerationConfig(
+            max_output_tokens=max_tokens,
+        ),
+    )
+
+    image_part = {"mime_type": media_type, "data": image_data}
+    response = await model.generate_content_async([message, image_part])
+    text = response.text.strip()
+
+    tokens = 0
+    if hasattr(response, "usage_metadata") and response.usage_metadata:
+        tokens = getattr(response.usage_metadata, "prompt_token_count", 0) + getattr(
+            response.usage_metadata, "candidates_token_count", 0
+        )
+
+    return AIResponse(text=text, tokens_used=tokens, provider_used="gemini")
+
+
+_VISION_PROVIDER_FN = {
+    "anthropic": _anthropic_vision,
+    "gemini": _gemini_vision,
+}
+
+# Vision providers ordered by capability (Groq doesn't support vision)
+VISION_FALLBACK: list[str] = ["gemini", "anthropic"]
+
+
+async def ai_vision(
+    system: str,
+    message: str,
+    image_data: bytes,
+    media_type: str = "image/jpeg",
+    max_tokens: int = 1024,
+    api_key: Optional[str] = None,
+) -> AIResponse:
+    """
+    Envia imagem + texto para um provider com suporte a visão.
+
+    Fallback: gemini → anthropic (groq não suporta visão).
+    """
+    last_error: Exception | None = None
+
+    for provider in VISION_FALLBACK:
+        if not _is_available(provider):
+            continue
+
+        fn = _VISION_PROVIDER_FN.get(provider)
+        if not fn:
+            continue
+
+        try:
+            kwargs: dict = {
+                "system": system,
+                "message": message,
+                "image_data": image_data,
+                "media_type": media_type,
+                "max_tokens": max_tokens,
+            }
+            if provider == "anthropic" and api_key:
+                kwargs["api_key"] = api_key
+
+            result = await fn(**kwargs)
+            _record_success(provider)
+            return result
+
+        except (Exception, RetryError) as exc:
+            _record_failure(provider)
+            last_error = exc
+            logger.error(
+                "Vision provider '%s' falhou: %s — tentando fallback",
+                provider,
+                str(exc)[:200],
+            )
+            continue
+
+    error_msg = f"Nenhum provider de visão disponível. Último erro: {last_error}"
+    logger.critical(error_msg)
+    raise RuntimeError(error_msg) from last_error
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # Provider dispatch map
 # ══════════════════════════════════════════════════════════════════════════════
 

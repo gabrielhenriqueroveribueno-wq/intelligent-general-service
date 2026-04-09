@@ -228,52 +228,7 @@ async def _get_or_create_contact(
         db.add(contact)
         await db.flush()
 
-    # Tenta verificar pelo RA (ex: "RA123456" ou "123456")
-    if not contact.is_verified:
-        await _try_verify_contact(db, contact, tenant_id, text_body)
+    # Verificação de identidade agora é feita no message_tasks.py
+    # (o webhook apenas persiste a mensagem e enfileira para o Celery)
 
     return contact
-
-
-async def _try_verify_contact(db: AsyncSession, contact: Contact, tenant_id, text_body: str):
-    """Tenta linkar o contato a um aluno ou funcionário pelo identificador."""
-    import re
-
-    # Padrão RA: RA seguido de números, ou só números de 4-10 dígitos
-    ra_match = re.match(r"^(?:RA\s*)?(\d{4,10})$", text_body.strip(), re.IGNORECASE)
-    if ra_match:
-        ra = ra_match.group(1)
-        from app.models.student import Student
-
-        student_result = await db.execute(
-            select(Student).where(
-                Student.tenant_id == tenant_id,
-                Student.registration_number == ra,
-            )
-        )
-        student = student_result.scalar_one_or_none()
-        if student:
-            contact.student_id = student.id
-            contact.contact_type = "student"
-            contact.is_verified = True
-            contact.name = student.full_name
-            return
-
-    # Padrão FUNC: FUNC seguido de números
-    func_match = re.match(r"^(?:FUNC\s*)?(\w+)$", text_body.strip(), re.IGNORECASE)
-    if func_match:
-        func_num = func_match.group(1)
-        from app.models.employee import Employee
-
-        emp_result = await db.execute(
-            select(Employee).where(
-                Employee.tenant_id == tenant_id,
-                Employee.employee_number == func_num,
-            )
-        )
-        employee = emp_result.scalar_one_or_none()
-        if employee:
-            contact.employee_id = employee.id
-            contact.contact_type = "employee"
-            contact.is_verified = True
-            contact.name = employee.full_name

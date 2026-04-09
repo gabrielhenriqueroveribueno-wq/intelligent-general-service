@@ -35,6 +35,11 @@ VALID_INTENTS = [
     "certificate_request",  # Solicitar certificados
     "slide_generate",  # Professor solicita criação de slides/apresentação
     "slide_update",  # Professor solicita atualização de slides existentes
+    "generate_pix",  # Gerar código PIX para boleto
+    "facility_ticket",  # Chamado de infraestrutura (com foto opcional)
+    "library_renewal",  # Renovação de empréstimo na biblioteca
+    "tutor_question",  # Dúvida acadêmica para tutor IA
+    "medical_certificate",  # Envio de atestado médico (foto)
     "unknown",  # Intenção não reconhecida
 ]
 
@@ -46,7 +51,8 @@ payslip_query, vacation_query, time_record_query, hr_request, faq, human_handoff
 greeting, verification, generate_boleto, enrollment_request, document_request,
 class_enrollment, grade_appeal, transfer_request, scholarship_query, internship_query,
 event_registration, library_query, financial_negotiation, certificate_request,
-slide_generate, slide_update, unknown
+slide_generate, slide_update, generate_pix, facility_ticket, library_renewal,
+tutor_question, medical_certificate, unknown
 
 Responda APENAS com um JSON no formato: {"intent": "nome_da_intencao", "entities": {}}
 Para entities, extraia dados relevantes como: subject (matéria), period (período), month (mês), type (tipo), amount (valor).

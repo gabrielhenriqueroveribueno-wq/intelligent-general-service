@@ -33,7 +33,8 @@ automaticas via IA (Groq/Gemini/Anthropic).
 | Auth | JWT (access 15min + refresh 7d) |
 | Proxy | Nginx |
 
-**AI Provider ativo:** Groq (configuravel via `AI_PROVIDER` no .env)
+**AI Provider ativo:** Anthropic/Claude (configuravel via `AI_PROVIDER` no .env)
+**Deploy:** Oracle Cloud Free Tier — igs-anchieta.duckdns.org (docker-compose.prod-light.yml, 4 containers)
 
 ---
 
@@ -173,22 +174,29 @@ financial_negotiation, certificate_request
 
 ## 5. Fluxo de Mensagem WhatsApp (message_tasks.py)
 
+**Arquitetura: Agente Conversacional "Billie IGS"**
+
+Todas as mensagens passam pela IA — nao ha respostas hardcoded. A IA (Billie) conduz a conversa naturalmente, incluindo verificacao de identidade.
+
 ```
 1. Recebe message_id do Celery
 2. Se audio → transcreve via transcription_service
-3. Se contato nao verificado → envia msg de boas-vindas pedindo RA/matricula
-4. Classifica intent via intent_classifier (ai_complete ~50 tokens)
-5. Se human_handoff → cria ticket + transfere para agente
-6. Busca dados conforme intent:
-   - student: grades, attendance, boletos, schedules
-   - employee: payslips, vacation, time_records, hr_requests
-7. Se intent de acao → task_executor executa (boleto, matricula, slides, docs)
-8. Busca artigos KB relevantes
-9. Busca resolucoes similares (learning_service)
-10. Gera resposta via ai_service (RAG com dados reais)
-11. Envia resposta via WhatsApp API
-12. Registra metricas (tokens, tempo, intent)
-13. Publica evento via Redis pub/sub → WebSocket no painel
+3. Cria engine async dedicada (evita conflito de event loop)
+4. Determina estado do contato:
+   a) NAO VERIFICADO → system prompt BEHAVIOR_NEW_CONTACT (Billie pede RA naturalmente)
+   b) AGUARDANDO SENHA → system prompt BEHAVIOR_AWAITING_PASSWORD
+   c) VERIFICADO → system prompt BEHAVIOR_VERIFIED (acesso total aos dados)
+5. Se verificado: busca dados (grades, boletos, schedules, payslips, etc.)
+6. Envia mensagem + historico + dados para IA (agente Billie)
+7. IA responde naturalmente E inclui comandos embutidos:
+   - [IDENTIFY:student:NUMERO] → busca aluno/funcionario no banco
+   - [PASSWORD:valor] → verifica senha
+   - [HANDOFF] → transfere para humano
+   - [CANCEL] → cancela operacao
+8. Extrai e processa comandos (regex), remove da resposta
+9. Envia resposta limpa via WhatsApp API
+10. Registra metricas (tokens, tempo)
+11. Descarta engine async
 ```
 
 ---
@@ -245,13 +253,17 @@ Cria dados completos para demonstracao/pitch deck:
 
 ## 8. Estado do WhatsApp (abril 2026)
 
-- WHATSAPP_APP_SECRET configurado no .env
-- Access Token temporario configurado
-- **Numero:** usuario vai comprar novo chip SIM dedicado ao IGS para testes
-- **Endpoint de teste:** POST `/api/v1/tenants/whatsapp/test` — envia mensagem de teste para numero informado; formata automaticamente numeros BR (adiciona 55, remove formatacao)
-- **Frontend:** botao "Testar Conexao" na pagina Settings (visivel quando has_whatsapp_config=true)
-- Webhook de recebimento funciona (verificacao HMAC ok)
-- **Proximo passo:** configurar Phone Number ID assim que novo chip estiver ativo
+- **Bot em producao:** Billie IGS respondendo mensagens reais via WhatsApp
+- **Servidor:** Oracle Cloud Free Tier (137.131.151.205) com HTTPS via Caddy + Let's Encrypt
+- **Dominio:** igs-anchieta.duckdns.org (DuckDNS gratuito)
+- **Webhook:** `https://igs-anchieta.duckdns.org/api/v1/webhook/whatsapp` (verificado e ativo na Meta)
+- **Verify Token:** `igs-verify-token-2026`
+- **Phone Number ID:** 1142668418921479
+- **Access Token:** temporario (expira a cada ~1-2h) — System User Token pendente
+- **Numero do bot:** 92679-8094
+- **Endpoint de teste:** POST `/api/v1/tenants/whatsapp/test`
+- **Frontend:** botao "Testar Conexao" na pagina Settings
+- **Detalhes completos:** docs/WEBHOOK_CONFIG.md
 
 ---
 
@@ -342,18 +354,39 @@ Trigger: push de tag `v*` → SSH para servidor → `docker compose pull` + `ale
 - **.gitignore cleanup:** adicionados backend/backups/, SETUP_PROMPT.md, PROMPT_EVOLUCAO_IGS.md, monitoring/grafana/data/, monitoring/prometheus/data/, monitoring/loki/data/
 - **Fixes menores:** RLS migration removeu ticket_comments e tenant_settings (nao tem tenant_id); seed_demo.py corrigido resolved_by → problem_category/resolution_type
 
+### Fase 8 — Agente Conversacional "Billie" + Deploy Oracle Cloud
+- **Reescrita completa do message_tasks.py:** sistema mudou de chatbot baseado em comandos/menus para agente conversacional IA. TODAS as mensagens (inclusive de contatos nao verificados) passam pela IA. Nao ha mais respostas hardcoded.
+- **Agente "Billie IGS":** assistente virtual com personalidade definida — carismatica, acolhedora, conversa naturalmente pelo WhatsApp como uma atendente humana da Faculdade Anchieta. Se apresenta no inicio da conversa, chama pelo nome, continua proativamente o atendimento.
+- **Tres estados comportamentais:** BEHAVIOR_NEW_CONTACT (contato nao identificado — Billie pede RA/matricula de forma natural), BEHAVIOR_AWAITING_PASSWORD (aguardando senha apos identificacao), BEHAVIOR_VERIFIED (acesso completo aos dados).
+- **Comandos embutidos na resposta da IA:** a IA inclui comandos especiais na resposta que sao extraidos via regex: `[IDENTIFY:student:NUMERO]`, `[PASSWORD:valor]`, `[HANDOFF]`, `[CANCEL]`. Os comandos sao removidos antes de enviar ao usuario.
+- **Verificacao de identidade conversacional:** em vez de menus e prompts fixos, a IA conduz a verificacao de identidade naturalmente na conversa, pedindo RA e senha de forma amigavel.
+- **Fix async engine no Celery:** criacao de engine por request (`create_async_engine` dentro da task) para evitar erro "Future attached to different loop". Engine descartada (`dispose()`) apos cada task.
+- **webhook.py simplificado:** removida funcao `_try_verify_contact()` — toda logica de verificacao agora e feita pelo agente no message_tasks.py.
+- **Deploy Oracle Cloud Free Tier:**
+  - VM: VM.Standard.E2.1.Micro (1 OCPU, 1GB RAM), Oracle Linux, regiao Sao Paulo
+  - IP publico: 137.131.151.205
+  - Docker + Docker Compose instalados no servidor
+  - Swap de 2GB configurado (servidor tem apenas 1GB RAM)
+  - docker-compose.prod-light.yml: stack leve com 4 containers (api, celery-worker, postgres, redis) com limites de memoria otimizados
+  - Caddy como reverse proxy com HTTPS automatico (Let's Encrypt)
+  - DuckDNS: dominio gratuito igs-anchieta.duckdns.org apontando para o IP do servidor
+  - Webhook WhatsApp reconfigurado: `https://igs-anchieta.duckdns.org/api/v1/webhook/whatsapp`
+  - Bot funcionando em producao — respondendo mensagens reais pelo WhatsApp
+- **Token permanente (pendente):** tentativa de criar System User Token na Meta foi bloqueada por falta de permissoes visiveis. Usando token temporario por enquanto (expira a cada ~1-2h).
+- **Novos arquivos:** docker-compose.prod-light.yml, docs/WEBHOOK_CONFIG.md, backend/app/api/v1/student_portal.py, backend/app/models/library.py, backend/app/services/hr_vision_service.py, backend/app/services/library_service.py, backend/app/services/payment_service.py, backend/app/services/tutor_service.py, backend/alembic/versions/c8d3e5f7a9b1_add_modules_pix_library_materials.py
+
 ---
 
 ## 11. Proximos Passos Sugeridos
 
-1. **WhatsApp:** comprar chip SIM novo → configurar Phone Number ID no Meta → testar envio end-to-end
-2. **Deploy:** configurar servidor de producao e primeiro deploy com docker-compose.prod.yml
-3. **Pitch Deck:** preparar demonstracao end-to-end com dados do seed_demo
+1. **Token permanente Meta:** resolver permissoes do System User para gerar token que nao expira
+2. **Evolution API:** migrar de Meta Cloud API para Evolution API (auto-hospedada, sem custos de mensagem)
+3. **Pitch Deck:** preparar demonstracao end-to-end com dados do seed_demo + bot Billie funcionando
 4. **Frontend Slides:** adicionar preview visual estilo PowerPoint (render HTML dos slides)
 5. **Notificacoes:** criar templates HSM na Meta para boleto_lembrete, frequencia_alerta
-6. **Relatorios agendados:** envio automatico de relatorios semanais via Celery Beat
-7. **Seguranca adicional:** criptografar tokens do tenant em repouso (Fernet), audit logging de acessos RLS
-8. **Portal do Aluno:** endpoint publico ou pagina para alunos consultarem notas, frequencia, boletos via login proprio
+6. **Portal do Aluno:** endpoint publico ou pagina para alunos consultarem notas, frequencia, boletos via login proprio
+7. **Monitoring no servidor:** adicionar metricas basicas de health/uptime sem stack completo (Prometheus/Grafana pesado demais para 1GB)
+8. **Backup automatizado:** script de backup do PostgreSQL no servidor Oracle Cloud
 
 ---
 

@@ -1,0 +1,101 @@
+# Docker Compose LEVE para servidor com 1GB RAM (Oracle Free Tier)
+# Apenas o essencial: API + Celery Worker + PostgreSQL + Redis
+# Sem: Frontend, Nginx, Prometheus, Grafana, Loki, Promtail, AlertManager, Redis Exporter
+
+services:
+  # ── API Backend ──────────────────────────────────────────
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: igs_api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - POSTGRES_HOST=postgres
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - APP_DEBUG=false
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # ── Celery Worker ─────────────────────────────────────────
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: igs_celery_worker
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - POSTGRES_HOST=postgres
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+    depends_on:
+      - postgres
+      - redis
+    command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=2
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # ── PostgreSQL ────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: igs_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-igs_db}
+      POSTGRES_USER: ${POSTGRES_USER:-igs_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-igs_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-igs_user} -d ${POSTGRES_DB:-igs_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    command: >
+      postgres
+        -c shared_buffers=64MB
+        -c effective_cache_size=128MB
+        -c work_mem=2MB
+        -c maintenance_work_mem=32MB
+        -c max_connections=30
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+
+  # ── Redis ─────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: igs_redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    command: redis-server --maxmemory 64mb --maxmemory-policy allkeys-lru
+    deploy:
+      resources:
+        limits:
+          memory: 96M
+
+volumes:
+  postgres_data:
+  redis_data:

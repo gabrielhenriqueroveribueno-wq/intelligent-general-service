@@ -119,6 +119,33 @@ async def get_ticket(db: AsyncSession, tenant_id: uuid.UUID, ticket_id: uuid.UUI
     return ticket
 
 
+async def attach_media_to_latest_ticket(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    contact_id: uuid.UUID,
+    media_url: str,
+) -> Optional[Ticket]:
+    """Attach a media URL to the most recent open ticket from this contact."""
+    result = await db.execute(
+        select(Ticket)
+        .where(
+            Ticket.tenant_id == tenant_id,
+            Ticket.contact_id == contact_id,
+            Ticket.status.in_(["open", "in_progress"]),
+        )
+        .order_by(Ticket.created_at.desc())
+        .limit(1)
+    )
+    ticket = result.scalar_one_or_none()
+    if not ticket:
+        return None
+
+    current_urls = ticket.media_urls or []
+    ticket.media_urls = current_urls + [media_url]
+    await db.flush()
+    return ticket
+
+
 async def add_comment(
     db: AsyncSession,
     ticket_id: uuid.UUID,

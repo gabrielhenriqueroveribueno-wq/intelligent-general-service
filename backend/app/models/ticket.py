@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TenantMixin, TimestampMixin
@@ -32,6 +32,7 @@ class Ticket(Base, TenantMixin, TimestampMixin):
     assigned_to: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True))
     sla_deadline: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    media_urls: Mapped[Optional[dict]] = mapped_column("media_urls", JSONB, default=list)
 
     comments: Mapped[list] = relationship("TicketComment", back_populates="ticket", lazy="noload")
 

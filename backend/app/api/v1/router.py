@@ -11,6 +11,7 @@ from app.api.v1 import (
     metrics,
     reports,
     slides,
+    student_portal,
     students,
     templates,
     tenants,
@@ -41,3 +42,4 @@ api_router.include_router(templates.router, prefix="/templates", tags=["Template
 api_router.include_router(webhooks_config.router, prefix="/webhooks", tags=["Webhooks Config"])
 api_router.include_router(metrics.router, prefix="/metrics", tags=["Metrics"])
 api_router.include_router(slides.router, prefix="/slides", tags=["Slides"])
+api_router.include_router(student_portal.router, prefix="/portal/student", tags=["Student Portal"])

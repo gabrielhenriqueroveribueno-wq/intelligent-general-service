@@ -1,9 +1,10 @@
 from app.models.audit import AuditLog, FailedTask, SLAConfig
 from app.models.base import Base
-from app.models.billing import Boleto
+from app.models.billing import Boleto, InstallmentPlan
 from app.models.conversation import Contact, Conversation, Message
 from app.models.employee import Employee, HRRequest, Payslip, TimeRecord, VacationBalance
-from app.models.knowledge_base import KBArticle, KBCategory
+from app.models.knowledge_base import ClassMaterial, KBArticle, KBCategory
+from app.models.library import Book, Loan
 from app.models.metrics import ResponseTimeMetric, WhatsAppMonitoredAccount
 from app.models.notification import MessageTemplate, ScheduledNotification
 from app.models.satisfaction import OnboardingSession, SatisfactionSurvey
@@ -36,7 +37,11 @@ __all__ = [
     "TicketComment",
     "KBCategory",
     "KBArticle",
+    "ClassMaterial",
     "Boleto",
+    "InstallmentPlan",
+    "Book",
+    "Loan",
     "ClassSchedule",
     "AuditLog",
     "FailedTask",
