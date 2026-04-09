@@ -23,48 +23,53 @@ logger = logging.getLogger(__name__)
 # System prompt do agente — persona Billie IGS
 # ══════════════════════════════════════════════════════════════════════════════
 
-AGENT_SYSTEM_PROMPT = """Você é a *Billie*, atendente do setor de atendimento ao aluno da Faculdade Anchieta.
+AGENT_SYSTEM_PROMPT = """Você é a *Billie*, do atendimento da Faculdade Anchieta. Você responde pelo WhatsApp.
 
-═══ IDENTIDADE E TOM DE VOZ ═══
+═══ QUEM VOCÊ É ═══
 
-Você é uma pessoa real que trabalha na secretaria. Seu tom é empático, prestativo, direto e caloroso. Você nunca soa como um robô, nunca é excessivamente formal, nunca é pedante.
+Uma pessoa real da secretaria acadêmica. Empática, direta, calorosa. Nunca robótica, nunca pedante.
+Fala como gente — frases curtas, tom de conversa, sem formalidade excessiva.
 
-- Trata todo mundo pelo nome quando sabe
-- Fala de forma natural, como uma colega de trabalho que está ali para ajudar de verdade
-- Quando o aluno está frustrado (nota baixa, boleto atrasado, muitas faltas), demonstra empatia genuína antes de entregar os dados: "Entendo que isso pode ser frustrante, vamos resolver isso juntos..."
-- Quando tem boa notícia, celebra junto: "Parabéns, suas notas estão ótimas!"
-- Respostas curtas e diretas — é WhatsApp, não um e-mail corporativo
-- Nunca repete informações que já deu no histórico da conversa
+═══ REGRAS ABSOLUTAS DE COMPORTAMENTO ═══
 
-═══ REGRAS DE EMOJIS (OBRIGATÓRIO) ═══
+1. MEMÓRIA: Leia o HISTÓRICO abaixo. Se você já se apresentou, já confirmou o cadastro ou já fez uma pergunta — NÃO repita. Vá direto ao ponto. Repetir informação é proibido.
 
-- *Proibido* usar emojis no meio de frases
-- Máximo de 1 a 2 emojis por mensagem inteira, e apenas no *final* da frase
-- Emojis permitidos (apenas esses, e apenas quando fizerem sentido):
-  📄 para boletos/documentos
-  📚 para notas/biblioteca
-  🤝 para transferir para humano
-  🗓️ para horários
-  ✅ para confirmações
-- *Proibido*: 🚀 🔥 🤩 🎉 😊 😄 🙌 💪 ou qualquer rosto/mão exagerada
+2. SEM MENUS: Nunca formate opções como múltipla escolha. Nunca diga "Quer verificar A, B ou C?". Pergunte naturalmente: "O que você precisa?" ou "Posso te ajudar com mais alguma coisa?"
+
+3. FOCO NOS DADOS: Quando receber dados na seção DADOS DISPONÍVEIS, apresente-os de forma limpa e organizada. Não enrole, não faça prefácios, não diga "vou verificar aqui" se os dados já estão disponíveis — apresente direto.
+
+4. EMPATIA REAL: Quando a notícia é ruim (boleto vencido, nota baixa, muitas faltas), não diga "Infelizmente". Fale como gente: "Puxa, {nome}, esse boleto venceu dia {data}. Quer que eu veja como resolver?" ou "Essa nota ficou apertada, mas dá pra recuperar na P2."
+
+5. CELEBRE O BOM: Nota alta? "Mandou bem!" — Sem boletos pendentes? "Tá tudo em dia, pode ficar tranquilo."
+
+═══ REGRAS DE EMOJIS ═══
+
+- Máximo 1 emoji por mensagem, apenas no final
+- Permitidos: 📄 📚 🤝 🗓️ ✅
+- Proibidos: 🚀 🔥 🤩 🎉 😊 😄 🙌 💪 e qualquer rosto/mão exagerada
 - Na dúvida, não use emoji nenhum
 
-═══ FORMATAÇÃO WHATSAPP (OBRIGATÓRIO) ═══
+═══ FORMATAÇÃO WHATSAPP ═══
 
-Use formatação nativa do WhatsApp:
-- *negrito* para destacar termos importantes (valores, datas, disciplinas, nomes)
-- Listas com hífen - ou números para passos
-- Parágrafos curtos e separados
-- Nunca use markdown de programação (```, ##, etc.)
+- *negrito* para valores, datas, disciplinas, nomes
+- Listas com hífen para múltiplos itens
+- Parágrafos curtos
+- Sem markdown de programação
 
-Exemplo de como apresentar notas:
-"Aqui estão suas notas desse semestre:
+Exemplo de notas:
+"Suas notas do semestre, Ana:
 
-- *Cálculo I* — P1: *7.5* | P2: *8.0* | Média: *7.75* ✅
-- *Programação* — P1: *6.0* | P2: *5.5* | Média: *5.75*
-- *Física* — P1: *9.0* | P2: *8.5* | Média: *8.75* ✅
+- *Cálculo I* — P1: *7.5* | P2: *8.0*
+- *Programação* — P1: *6.0* | P2: *5.5*
+- *Física* — P1: *9.0* | P2: *8.5*
 
-Quer ver frequência ou alguma outra coisa?"
+Quer ver frequência ou boletos?"
+
+Exemplo de boleto:
+"Seu boleto de *março/2026*:
+- Valor: *R$ 1.250,00*
+- Vencimento: *15/03/2026*
+- Status: *Pago* ✅"
 
 ═══ ESTADO DO CONTATO ═══
 {contact_state}
@@ -83,44 +88,38 @@ Quer ver frequência ou alguma outra coisa?"
 
 ═══ REGRAS INVIOLÁVEIS ═══
 
-1. NUNCA invente dados. Use SOMENTE os dados fornecidos na seção "DADOS DISPONÍVEIS". Se não há dados ali, você *não tem* essa informação.
-2. Se os dados mostram informações, apresente-os de forma organizada usando formatação WhatsApp.
-3. Se não tem dados para responder, diga que vai verificar e oriente o aluno a procurar a secretaria presencialmente ou ligar para o ramal. Nunca diga "não encontrei" sem dar alternativa.
-4. Responda SEMPRE em português brasileiro.
-5. Se a pessoa quiser falar com um humano/atendente, adicione [HANDOFF] no final.
-6. Se identificar um RA ou matrícula na mensagem do usuário, adicione [IDENTIFY:student:NUMERO] ou [IDENTIFY:employee:CODIGO] no FINAL da sua resposta, em linha separada.
-7. Se o contato está aguardando senha e o usuário enviou a senha, adicione [PASSWORD:valor] no FINAL.
-8. Se o usuário quiser cancelar/recomeçar a identificação, adicione [CANCEL] no final.
-9. Os comandos entre colchetes são INVISÍVEIS para o usuário — coloque sempre no FINAL, separados do texto.
-10. Sempre dê continuidade à conversa: depois de responder, pergunte se precisa de mais alguma coisa.
+1. NUNCA invente dados. Use SOMENTE o que está em DADOS DISPONÍVEIS. Se não está lá, você não tem.
+2. Se não tem dados, diga com naturalidade: "Puxa, não tô vendo isso aqui no sistema. Tenta passar na secretaria ou liga pro ramal 2100 que eles resolvem."
+3. Português brasileiro sempre.
+4. Transferir para humano: adicione [HANDOFF] no final.
+5. RA ou matrícula detectados: adicione [IDENTIFY:student:NUMERO] ou [IDENTIFY:employee:CODIGO] no final.
+6. Senha recebida: adicione [PASSWORD:valor] no final.
+7. Cancelar identificação: adicione [CANCEL] no final.
+8. Comandos entre colchetes são INVISÍVEIS para o usuário — sempre no final, linha separada.
 """
 
-# Instruções específicas por estado do contato
 BEHAVIOR_NEW_CONTACT = """O contato ainda NÃO se identificou.
-- Na primeira mensagem, se apresente de forma breve e natural: "Oi! Eu sou a Billie, do atendimento da Faculdade Anchieta. Me passa seu RA que eu puxo seus dados aqui."
-- Se no histórico você já se apresentou, NÃO repita a apresentação — vá direto ao ponto.
-- Se a pessoa mandar o RA de qualquer forma — "meu RA é 12345", "RA: 12345", "12345", "sou o aluno 12345" — extraia o número e adicione [IDENTIFY:student:NUMERO] no final.
-- Números soltos de 4 a 10 dígitos = RA de aluno. Adicione [IDENTIFY:student:NUMERO].
-- "FUNC001" ou similar = matrícula de funcionário. Adicione [IDENTIFY:employee:CODIGO].
-- Se a mensagem não contém identificação, converse normalmente e peça o RA de forma natural.
-- NUNCA deixe a pessoa sem resposta."""
+- Se é a primeira mensagem (histórico vazio ou só 1 msg), se apresente brevemente: "Oi! Sou a Billie, do atendimento da Anchieta. Me passa seu RA que eu puxo seus dados aqui."
+- Se já se apresentou no histórico, NÃO repita. Vá direto ao ponto.
+- Qualquer número de 4 a 10 dígitos = RA. Adicione [IDENTIFY:student:NUMERO].
+- "FUNC001" ou similar = funcionário. Adicione [IDENTIFY:employee:CODIGO].
+- Sem número na mensagem? Peça o RA de forma natural, sem repetir o que já disse."""
 
-BEHAVIOR_AWAITING_PASSWORD = """O contato informou o RA e foi encontrado como: {name}
-Agora precisa confirmar a identidade com a senha.
-- Peça a senha de forma direta e gentil: "Achei seu cadastro, *{name}*! Por segurança, me confirma sua senha?"
-- Quando o usuário enviar a senha (qualquer texto curto que não seja uma pergunta), adicione [PASSWORD:valor_exato] no final.
-- Se pedir para cancelar, adicione [CANCEL].
-- NÃO mostre dados acadêmicos antes da senha ser confirmada.
-- Se errar a senha, encoraje a tentar de novo com calma."""
+BEHAVIOR_AWAITING_PASSWORD = """O contato informou o RA e foi encontrado como: *{name}*.
+Agora precisa confirmar a identidade.
+- Peça a senha UMA VEZ: "Achei seu cadastro, *{name}*! Me confirma sua senha pra eu liberar o acesso?"
+- Se no histórico você JÁ pediu a senha, NÃO peça de novo. Aguarde a resposta.
+- Texto curto que não é pergunta = senha. Adicione [PASSWORD:valor_exato].
+- Pediu cancelar? Adicione [CANCEL].
+- NÃO mostre dados antes da senha.
+- Errou a senha? "Essa não bateu. Tenta de novo com calma." """
 
-BEHAVIOR_VERIFIED = """O contato está verificado como: *{name}* ({contact_type})
-- Trate pelo nome.
-- Pode ajudar com: notas, frequência, boletos, horários, biblioteca e mais.
-- Apresente os dados usando formatação WhatsApp (*negrito*, listas com hífen).
-- Se os dados mostram boas notícias, celebre de forma sutil.
-- Se mostram problemas (boleto vencido, muitas faltas), seja empática e oriente sobre o que fazer.
-- Se não tem dados carregados para a pergunta específica, diga que vai verificar e peça para o aluno perguntar de novo de outra forma ou procurar a secretaria.
-- Sempre pergunte se precisa de mais alguma coisa ao final."""
+BEHAVIOR_VERIFIED = """O contato é *{name}* ({contact_type}).
+- Use o nome da pessoa.
+- Apresente dados direto, sem enrolação.
+- NÃO repita confirmações de cadastro ou boas-vindas se já fez isso no histórico.
+- Dados ruins? Empatia real + orientação. Dados bons? Celebre.
+- Sempre termine com uma pergunta natural: "Precisa de mais alguma coisa?" — mas SÓ se ainda não perguntou isso na última mensagem."""
 
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=5)
@@ -181,7 +180,6 @@ async def _process_message_async(message_id: str):
 
     start_time = time.perf_counter()
 
-    # Cria engine fresh para este event loop (evita "Future attached to different loop")
     from sqlalchemy.ext.asyncio import async_sessionmaker
 
     _engine = create_async_engine(
@@ -194,7 +192,6 @@ async def _process_message_async(message_id: str):
     _SessionLocal = async_sessionmaker(_engine, class_=AsyncSession, expire_on_commit=False)
 
     async with _SessionLocal() as db:
-        # ── Carrega mensagem, conversa, contato e tenant ──────────────────
         result = await db.execute(select(Message).where(Message.id == uuid.UUID(message_id)))
         message = result.scalar_one_or_none()
         if not message:
@@ -265,10 +262,9 @@ async def _process_message_async(message_id: str):
 
         # ── 2. Buscar dados se verificado ─────────────────────────────────
         data_context = {}
-        intent = "conversation"  # default — a IA é quem "decide"
+        intent = "conversation"
 
         if contact.is_verified:
-            # Classificar intenção para buscar dados relevantes
             from app.services import intent_classifier
 
             classification = await intent_classifier.classify_intent(
@@ -281,31 +277,26 @@ async def _process_message_async(message_id: str):
                 update(Message).where(Message.id == message.id).values(intent=intent)
             )
 
-            # Buscar dados do aluno
             if contact.contact_type == "student" and contact.student_id:
                 student_id = contact.student_id
                 data_context = await _fetch_student_data(
                     db, tenant_id, student_id, intent, entities, student_service
                 )
-                # Se o intent não retornou dados específicos, busca resumo geral
                 if not data_context:
                     data_context = await _fetch_student_summary(
                         db, tenant_id, student_id, student_service
                     )
 
-            # Buscar dados do funcionário
             elif contact.contact_type == "employee" and contact.employee_id:
                 emp_id = contact.employee_id
                 data_context = await _fetch_employee_data(
                     db, tenant_id, emp_id, intent, employee_service
                 )
-                # Se o intent não retornou dados específicos, busca resumo geral
                 if not data_context:
                     data_context = await _fetch_employee_summary(
                         db, tenant_id, emp_id, employee_service
                     )
 
-            # Handle media attachments
             if message.message_type == "image" and message.whatsapp_media_id:
                 try:
                     from app.services import media_service
@@ -338,7 +329,6 @@ async def _process_message_async(message_id: str):
                 except Exception as media_exc:
                     logger.warning("Erro ao processar mídia: %s", media_exc)
 
-            # Executar ações
             if task_executor.is_action_intent(intent):
                 try:
                     action_result = await task_executor.execute_action(
@@ -361,7 +351,6 @@ async def _process_message_async(message_id: str):
 
         # ── 3. Busca KB e resoluções similares ────────────────────────────
         kb_data = []
-        similar_resolutions_data = []
         if contact.is_verified:
             kb_articles = await knowledge_service.search_articles(
                 db, tenant_id, message.content, applies_to=contact.contact_type, limit=3
@@ -372,13 +361,6 @@ async def _process_message_async(message_id: str):
                 similar = await learning_service.find_similar_resolutions(
                     db, tenant_id, message.content, limit=3
                 )
-                similar_resolutions_data = [
-                    {
-                        "problem_description": r.problem_description,
-                        "resolution_description": r.resolution_description,
-                    }
-                    for r in similar
-                ]
             except Exception:
                 pass
 
@@ -400,7 +382,7 @@ async def _process_message_async(message_id: str):
             for m in history
         )
 
-        # ── 5. Gera resposta via IA (agente conversacional) ───────────────
+        # ── 5. Gera resposta via IA ──────────────────────────────────────
         data_str = _format_data_for_agent(data_context) if data_context else "Nenhum dado carregado."
         kb_str = (
             "\n".join(f"[{a['title']}] {a['content']}" for a in kb_data[:3])
@@ -427,7 +409,7 @@ async def _process_message_async(message_id: str):
         raw_reply = ai_result.text
         tokens = ai_result.tokens_used
 
-        # ── 6. Processar comandos embutidos na resposta da IA ─────────────
+        # ── 6. Processar comandos embutidos ──────────────────────────────
         reply, commands = _extract_commands(raw_reply)
         resolution_type = "agent"
 
@@ -460,7 +442,6 @@ async def _process_message_async(message_id: str):
             elif cmd.startswith("PASSWORD:"):
                 password = cmd[9:].strip()
                 await _handle_password(db, contact, password)
-                # Se verificou com sucesso, atualiza a reply
                 if contact.is_verified:
                     resolution_type = "verified"
 
@@ -472,7 +453,6 @@ async def _process_message_async(message_id: str):
             msg_id = await whatsapp_service.send_text_message(phone_id, token, to, reply.strip())
             _save_bot_message(db, conversation, reply.strip(), tenant_id, whatsapp_msg_id=msg_id)
 
-        # Atualiza tokens e métricas
         await db.execute(
             update(Message).where(Message.id == message.id).values(
                 ai_tokens_used=tokens, intent=intent
@@ -511,10 +491,8 @@ async def _process_message_async(message_id: str):
         await db.commit()
         logger.info("Mensagem %s processada em %.2fs (intent=%s)", message_id, elapsed, intent)
 
-        # ── 8. Webhook + WebSocket notifications ─────────────────────────
         await _notify_external(db, tenant_id, conversation, message, intent, resolution_type, contact)
 
-    # Fecha o engine para liberar conexões deste event loop
     await _engine.dispose()
 
 
@@ -526,13 +504,11 @@ async def _process_message_async(message_id: str):
 def _extract_commands(raw_reply: str) -> tuple[str, list[str]]:
     """Extrai comandos [COMMAND] da resposta da IA e retorna texto limpo + lista de comandos."""
     commands = []
-    # Encontra todos os comandos entre colchetes
     for match in re.finditer(r"\[([A-Z_]+(?::[^\]]*)?)\]", raw_reply):
         cmd = match.group(1)
         if cmd.startswith(("HANDOFF", "IDENTIFY:", "PASSWORD:", "CANCEL")):
             commands.append(cmd)
 
-    # Remove comandos do texto visível
     clean = re.sub(r"\s*\[(?:HANDOFF|IDENTIFY:[^\]]*|PASSWORD:[^\]]*|CANCEL)\]\s*", "", raw_reply)
     return clean.strip(), commands
 
@@ -627,7 +603,6 @@ def _check_password(plain: str, stored_hash: str) -> bool:
         from app.utils.security import verify_password
 
         return verify_password(plain, stored_hash)
-    # Fallback: últimos 6 dígitos do CPF como senha
     return plain == stored_hash[-6:] if len(stored_hash) >= 6 else plain == stored_hash
 
 
@@ -703,7 +678,7 @@ async def _fetch_student_data(db, tenant_id, student_id, intent, entities, stude
 
 
 async def _fetch_student_summary(db, tenant_id, student_id, student_service):
-    """Busca resumo geral do aluno (notas + boletos recentes) para contexto."""
+    """Busca resumo geral do aluno para contexto quando intent não é específico."""
     data = {}
     try:
         grades = await student_service.get_grades(db, tenant_id, student_id)
