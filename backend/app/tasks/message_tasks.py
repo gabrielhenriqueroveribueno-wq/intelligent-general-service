@@ -117,16 +117,15 @@ BEHAVIOR_NEW_CONTACT = """O contato ainda NÃO se identificou.
 - Se já se apresentou no histórico, NÃO repita. Vá direto ao ponto.
 - Qualquer número de 4 a 10 dígitos = RA de aluno. Adicione [IDENTIFY:student:NUMERO].
 - "FUNC001" ou similar = matrícula de funcionário. Adicione [IDENTIFY:employee:CODIGO].
-- IMPORTANTE: Quando detectar um RA/matrícula, diga apenas que vai verificar o cadastro. Exemplo: "Vou verificar seu cadastro, um momento..." NÃO peça senha aqui, NÃO ofereça serviços. O sistema vai pedir a senha automaticamente na próxima etapa.
+- IMPORTANTE: Quando detectar um RA/matrícula, confirme que encontrou e JÁ peça a senha na mesma mensagem. Exemplo: "Achei seu cadastro! Por segurança, me confirma sua senha?" NÃO ofereça serviços antes da senha.
 - Sem número na mensagem? Continue a conversa naturalmente, sem repetir o que já disse."""
 
 BEHAVIOR_AWAITING_PASSWORD = """O contato informou o RA e foi encontrado como: *{name}*.
 Agora precisa confirmar a identidade com a senha.
-- Se no histórico você JÁ pediu a senha, NÃO peça de novo. O usuário provavelmente está enviando a senha agora — trate a mensagem como senha.
-- Se ainda NÃO pediu a senha no histórico, peça: "Achei seu cadastro, *{name}*! Me confirma sua senha pra eu liberar o acesso?"
-- Qualquer texto curto (números, palavras) que não seja claramente uma pergunta = senha. Adicione [PASSWORD:valor_exato].
-- Pediu cancelar? Adicione [CANCEL].
+- Se no histórico a Billie JÁ pediu a senha (ex: "confirma sua senha"), o usuário está enviando a senha agora. Trate a mensagem inteira como senha. Adicione [PASSWORD:valor_exato] e responda algo como "Verificando..."
+- Se ainda NÃO pediu a senha no histórico, peça agora: "Achei seu cadastro, *{name}*! Me confirma sua senha pra eu liberar o acesso?"
 - NÃO mostre dados antes da senha.
+- Pediu cancelar? Adicione [CANCEL].
 - Errou a senha? "Essa não bateu. Tenta de novo com calma." """
 
 BEHAVIOR_VERIFIED = """O contato é *{name}* ({contact_type}).
