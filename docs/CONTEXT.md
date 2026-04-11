@@ -88,7 +88,7 @@ backend/app/utils/
 backend/app/services/
   ai_client.py           — Cliente unificado IA (Groq/Gemini/Anthropic)
   ai_service.py          — Gera resposta RAG com dados reais + KB + historico
-  intent_classifier.py   — Classifica intent da mensagem (28 intents)
+  intent_classifier.py   — Classifica intent da mensagem (32 intents)
   slide_service.py       — Gera/atualiza slides via IA com template institucional
   task_executor.py       — Executa acoes (boleto, matricula, docs, slides)
   student_service.py     — CRUD + queries de aluno
@@ -146,9 +146,9 @@ frontend/src/pages/
 ### Celery Tasks
 ```
 backend/app/tasks/
-  celery_app.py        — Config + Beat schedule (SLA 5min, boletos 9h, backup seg 3h)
-  message_tasks.py     — Processamento principal de mensagens WhatsApp
-  notification_tasks.py — Notificacoes agendadas, checagem SLA
+  celery_app.py        — Config + Beat schedule (SLA 5min, boletos 9h, evasao 7h, relatorio seg 8h, rematricula 9:30, backup seg 3h)
+  message_tasks.py     — Processamento principal de mensagens WhatsApp (agente Billie)
+  notification_tasks.py — Notificacoes agendadas, checagem SLA, relatorio semanal, alerta evasao, campanha rematricula, geracao de documentos
   webhook_tasks.py     — Entrega de webhooks com retries
   dlq_tasks.py         — Dead Letter Queue
   backup_tasks.py      — Backup do banco
@@ -157,7 +157,7 @@ backend/app/tasks/
 
 ---
 
-## 4. Intents Classificados (28)
+## 4. Intents Classificados (32)
 
 **Alunos:** grade_query, attendance_query, schedule_query, boleto_query, enrollment_query,
 generate_boleto, enrollment_request, document_request, class_enrollment, grade_appeal,
@@ -168,7 +168,8 @@ financial_negotiation, certificate_request
 
 **Professores:** slide_generate, slide_update
 
-**Geral:** faq, greeting, verification, human_handoff, unknown
+**Geral:** faq, greeting, verification, human_handoff, farewell, feedback_response,
+enable_reminders, disable_reminders, unknown
 
 ---
 
@@ -193,6 +194,10 @@ Todas as mensagens passam pela IA — nao ha respostas hardcoded. A IA (Billie) 
    - [PASSWORD:valor] → verifica senha
    - [HANDOFF] → transfere para humano
    - [CANCEL] → cancela operacao
+   - [FEEDBACK_REQUEST] → marca conversa como aguardando avaliacao
+   - [FEEDBACK:N] → salva nota de satisfacao (1-5) na tabela satisfaction_surveys
+   - [REMINDERS_ON] / [REMINDERS_OFF] → ativa/desativa lembretes proativos no metadata do contato
+   - [GENERATE_DOC:tipo] → dispara task Celery para gerar documento digital (declaracao, historico)
 8. Extrai e processa comandos (regex), remove da resposta
 9. Envia resposta limpa via WhatsApp API
 10. Registra metricas (tokens, tempo)
@@ -375,18 +380,28 @@ Trigger: push de tag `v*` → SSH para servidor → `docker compose pull` + `ale
 - **Token permanente (pendente):** tentativa de criar System User Token na Meta foi bloqueada por falta de permissoes visiveis. Usando token temporario por enquanto (expira a cada ~1-2h).
 - **Novos arquivos:** docker-compose.prod-light.yml, docs/WEBHOOK_CONFIG.md, backend/app/api/v1/student_portal.py, backend/app/models/library.py, backend/app/services/hr_vision_service.py, backend/app/services/library_service.py, backend/app/services/payment_service.py, backend/app/services/tutor_service.py, backend/alembic/versions/c8d3e5f7a9b1_add_modules_pix_library_materials.py
 
+### Fase 9 — Features Inteligentes + Feedback + Documentos Digitais
+- **Pesquisa de satisfacao pos-atendimento:** Billie pede nota de 1 a 5 quando usuario encerra conversa ("obrigado", "era so isso"). Nota salva na tabela satisfaction_surveys via comando [FEEDBACK_REQUEST] + [FEEDBACK:N]. Conversa marcada como "closed" apos feedback.
+- **Lembretes opt-in via WhatsApp:** usuario pode dizer "ativar lembretes" para receber notificacoes proativas. Preferencia salva em contact.metadata (reminders_enabled: true/false). Todas as tasks de notificacao (boletos, frequencia, notas, rematricula) verificam opt-in antes de enviar.
+- **Relatorio semanal para gestores:** Celery beat (segunda 8h) agrega metricas da semana (total mensagens, conversas, satisfacao media, top 5 assuntos) e envia via WhatsApp para admins/managers do tenant.
+- **Alerta inteligente de evasao:** Celery beat (diario 7h) cruza faltas >30% + notas <4.0 + boletos vencidos. Se 2+ sinais detectados, envia alerta para coordenacao com nome, RA, curso e sinais identificados.
+- **Campanha de rematricula:** Celery beat (diario 9:30, so em jun/jul/nov/dez) envia mensagem personalizada para alunos ativos com lembretes habilitados, convidando a rematricular.
+- **Documentos digitais via WhatsApp:** aluno pede "declaracao de matricula" ou "historico" → Billie gera documento formatado e envia como mensagem. Comando [GENERATE_DOC:tipo] dispara task Celery dedicada (enrollment_declaration, academic_history).
+- **Tutor IA — materias da prova:** quando aluno pergunta sobre provas, Billie lista disciplinas do semestre e sugere focar nas com nota mais baixa. Nao explica conteudo, apenas orienta.
+- **Novos intents:** feedback_response, enable_reminders, disable_reminders, farewell (total: 32 intents)
+- **Novos comandos embutidos:** [FEEDBACK_REQUEST], [FEEDBACK:N], [REMINDERS_ON], [REMINDERS_OFF], [GENERATE_DOC:tipo]
+
 ---
 
 ## 11. Proximos Passos Sugeridos
 
 1. **Token permanente Meta:** resolver permissoes do System User para gerar token que nao expira
 2. **Evolution API:** migrar de Meta Cloud API para Evolution API (auto-hospedada, sem custos de mensagem)
-3. **Pitch Deck:** preparar demonstracao end-to-end com dados do seed_demo + bot Billie funcionando
-4. **Frontend Slides:** adicionar preview visual estilo PowerPoint (render HTML dos slides)
-5. **Notificacoes:** criar templates HSM na Meta para boleto_lembrete, frequencia_alerta
-6. **Portal do Aluno:** endpoint publico ou pagina para alunos consultarem notas, frequencia, boletos via login proprio
-7. **Monitoring no servidor:** adicionar metricas basicas de health/uptime sem stack completo (Prometheus/Grafana pesado demais para 1GB)
-8. **Backup automatizado:** script de backup do PostgreSQL no servidor Oracle Cloud
+3. **Pitch Deck:** preparar demonstracao end-to-end com dados do seed_pitch + bot Billie funcionando
+4. **Integracao com sistema academico real:** quando vender o projeto, integrar API do sistema que a instituicao ja usa (TOTVS RM, Lyceum, etc.) para consultar dados reais em vez de manter banco proprio
+5. **Templates HSM Meta:** criar templates aprovados na Meta para boleto_lembrete, frequencia_alerta, rematricula
+6. **Monitoring no servidor:** adicionar metricas basicas de health/uptime sem stack completo (Prometheus/Grafana pesado demais para 1GB)
+7. **Backup automatizado:** script de backup do PostgreSQL no servidor Oracle Cloud
 
 ---
 

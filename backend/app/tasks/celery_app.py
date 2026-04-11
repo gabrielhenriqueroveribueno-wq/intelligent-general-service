@@ -53,5 +53,20 @@ celery_app.conf.update(
             "task": "app.tasks.backup_tasks.backup_database_task",
             "schedule": crontab(hour=3, minute=0, day_of_week=1),
         },
+        # Relatório semanal para gestores — toda segunda-feira às 8h
+        "weekly-manager-report": {
+            "task": "app.tasks.notification_tasks.send_weekly_report_task",
+            "schedule": crontab(hour=8, minute=0, day_of_week=1),
+        },
+        # Alerta de risco de evasão — todo dia às 7h
+        "check-evasion-risk": {
+            "task": "app.tasks.notification_tasks.check_evasion_risk_task",
+            "schedule": crontab(hour=7, minute=0),
+        },
+        # Campanha de rematrícula — todo dia às 9h (só roda em jun/jul/nov/dez)
+        "reenrollment-campaign": {
+            "task": "app.tasks.notification_tasks.send_reenrollment_campaign_task",
+            "schedule": crontab(hour=9, minute=30),
+        },
     },
 )

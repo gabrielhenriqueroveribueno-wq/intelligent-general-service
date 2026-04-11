@@ -107,7 +107,12 @@ Exemplo de boleto:
 5. RA ou matrícula detectados: adicione [IDENTIFY:student:NUMERO] ou [IDENTIFY:employee:CODIGO] no final.
 6. Senha recebida: adicione [PASSWORD:valor] no final.
 7. Cancelar identificação: adicione [CANCEL] no final.
-8. Comandos entre colchetes são INVISÍVEIS para o usuário — sempre no final, linha separada.
+8. Pedir avaliação de satisfação: adicione [FEEDBACK_REQUEST] no final.
+9. Usuário respondeu nota de satisfação (1-5): adicione [FEEDBACK:N] no final (ex: [FEEDBACK:4]).
+10. Ativar lembretes para o usuário: adicione [REMINDERS_ON] no final.
+11. Desativar lembretes para o usuário: adicione [REMINDERS_OFF] no final.
+12. Gerar documento (declaração, histórico): adicione [GENERATE_DOC:tipo] no final.
+13. Comandos entre colchetes são INVISÍVEIS para o usuário — sempre no final, linha separada.
 """
 
 BEHAVIOR_NEW_CONTACT = """O contato ainda NÃO se identificou.
@@ -133,7 +138,32 @@ BEHAVIOR_VERIFIED = """O contato é *{name}* ({contact_type}).
 - Apresente dados direto, sem enrolação.
 - NÃO repita confirmações de cadastro ou boas-vindas se já fez isso no histórico.
 - Dados ruins? Empatia real + orientação. Dados bons? Celebre.
-- Sempre termine com uma pergunta natural: "Precisa de mais alguma coisa?" — mas SÓ se ainda não perguntou isso na última mensagem."""
+- Sempre termine com uma pergunta natural: "Precisa de mais alguma coisa?" — mas SÓ se ainda não perguntou isso na última mensagem.
+
+═══ PESQUISA DE SATISFAÇÃO ═══
+- Quando o usuário indicar que NÃO precisa de mais nada (ex: "não", "era só isso", "obrigado", "valeu", "tchau", "só isso mesmo"), agradeça e peça avaliação: "Que bom que pude ajudar! Me dá uma nota de *1 a 5* pro atendimento? 1 = ruim, 5 = excelente" e adicione [FEEDBACK_REQUEST].
+- Se o usuário responder com um número de 1 a 5 E no histórico a Billie já pediu avaliação, agradeça pela nota e adicione [FEEDBACK:N]. Ex: se respondeu "4", adicione [FEEDBACK:4]. Responda algo como "Obrigada pela nota! Até a próxima" ou personalize conforme a nota.
+- NÃO peça avaliação se já pediu no histórico.
+- Se a nota for 1 ou 2, demonstre empatia: "Puxa, vou repassar pro time pra melhorarmos."
+- Se a nota for 4 ou 5, celebre: "Fico feliz! Qualquer coisa, é só chamar."
+
+═══ TUTOR — MATÉRIAS DA PROVA ═══
+- Se o aluno perguntar sobre provas, o que estudar, ou o que cai na prova, use os dados de GRADES e SCHEDULES para listar as disciplinas do semestre atual.
+- Diga quais matérias ele está cursando e sugira focar nas que tem nota mais baixa.
+- NÃO tente explicar conteúdo nem resumir matéria. Apenas liste as disciplinas e orientação geral.
+- Exemplo: "Suas matérias desse semestre são: *Cálculo I*, *Programação*, *Física*. Sua nota mais apertada tá em *Programação* (5.5 na P1), vale reforçar essa!"
+
+═══ DOCUMENTOS DIGITAIS ═══
+- Se o aluno pedir declaração de matrícula, histórico, ou documento, confirme e adicione [GENERATE_DOC:tipo].
+- Tipos: enrollment_declaration, academic_history
+- Exemplo: aluno pede "preciso de uma declaração de matrícula" → responda "Vou gerar sua declaração agora!" e adicione [GENERATE_DOC:enrollment_declaration].
+- Para histórico: [GENERATE_DOC:academic_history]
+- O documento será enviado como mensagem formatada logo em seguida.
+
+═══ LEMBRETES PROATIVOS ═══
+- Se o usuário pedir para ativar lembretes/notificações (ex: "ativar lembretes", "quero receber avisos", "me avisa quando tiver boleto"), confirme e adicione [REMINDERS_ON]. Responda: "Pronto, ativei os lembretes! Vou te avisar sobre vencimento de boletos e novas notas."
+- Se pedir para desativar (ex: "desativar lembretes", "para de mandar mensagem", "não quero mais avisos"), confirme e adicione [REMINDERS_OFF]. Responda: "Ok, desativei os lembretes. Se mudar de ideia, é só pedir."
+- Não ofereça lembretes espontaneamente — só ative quando o usuário pedir."""
 
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=5)
@@ -459,6 +489,42 @@ async def _process_message_async(message_id: str):
                 if contact.is_verified:
                     resolution_type = "verified"
 
+            elif cmd == "FEEDBACK_REQUEST":
+                # Marca conversa como aguardando feedback
+                await db.execute(
+                    update(Conversation)
+                    .where(Conversation.id == conversation.id)
+                    .values(status="awaiting_feedback")
+                )
+
+            elif cmd.startswith("FEEDBACK:"):
+                score_str = cmd[9:].strip()
+                if score_str.isdigit() and 1 <= int(score_str) <= 5:
+                    await _save_feedback(db, tenant_id, conversation.id, contact.id, int(score_str))
+                    await db.execute(
+                        update(Conversation)
+                        .where(Conversation.id == conversation.id)
+                        .values(status="closed")
+                    )
+
+            elif cmd == "REMINDERS_ON":
+                meta = dict(contact.metadata_ or {})
+                meta["reminders_enabled"] = True
+                contact.metadata_ = meta
+
+            elif cmd == "REMINDERS_OFF":
+                meta = dict(contact.metadata_ or {})
+                meta["reminders_enabled"] = False
+                contact.metadata_ = meta
+
+            elif cmd.startswith("GENERATE_DOC:"):
+                doc_type = cmd.split(":", 1)[1].strip()
+                from app.tasks.notification_tasks import generate_document_task
+
+                generate_document_task.delay(
+                    str(contact.id), str(tenant_id), doc_type
+                )
+
             elif cmd == "CANCEL":
                 contact.metadata_ = {}
 
@@ -518,12 +584,17 @@ async def _process_message_async(message_id: str):
 def _extract_commands(raw_reply: str) -> tuple[str, list[str]]:
     """Extrai comandos [COMMAND] da resposta da IA e retorna texto limpo + lista de comandos."""
     commands = []
+    valid_prefixes = ("HANDOFF", "IDENTIFY:", "PASSWORD:", "CANCEL", "FEEDBACK_REQUEST", "FEEDBACK:", "REMINDERS_ON", "REMINDERS_OFF", "GENERATE_DOC:")
     for match in re.finditer(r"\[([A-Z_]+(?::[^\]]*)?)\]", raw_reply):
         cmd = match.group(1)
-        if cmd.startswith(("HANDOFF", "IDENTIFY:", "PASSWORD:", "CANCEL")):
+        if cmd.startswith(valid_prefixes):
             commands.append(cmd)
 
-    clean = re.sub(r"\s*\[(?:HANDOFF|IDENTIFY:[^\]]*|PASSWORD:[^\]]*|CANCEL)\]\s*", "", raw_reply)
+    clean = re.sub(
+        r"\s*\[(?:HANDOFF|IDENTIFY:[^\]]*|PASSWORD:[^\]]*|CANCEL|FEEDBACK_REQUEST|FEEDBACK:\d|REMINDERS_ON|REMINDERS_OFF|GENERATE_DOC:[^\]]*)\]\s*",
+        "",
+        raw_reply,
+    )
     return clean.strip(), commands
 
 
@@ -892,6 +963,25 @@ async def _notify_external(db, tenant_id, conversation, message, intent, resolut
         await _r.aclose()
     except Exception as exc:
         logger.warning("Falha ao publicar evento WS: %s", exc)
+
+
+async def _save_feedback(db, tenant_id, conversation_id, contact_id, score: int):
+    """Salva pesquisa de satisfação no banco."""
+    from datetime import datetime, timezone
+
+    from app.models.satisfaction import SatisfactionSurvey
+
+    survey = SatisfactionSurvey(
+        tenant_id=tenant_id,
+        conversation_id=conversation_id,
+        contact_id=contact_id,
+        score=score,
+        responder_type="bot",
+        survey_sent_at=datetime.now(timezone.utc),
+        responded_at=datetime.now(timezone.utc),
+    )
+    db.add(survey)
+    logger.info("Feedback salvo: conversa=%s, nota=%d", conversation_id, score)
 
 
 def _save_bot_message(db, conversation, content: str, tenant_id, whatsapp_msg_id=None):
