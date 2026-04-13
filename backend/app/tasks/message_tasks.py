@@ -147,10 +147,9 @@ BEHAVIOR_VERIFIED = """O contato é *{name}* ({contact_type}).
 
 ═══ PESQUISA DE SATISFAÇÃO ═══
 - Quando o usuário indicar que NÃO precisa de mais nada (ex: "não", "era só isso", "obrigado", "valeu", "tchau", "só isso mesmo"), agradeça e peça avaliação: "Que bom que pude ajudar! Me dá uma nota de *1 a 5* pro atendimento? 1 = ruim, 5 = excelente" e adicione [FEEDBACK_REQUEST].
-- Se o usuário responder com um número de 1 a 5 E no histórico a Billie já pediu avaliação, agradeça pela nota e adicione [FEEDBACK:N]. Ex: se respondeu "4", adicione [FEEDBACK:4]. Responda algo como "Obrigada pela nota! Até a próxima" ou personalize conforme a nota.
-- NÃO peça avaliação se já pediu no histórico.
-- Se a nota for 1 ou 2, demonstre empatia: "Puxa, vou repassar pro time pra melhorarmos."
-- Se a nota for 4 ou 5, celebre: "Fico feliz! Qualquer coisa, é só chamar."
+- NÃO peça avaliação se já pediu no histórico. Olhe o histórico: se a Billie já disse "nota de 1 a 5" ou "1 = ruim, 5 = excelente", NÃO repita. Em vez disso, diga "Tudo certo! Qualquer coisa, é só chamar. Até mais!"
+- Se o usuário mandar um número de 1 a 5 após pedido de avaliação, o sistema processa automaticamente. NÃO adicione [FEEDBACK:N] — o sistema já cuida disso.
+- NUNCA peça avaliação duas vezes na mesma conversa.
 
 ═══ TUTOR — MATÉRIAS DA PROVA ═══
 - Se o aluno perguntar sobre provas, o que estudar, ou o que cai na prova, use os dados de GRADES e SCHEDULES para listar as disciplinas do semestre atual.
@@ -333,6 +332,61 @@ async def _process_message_async(message_id: str):
         # ── 2. Buscar dados se verificado ─────────────────────────────────
         data_context = {}
         intent = "conversation"
+
+        # ── 2a. Interceptar feedback direto (sem IA) ─────────────────────
+        if (
+            contact.is_verified
+            and conversation.status == "awaiting_feedback"
+            and message.content
+            and message.content.strip() in ("1", "2", "3", "4", "5")
+        ):
+            score = int(message.content.strip())
+            await _save_feedback(db, tenant_id, conversation.id, contact.id, score)
+            await db.execute(
+                update(Conversation)
+                .where(Conversation.id == conversation.id)
+                .values(status="closed")
+            )
+
+            from datetime import datetime, timezone
+
+            hour = datetime.now(timezone.utc).hour - 3  # UTC-3 (São Paulo)
+            if hour < 0:
+                hour += 24
+            greeting = "Tenha uma ótima noite!" if hour >= 18 else (
+                "Tenha um ótimo dia!" if hour >= 12 else "Tenha uma ótima manhã!"
+            )
+
+            thanks_map = {
+                1: f"Poxa, sinto muito que não foi bom. Vou repassar pro time pra melhorarmos. {greeting} 🙂",
+                2: f"Entendi, vou repassar pro time pra gente melhorar. {greeting} 🙂",
+                3: f"Obrigada pela nota! Vamos trabalhar pra melhorar sempre. {greeting} 😊",
+                4: f"Fico feliz! Obrigada pela avaliação, {contact.name.split()[0]}! {greeting} 😄",
+                5: f"Que ótimo, fico muito feliz! Obrigada, {contact.name.split()[0]}! {greeting} 😊",
+            }
+            reply = thanks_map.get(score, f"Obrigada pela nota! {greeting}")
+
+            msg_id = await whatsapp_service.send_text_message(phone_id, token, to, reply)
+            _save_bot_message(db, conversation, reply, tenant_id, whatsapp_msg_id=msg_id)
+
+            await db.execute(
+                update(Message).where(Message.id == message.id).values(intent="feedback_response")
+            )
+            await db.execute(
+                update(Conversation)
+                .where(Conversation.id == conversation.id)
+                .values(last_message_at=datetime.now(timezone.utc))
+            )
+
+            elapsed = time.perf_counter() - start_time
+            messages_processed_total.labels(
+                tenant_id=str(tenant_id), intent="feedback_response", resolution_type="agent"
+            ).inc()
+
+            await db.commit()
+            logger.info("Feedback direto processado: nota=%d, conversa=%s", score, conversation.id)
+            await _engine.dispose()
+            return
 
         if contact.is_verified:
             from app.services import intent_classifier
