@@ -40,7 +40,7 @@ automaticas via IA (Groq/Gemini/Anthropic).
 
 ## 3. Estrutura dos Arquivos Principais
 
-### Backend Models (19 tabelas)
+### Backend Models (20 tabelas)
 ```
 backend/app/models/
   base.py            — Base, TimestampMixin, TenantMixin
@@ -61,6 +61,7 @@ backend/app/models/
   audit.py           — AuditLog, FailedTask, SLAConfig
   ticket_learning.py — TicketResolution
   webhook.py         — WebhookEndpoint, WebhookDelivery
+  appointment.py     — Appointment (agendamento presencial)
 ```
 
 ### Backend Utils
@@ -83,14 +84,14 @@ backend/app/utils/
     igs-context/SKILL.md — Skill com contexto arquitetural completo do IGS
 ```
 
-### Backend Services (21 servicos)
+### Backend Services (26 servicos)
 ```
 backend/app/services/
   ai_client.py           — Cliente unificado IA (Groq/Gemini/Anthropic)
   ai_service.py          — Gera resposta RAG com dados reais + KB + historico
-  intent_classifier.py   — Classifica intent da mensagem (32 intents)
+  intent_classifier.py   — Classifica intent da mensagem (35 intents)
   slide_service.py       — Gera/atualiza slides via IA com template institucional
-  task_executor.py       — Executa acoes (boleto, matricula, docs, slides)
+  task_executor.py       — Executa acoes (boleto, matricula, docs, slides, agendamento, OCR)
   student_service.py     — CRUD + queries de aluno
   employee_service.py    — CRUD + queries de funcionario
   ticket_service.py      — CRUD tickets, protocolos, SLA
@@ -109,6 +110,14 @@ backend/app/services/
   pptx_service.py        — Export de slides JSON para .pptx (python-pptx)
   boleto_pdf_service.py  — Geracao de boleto em PDF (ReportLab)
   anonymization_service.py — LGPD: anonimizacao de alunos/funcionarios (direito ao esquecimento)
+  mercadopago_service.py — Checkout Pro (PIX + cartao + boleto) via Mercado Pago
+  email_service.py       — Envio de email via SMTP com anexos
+  document_ocr_service.py — OCR de documentos via IA Vision (RG, CPF, comprovante, etc.)
+  appointment_service.py — Agendamento de atendimento presencial via WhatsApp
+  payment_service.py     — PIX BR Code + negociacao de debitos
+  library_service.py     — Emprestimos, renovacao, multas da biblioteca
+  tutor_service.py       — Tutor IA (materias da prova)
+  hr_vision_service.py   — Processamento de atestado medico via Vision
 ```
 
 ### Backend API Routes (20 modulos)
@@ -157,7 +166,7 @@ backend/app/tasks/
 
 ---
 
-## 4. Intents Classificados (32)
+## 4. Intents Classificados (35)
 
 **Alunos:** grade_query, attendance_query, schedule_query, boleto_query, enrollment_query,
 generate_boleto, enrollment_request, document_request, class_enrollment, grade_appeal,
@@ -167,6 +176,8 @@ financial_negotiation, certificate_request
 **Funcionarios:** payslip_query, vacation_query, time_record_query, hr_request
 
 **Professores:** slide_generate, slide_update
+
+**Servicos:** schedule_appointment, cancel_appointment, document_ocr
 
 **Geral:** faq, greeting, verification, human_handoff, farewell, feedback_response,
 enable_reminders, disable_reminders, unknown
@@ -390,6 +401,16 @@ Trigger: push de tag `v*` → SSH para servidor → `docker compose pull` + `ale
 - **Tutor IA — materias da prova:** quando aluno pergunta sobre provas, Billie lista disciplinas do semestre e sugere focar nas com nota mais baixa. Nao explica conteudo, apenas orienta.
 - **Novos intents:** feedback_response, enable_reminders, disable_reminders, farewell (total: 32 intents)
 - **Novos comandos embutidos:** [FEEDBACK_REQUEST], [FEEDBACK:N], [REMINDERS_ON], [REMINDERS_OFF], [GENERATE_DOC:tipo]
+
+### Fase 10 — Pagamentos, OCR, Agendamento + Mercado Pago
+- **Mercado Pago Checkout Pro:** mercadopago_service.py integra PIX + cartao de credito/debito + boleto via Checkout Pro. Sandbox configurado para testes. Webhook POST /webhook/mercadopago recebe notificacoes de pagamento e atualiza status do boleto automaticamente.
+- **Reconhecimento de documentos via foto (OCR):** document_ocr_service.py usa IA Vision para extrair dados de RG, CPF, comprovante de residencia, boleto, historico escolar, diplomas. Integrado no message_tasks.py — quando usuario verificado envia foto (que nao seja facility_ticket ou medical_certificate), OCR e executado e dados extraidos sao apresentados pela Billie.
+- **Agendamento presencial via WhatsApp:** appointment_service.py + model Appointment. Usuario pede para agendar atendimento → sistema mostra horarios disponiveis (seg-sex, 8h-16:30, 3 vagas/slot) → usuario escolhe data/hora → confirmacao com protocolo. Suporta cancelamento. Setores: secretaria, coordenacao, financeiro, biblioteca, TI.
+- **Relatorio PDF semanal por email:** email_service.py envia emails via SMTP com anexos. Celery beat (segunda 8:30) gera PDF com metricas da semana e envia para admins.
+- **Fluxo de primeiro contato atualizado:** Billie pergunta se e aluno, funcionario ou externo. Externos recebem link do vestibular (anchieta.br/vestibular) ou vagas (anchieta.br/trabalhe-conosco).
+- **Novos intents:** schedule_appointment, cancel_appointment, document_ocr (total: 35 intents)
+- **Novo model:** Appointment (tabela appointments, migration d9e4f6a7b2c3)
+- **Novos arquivos:** appointment_service.py, document_ocr_service.py, email_service.py, mercadopago_service.py, payment_service.py, library_service.py, tutor_service.py, hr_vision_service.py, models/appointment.py, models/library.py, alembic d9e4f6a7b2c3
 
 ---
 

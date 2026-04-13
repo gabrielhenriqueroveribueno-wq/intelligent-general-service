@@ -53,10 +53,15 @@ celery_app.conf.update(
             "task": "app.tasks.backup_tasks.backup_database_task",
             "schedule": crontab(hour=3, minute=0, day_of_week=1),
         },
-        # Relatório semanal para gestores — toda segunda-feira às 8h
+        # Relatório semanal para gestores via WhatsApp — toda segunda-feira às 8h
         "weekly-manager-report": {
             "task": "app.tasks.notification_tasks.send_weekly_report_task",
             "schedule": crontab(hour=8, minute=0, day_of_week=1),
+        },
+        # Relatório PDF semanal por email — toda segunda-feira às 8:30h
+        "weekly-pdf-report": {
+            "task": "app.tasks.notification_tasks.send_weekly_pdf_report_task",
+            "schedule": crontab(hour=8, minute=30, day_of_week=1),
         },
         # Alerta de risco de evasão — todo dia às 7h
         "check-evasion-risk": {

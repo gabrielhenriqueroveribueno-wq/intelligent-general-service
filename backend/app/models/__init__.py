@@ -1,3 +1,4 @@
+from app.models.appointment import Appointment
 from app.models.audit import AuditLog, FailedTask, SLAConfig
 from app.models.base import Base
 from app.models.billing import Boleto, InstallmentPlan
@@ -57,4 +58,5 @@ __all__ = [
     "SlideTemplate",
     "SlidePresentation",
     "SlideGenerationLog",
+    "Appointment",
 ]

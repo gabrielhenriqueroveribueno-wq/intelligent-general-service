@@ -46,6 +46,19 @@ class Settings(BaseSettings):
     CLAUDE_MAX_TOKENS: int = 1024
     CLAUDE_CLASSIFIER_MAX_TOKENS: int = 50
 
+    # Mercado Pago
+    MP_ACCESS_TOKEN: str = ""
+    MP_PUBLIC_KEY: str = ""
+    MP_WEBHOOK_SECRET: str = ""  # For validating MP webhook signatures
+
+    # SMTP (Email)
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = ""
+    SMTP_USE_TLS: bool = True
+
     # Encryption (Fernet key for CPF, tokens)
     ENCRYPTION_KEY: str = ""
 

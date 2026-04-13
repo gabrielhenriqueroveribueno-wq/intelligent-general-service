@@ -44,6 +44,9 @@ VALID_INTENTS = [
     "enable_reminders",  # Ativar lembretes proativos
     "disable_reminders",  # Desativar lembretes proativos
     "farewell",  # Despedida / encerramento de atendimento
+    "schedule_appointment",  # Agendar atendimento presencial
+    "cancel_appointment",  # Cancelar agendamento
+    "document_ocr",  # Reconhecimento de documento via foto
     "unknown",  # Intenção não reconhecida
 ]
 
@@ -57,7 +60,8 @@ class_enrollment, grade_appeal, transfer_request, scholarship_query, internship_
 event_registration, library_query, financial_negotiation, certificate_request,
 slide_generate, slide_update, generate_pix, facility_ticket, library_renewal,
 tutor_question, medical_certificate, feedback_response, enable_reminders,
-disable_reminders, farewell, unknown
+disable_reminders, farewell, schedule_appointment, cancel_appointment,
+document_ocr, unknown
 
 Responda APENAS com um JSON no formato: {"intent": "nome_da_intencao", "entities": {}}
 Para entities, extraia dados relevantes como: subject (matéria), period (período), month (mês), type (tipo), amount (valor).

@@ -281,6 +281,12 @@ async def _send_grade_notifications_async():
 
 
 @celery_app.task
+def send_weekly_pdf_report_task():
+    """Gera relatório PDF semanal e envia por email para gestores."""
+    asyncio.run(_send_weekly_pdf_report_async())
+
+
+@celery_app.task
 def send_weekly_report_task():
     """Envia relatório semanal de atendimento para gestores do tenant."""
     asyncio.run(_send_weekly_report_async())
@@ -677,6 +683,58 @@ async def _generate_document_async(contact_id: str, tenant_id: str, doc_type: st
             doc_text,
         )
         logger.info("Documento %s gerado para %s", doc_type, student.full_name)
+
+
+async def _send_weekly_pdf_report_async():
+    """Gera PDF com metricas da semana e envia por email para admins."""
+    from datetime import datetime, timedelta, timezone
+
+    from sqlalchemy import select
+
+    from app.dependencies import WorkerSessionLocal as AsyncSessionLocal
+    from app.models.tenant import Tenant
+    from app.models.user import User
+    from app.services.email_service import send_email
+    from app.services.report_service import get_conversation_report, rows_to_pdf
+
+    since = datetime.now(timezone.utc) - timedelta(days=7)
+    now = datetime.now(timezone.utc)
+
+    async with AsyncSessionLocal() as db:
+        tenants = await db.execute(select(Tenant).where(Tenant.is_active))
+        for tenant in tenants.scalars().all():
+            try:
+                rows = await get_conversation_report(db, tenant.id, since, now)
+                if not rows:
+                    continue
+
+                pdf_bytes = rows_to_pdf(rows, title=f"Relatorio Semanal - {tenant.name}")
+
+                # Envia para admins do tenant
+                admins = await db.execute(
+                    select(User).where(
+                        User.tenant_id == tenant.id,
+                        User.role.in_(["admin", "manager"]),
+                        User.is_active,
+                    )
+                )
+                for admin in admins.scalars().all():
+                    send_email(
+                        to=admin.email,
+                        subject=f"Relatorio Semanal IGS - {tenant.name}",
+                        body=(
+                            f"<h2>Relatorio Semanal</h2>"
+                            f"<p>Periodo: {since.strftime('%d/%m/%Y')} a {now.strftime('%d/%m/%Y')}</p>"
+                            f"<p>Total de conversas: <strong>{len(rows)}</strong></p>"
+                            f"<p>Em anexo o relatorio completo em PDF.</p>"
+                        ),
+                        attachment=pdf_bytes,
+                        attachment_name=f"relatorio_semanal_{now.strftime('%Y%m%d')}.pdf",
+                    )
+
+                logger.info("Relatorio PDF enviado para tenant %s", tenant.slug)
+            except Exception as exc:
+                logger.error("Erro relatorio PDF tenant %s: %s", tenant.id, exc)
 
 
 async def _check_sla_async():

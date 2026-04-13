@@ -42,6 +42,9 @@ ACTION_INTENTS = {
     "library_renewal",
     "tutor_question",
     "medical_certificate",
+    "schedule_appointment",
+    "cancel_appointment",
+    "document_ocr",
 }
 
 
@@ -313,11 +316,36 @@ async def _handle_generate_pix(
     entities: dict,
     student_id: UUID | None,
 ) -> dict[str, Any]:
-    """Gera código PIX para o boleto pendente do aluno."""
+    """Gera link de pagamento via Mercado Pago (PIX + cartão) ou PIX BR Code."""
     if not student_id:
         return {"success": False, "message": "Aluno não identificado para geração de PIX."}
 
-    # Tenant PIX key from settings
+    from app.config import settings as app_settings
+
+    # Se Mercado Pago configurado, usa Checkout Pro (PIX + cartão)
+    if app_settings.MP_ACCESS_TOKEN:
+        from app.services.mercadopago_service import create_checkout_for_student
+
+        webhook_url = None
+        # Em produção, configurar URL do webhook MP
+        # webhook_url = "https://igs-anchieta.duckdns.org/api/v1/webhook/mercadopago"
+
+        result = await create_checkout_for_student(
+            db, tenant_id, student_id, notification_url=webhook_url
+        )
+        if result.get("success"):
+            # Usa sandbox_url em teste, checkout_url em produção
+            url = result.get("sandbox_url") or result.get("checkout_url", "")
+            result["payment_url"] = url
+            result["message"] = (
+                f"Aqui esta o link para pagar sua mensalidade:\n\n"
+                f"{url}\n\n"
+                f"Valor: *R$ {result.get('amount')}*\n"
+                f"Aceita *PIX*, *cartao de credito/debito* e *boleto*."
+            )
+        return result
+
+    # Fallback: PIX BR Code estático
     from app.models.tenant import TenantSettings
     from app.services.payment_service import generate_pix_for_student
 
@@ -456,6 +484,134 @@ async def _handle_medical_certificate(
     }
 
 
+async def _handle_schedule_appointment(
+    db: AsyncSession,
+    tenant_id: UUID,
+    contact_id: UUID,
+    entities: dict,
+    student_id: UUID | None,
+) -> dict[str, Any]:
+    """Agenda atendimento presencial ou mostra horários disponíveis."""
+    from datetime import datetime as dt
+
+    from app.services.appointment_service import (
+        create_appointment,
+        get_available_slots,
+    )
+
+    # Se já informou data e hora, cria o agendamento
+    date_str = entities.get("date") or entities.get("data")
+    time_str = entities.get("time") or entities.get("horario")
+    department = entities.get("department", entities.get("setor", "secretaria"))
+
+    if date_str and time_str:
+        try:
+            for fmt in ("%d/%m/%Y", "%d/%m", "%Y-%m-%d"):
+                try:
+                    parsed_date = dt.strptime(date_str, fmt).date()
+                    if fmt == "%d/%m":
+                        parsed_date = parsed_date.replace(year=dt.now().year)
+                    break
+                except ValueError:
+                    continue
+            else:
+                return {
+                    "success": False,
+                    "message": "Não entendi a data. Use o formato DD/MM/AAAA.",
+                }
+
+            from datetime import time as time_type
+
+            parts = time_str.replace("h", ":").split(":")
+            parsed_time = time_type(int(parts[0]), int(parts[1]) if len(parts) > 1 else 0)
+
+            appointment = await create_appointment(
+                db=db,
+                tenant_id=tenant_id,
+                contact_id=contact_id,
+                appointment_date=parsed_date,
+                appointment_time=parsed_time,
+                department=department,
+                reason=entities.get("reason", "Agendamento via WhatsApp"),
+                student_id=student_id,
+            )
+            return {
+                "success": True,
+                "message": (
+                    f"Agendamento confirmado!\n\n"
+                    f"- Protocolo: *{appointment.protocol}*\n"
+                    f"- Data: *{parsed_date.strftime('%d/%m/%Y')}*\n"
+                    f"- Horário: *{parsed_time.strftime('%H:%M')}*\n"
+                    f"- Setor: *{department.title()}*\n\n"
+                    f"Apresente o protocolo na recepção."
+                ),
+                "protocol": appointment.protocol,
+            }
+        except Exception as e:
+            logger.error("Erro ao criar agendamento: %s", e)
+            return {"success": False, "message": "Erro ao criar o agendamento. Tente novamente."}
+
+    # Se não informou data/hora, mostra horários disponíveis
+    slots = await get_available_slots(db, tenant_id, department=department)
+    available = slots.get("available_dates", {})
+
+    if not available:
+        return {
+            "success": True,
+            "message": "Não há horários disponíveis nos próximos dias. Tente novamente amanhã.",
+            "needs_date_time": True,
+        }
+
+    lines = []
+    for date_label, times in available.items():
+        times_str = ", ".join(times[:6])
+        if len(times) > 6:
+            times_str += f" (+{len(times) - 6} horários)"
+        lines.append(f"*{date_label}*: {times_str}")
+
+    return {
+        "success": True,
+        "message": (
+            "Horários disponíveis para atendimento:\n\n"
+            + "\n".join(lines)
+            + "\n\nMe diz a data e o horário que prefere."
+        ),
+        "needs_date_time": True,
+        "available_slots": available,
+    }
+
+
+async def _handle_cancel_appointment(
+    db: AsyncSession,
+    tenant_id: UUID,
+    contact_id: UUID,
+    entities: dict,
+    student_id: UUID | None,
+) -> dict[str, Any]:
+    """Cancela agendamento do contato."""
+    from app.services.appointment_service import cancel_appointment
+
+    return await cancel_appointment(db, tenant_id, contact_id)
+
+
+async def _handle_document_ocr(
+    db: AsyncSession,
+    tenant_id: UUID,
+    contact_id: UUID,
+    entities: dict,
+    student_id: UUID | None,
+) -> dict[str, Any]:
+    """Indica que o usuário quer enviar documento para OCR."""
+    return {
+        "success": True,
+        "message": (
+            "Pode enviar a *foto do documento* aqui que eu analiso pra você! "
+            "Aceito RG, CPF, comprovante de residência, boleto, histórico escolar e outros."
+        ),
+        "awaiting_image": True,
+    }
+
+
 async def _handle_generic_request(
     db: AsyncSession,
     tenant_id: UUID,
@@ -495,4 +651,7 @@ _HANDLERS = {
     "library_renewal": _handle_library_renewal,
     "tutor_question": _handle_tutor_question,
     "medical_certificate": _handle_medical_certificate,
+    "schedule_appointment": _handle_schedule_appointment,
+    "cancel_appointment": _handle_cancel_appointment,
+    "document_ocr": _handle_document_ocr,
 }

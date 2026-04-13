@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.dependencies import get_db
+from app.models.billing import Boleto
 from app.models.conversation import Contact, Conversation, Message
 from app.models.tenant import Tenant
 from app.tasks.message_tasks import process_incoming_message
@@ -76,6 +77,101 @@ async def whatsapp_webhook(
                 await _handle_incoming_message(db, raw_msg, phone_number_id, contact_name)
 
     return {"status": "ok"}
+
+
+@router.post("/mercadopago", status_code=200)
+async def mercadopago_webhook(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Recebe notificacoes de pagamento do Mercado Pago."""
+    payload: dict[str, Any] = await request.json()
+
+    action = payload.get("action", "")
+    data = payload.get("data", {})
+    payment_id = str(data.get("id", ""))
+
+    # Validar assinatura se configurada
+    x_signature = request.headers.get("x-signature", "")
+    x_request_id = request.headers.get("x-request-id", "")
+    if x_signature:
+        from app.services.mercadopago_service import verify_webhook_signature
+
+        if not verify_webhook_signature(x_signature, x_request_id, payment_id):
+            raise HTTPException(status_code=401, detail="Assinatura invalida")
+
+    if action == "payment.created" or action == "payment.updated":
+        if payment_id:
+            from app.services.mercadopago_service import process_payment_webhook
+
+            result = await process_payment_webhook(db, payment_id)
+
+            # Se pagamento aprovado, notifica aluno via WhatsApp
+            if result.get("success") and result.get("status") == "paid":
+                try:
+                    boleto_id = result.get("boleto_id")
+                    if boleto_id:
+                        await _notify_payment_confirmed(db, boleto_id)
+                except Exception as exc:
+                    logger.warning("Erro ao notificar pagamento: %s", exc)
+
+            logger.info("Webhook MP processado: action=%s payment=%s", action, payment_id)
+
+    return {"status": "ok"}
+
+
+async def _notify_payment_confirmed(db: AsyncSession, boleto_id: str):
+    """Envia mensagem ao aluno confirmando pagamento."""
+    import uuid as _uuid
+
+    from app.models.tenant import Tenant
+    from app.services import whatsapp_service
+
+    boleto_result = await db.execute(
+        select(Boleto).where(Boleto.id == _uuid.UUID(boleto_id))
+    )
+    boleto = boleto_result.scalar_one_or_none()
+    if not boleto:
+        return
+
+    from app.models.student import Student
+
+    student_result = await db.execute(
+        select(Student).where(Student.id == boleto.student_id)
+    )
+    student = student_result.scalar_one_or_none()
+    if not student:
+        return
+
+    contact_result = await db.execute(
+        select(Contact).where(
+            Contact.tenant_id == boleto.tenant_id,
+            Contact.student_id == student.id,
+            Contact.is_verified,
+        )
+    )
+    contact = contact_result.scalar_one_or_none()
+    if not contact:
+        return
+
+    tenant_result = await db.execute(
+        select(Tenant).where(Tenant.id == boleto.tenant_id)
+    )
+    tenant = tenant_result.scalar_one_or_none()
+    if not tenant or not tenant.whatsapp_phone_number_id or not tenant.whatsapp_token:
+        return
+
+    msg = (
+        f"Pagamento confirmado! Sua mensalidade de *{boleto.reference_month}* "
+        f"no valor de *R$ {boleto.amount}* foi paga com sucesso. "
+    )
+
+    await whatsapp_service.send_text_message(
+        tenant.whatsapp_phone_number_id,
+        tenant.whatsapp_token,
+        contact.phone_number,
+        msg,
+    )
 
 
 async def _handle_status_update(db: AsyncSession, status_upd: dict):
