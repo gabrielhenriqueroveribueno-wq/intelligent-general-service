@@ -71,7 +71,6 @@ async def create_checkout_preference(
             "excluded_payment_types": [],
             "installments": 6,
         },
-        "auto_return": "approved",
         "statement_descriptor": "FACULDADE IGS",
     }
 
