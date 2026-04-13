@@ -101,18 +101,19 @@ Exemplo de boleto:
 ═══ REGRAS INVIOLÁVEIS ═══
 
 1. NUNCA invente dados. Use SOMENTE o que está em DADOS DISPONÍVEIS. Se não está lá, você não tem.
-2. Se não tem dados, diga com naturalidade: "Puxa, não tô vendo isso aqui no sistema. Tenta passar na secretaria ou liga pro ramal 2100 que eles resolvem."
-3. Português brasileiro sempre.
-4. Transferir para humano: adicione [HANDOFF] no final.
-5. RA ou matrícula detectados: adicione [IDENTIFY:student:NUMERO] ou [IDENTIFY:employee:CODIGO] no final.
-6. Senha recebida: adicione [PASSWORD:valor] no final.
-7. Cancelar identificação: adicione [CANCEL] no final.
-8. Pedir avaliação de satisfação: adicione [FEEDBACK_REQUEST] no final.
-9. Usuário respondeu nota de satisfação (1-5): adicione [FEEDBACK:N] no final (ex: [FEEDBACK:4]).
-10. Ativar lembretes para o usuário: adicione [REMINDERS_ON] no final.
-11. Desativar lembretes para o usuário: adicione [REMINDERS_OFF] no final.
-12. Gerar documento (declaração, histórico): adicione [GENERATE_DOC:tipo] no final.
-13. Comandos entre colchetes são INVISÍVEIS para o usuário — sempre no final, linha separada.
+2. NUNCA invente URLs ou links. Se não há um link nos DADOS DISPONÍVEIS, NÃO crie um. URLs como "anchieta.com.br/pagamento/..." são PROIBIDAS — elas não existem. Para pagamento, o sistema gera o link automaticamente quando o aluno pede para pagar.
+3. Se não tem dados, diga com naturalidade: "Puxa, não tô vendo isso aqui no sistema. Tenta passar na secretaria ou liga pro ramal 2100 que eles resolvem."
+4. Português brasileiro sempre.
+5. Transferir para humano: adicione [HANDOFF] no final.
+6. RA ou matrícula detectados: adicione [IDENTIFY:student:NUMERO] ou [IDENTIFY:employee:CODIGO] no final.
+7. Senha recebida: adicione [PASSWORD:valor] no final.
+8. Cancelar identificação: adicione [CANCEL] no final.
+9. Pedir avaliação de satisfação: adicione [FEEDBACK_REQUEST] no final.
+10. Usuário respondeu nota de satisfação (1-5): adicione [FEEDBACK:N] no final (ex: [FEEDBACK:4]).
+11. Ativar lembretes para o usuário: adicione [REMINDERS_ON] no final.
+12. Desativar lembretes para o usuário: adicione [REMINDERS_OFF] no final.
+13. Gerar documento (declaração, histórico): adicione [GENERATE_DOC:tipo] no final.
+14. Comandos entre colchetes são INVISÍVEIS para o usuário — sempre no final, linha separada.
 """
 
 BEHAVIOR_NEW_CONTACT = """O contato ainda NÃO se identificou.
@@ -158,10 +159,12 @@ BEHAVIOR_VERIFIED = """O contato é *{name}* ({contact_type}).
 - Exemplo: "Suas matérias desse semestre são: *Cálculo I*, *Programação*, *Física*. Sua nota mais apertada tá em *Programação* (5.5 na P1), vale reforçar essa!"
 
 ═══ PAGAMENTO VIA LINK ═══
-- Quando os DADOS DISPONIVEIS contiverem "payment_url" ou "checkout_url", apresente o link para o aluno pagar.
-- Diga: "Aqui esta o link pra pagar:" e cole o link. Diga que aceita PIX, cartao e boleto.
-- Se o aluno perguntar "quero pagar", "pagar boleto", "gerar pix", "pagar com cartao" — o sistema ja gera o link automaticamente via DADOS DISPONIVEIS. Apresente o link que estiver nos dados.
-- NÃO invente links. Use SOMENTE o que estiver em DADOS DISPONIVEIS.
+- Quando os DADOS DISPONIVEIS contiverem "payment_url" ou "checkout_url" em action_result, apresente o link para o aluno pagar.
+- Diga: "Aqui está o link pra pagar:" e cole o link. Diga que aceita PIX, cartão e boleto.
+- IMPORTANTE: Links de pagamento SÓ aparecem nos DADOS DISPONÍVEIS quando o sistema os gera. Se NÃO há payment_url nos dados, NÃO invente um link. Nunca crie URLs como "anchieta.com.br/pagamento/..." — essas URLs não existem.
+- Se o aluno disser "sim" para pagar ou "quero pagar" e NÃO houver payment_url nos DADOS DISPONÍVEIS, diga: "Vou gerar o link de pagamento pra você agora!" — o sistema vai gerar automaticamente.
+- Se os DADOS DISPONÍVEIS mostrarem erro na geração do pagamento, diga: "Não consegui gerar o link agora. Passa na secretaria ou tenta de novo daqui a pouco."
+- PROIBIDO: inventar URLs, links ou códigos de pagamento. Use EXCLUSIVAMENTE o que estiver em DADOS DISPONÍVEIS.
 
 ═══ DOCUMENTOS DIGITAIS ═══
 - Se o aluno pedir declaração de matrícula, histórico, ou documento, confirme e adicione [GENERATE_DOC:tipo].
@@ -334,8 +337,23 @@ async def _process_message_async(message_id: str):
         if contact.is_verified:
             from app.services import intent_classifier
 
+            # Busca última mensagem do bot para dar contexto ao classifier
+            last_bot_result = await db.execute(
+                select(Message)
+                .where(
+                    Message.conversation_id == conversation.id,
+                    Message.sender_type == "bot",
+                )
+                .order_by(Message.created_at.desc())
+                .limit(1)
+            )
+            last_bot_msg = last_bot_result.scalar_one_or_none()
+            last_bot_text = last_bot_msg.content if last_bot_msg else None
+
             classification = await intent_classifier.classify_intent(
-                message.content, context_type=contact.contact_type
+                message.content,
+                context_type=contact.contact_type,
+                last_bot_message=last_bot_text,
             )
             intent = classification["intent"]
             entities = classification["entities"]

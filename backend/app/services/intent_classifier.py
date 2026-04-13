@@ -63,12 +63,23 @@ tutor_question, medical_certificate, feedback_response, enable_reminders,
 disable_reminders, farewell, schedule_appointment, cancel_appointment,
 document_ocr, unknown
 
+DICAS DE CLASSIFICAÇÃO:
+- "sim", "quero", "pode", "gera", "faz" após contexto de boleto/pagamento → generate_pix
+- "gerar pix", "pagar", "quero pagar", "pagar boleto", "link de pagamento" → generate_pix
+- "agendar", "marcar horário", "ir na secretaria" → schedule_appointment
+- "cancelar agendamento" → cancel_appointment
+- "analisar documento", "ler documento" → document_ocr
+
 Responda APENAS com um JSON no formato: {"intent": "nome_da_intencao", "entities": {}}
-Para entities, extraia dados relevantes como: subject (matéria), period (período), month (mês), type (tipo), amount (valor).
+Para entities, extraia dados relevantes como: subject (matéria), period (período), month (mês), type (tipo), amount (valor), date (data), time (horário).
 Não adicione explicações."""
 
 
-async def classify_intent(message: str, context_type: Optional[str] = None) -> dict:
+async def classify_intent(
+    message: str,
+    context_type: Optional[str] = None,
+    last_bot_message: Optional[str] = None,
+) -> dict:
     """
     Classifica a intenção da mensagem usando o provider de IA configurado.
     Retorna: {"intent": str, "entities": dict}
@@ -81,10 +92,15 @@ async def classify_intent(message: str, context_type: Optional[str] = None) -> d
     elif context_type == "teacher":
         context_hint = "\nContexto: usuário é um professor. Se pedir para criar/gerar slides ou apresentação, use slide_generate. Se pedir para atualizar/modificar slides existentes, use slide_update."
 
+    # Se a mensagem é curta (ex: "sim", "quero"), usa o contexto da última msg do bot
+    user_msg = message
+    if last_bot_message and len(message.strip()) <= 30:
+        user_msg = f"[Última mensagem do bot: {last_bot_message[:150]}]\nUsuário respondeu: {message}"
+
     try:
         result = await ai_complete(
             system=CLASSIFIER_SYSTEM_PROMPT + context_hint,
-            message=message,
+            message=user_msg,
             max_tokens=settings.CLAUDE_CLASSIFIER_MAX_TOKENS,
         )
 
