@@ -102,7 +102,7 @@ async def signup(body: SignupRequest, db: AsyncSession = Depends(get_db)):
         tenant_id=tenant.id,
         full_name=body.admin_name,
         email=body.admin_email,
-        hashed_password=hash_password(body.admin_password),
+        password_hash=hash_password(body.admin_password),
         role="admin",
         is_active=True,
     )
@@ -111,10 +111,10 @@ async def signup(body: SignupRequest, db: AsyncSession = Depends(get_db)):
 
     # Envia email de boas-vindas (falha silenciosamente se SMTP não configurado)
     try:
-        from app.services.email_service import send_email
+        from app.services.email_service import send_email_async
         from app.services.email_templates import welcome as welcome_tpl
 
-        send_email(
+        await send_email_async(
             to=body.admin_email,
             subject=f"Bem-vindo ao IGS — {body.institution_name}",
             body=welcome_tpl(body.institution_name, body.admin_name),

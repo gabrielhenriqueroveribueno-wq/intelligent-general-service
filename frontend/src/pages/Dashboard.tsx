@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   MessageSquare,
@@ -11,6 +12,7 @@ import {
 import { Link } from 'react-router-dom'
 import { api } from '../api/client'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import OnboardingWizard, { useOnboardingWizard } from '../components/common/OnboardingWizard'
 
 interface EvasionSummary {
   critical: number
@@ -83,6 +85,9 @@ function MetricCard({
 }
 
 export default function Dashboard() {
+  const { isDone } = useOnboardingWizard()
+  const [showWizard, setShowWizard] = useState(!isDone())
+
   const { data, isLoading } = useQuery<DashboardData>({
     queryKey: ['dashboard'],
     queryFn: () => api.get('/api/v1/dashboard/overview').then((r) => r.data),
@@ -111,6 +116,8 @@ export default function Dashboard() {
   ]
 
   return (
+    <>
+      {showWizard && <OnboardingWizard onClose={() => setShowWizard(false)} />}
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
@@ -237,5 +244,6 @@ export default function Dashboard() {
         </div>
       )}
     </div>
+    </>
   )
 }

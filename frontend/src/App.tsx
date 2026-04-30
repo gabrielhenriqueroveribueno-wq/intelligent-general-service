@@ -46,6 +46,7 @@ const Integrations = lazy(() => import('./pages/Integrations'))
 const UserManagement = lazy(() => import('./pages/UserManagement'))
 const Status = lazy(() => import('./pages/Status'))
 const AuditLog = lazy(() => import('./pages/AuditLog'))
+const SuperAdmin = lazy(() => import('./pages/SuperAdmin'))
 
 function Lazy({ children }: { children: React.ReactNode }) {
   return (
@@ -112,7 +113,8 @@ export default function App() {
             <Route path="settings" element={<Settings />} />
             <Route path="status" element={<Lazy><Status /></Lazy>} />
             <Route path="audit" element={<Lazy><AuditLog /></Lazy>} />
-          <Route path="help" element={<Lazy><Help /></Lazy>} />
+            <Route path="super-admin" element={<Lazy><SuperAdmin /></Lazy>} />
+            <Route path="help" element={<Lazy><Help /></Lazy>} />
           </Route>
 
           {/* Aliases compat */}

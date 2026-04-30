@@ -22,6 +22,7 @@ import {
   Shield,
   HelpCircle,
   X,
+  Crown,
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuth } from '../../context/AuthContext'
@@ -53,6 +54,7 @@ const navItems: NavItem[] = [
   { to: '/app/whatsapp-setup', icon: Smartphone, label: 'Configurar WhatsApp', adminOnly: true },
   { to: '/app/users', icon: UserCog, label: 'Usuários' },
   { to: '/app/tenants', icon: Building2, label: 'Instituições', superAdminOnly: true },
+  { to: '/app/super-admin', icon: Crown, label: 'Super Admin', superAdminOnly: true },
   { to: '/app/audit', icon: Shield, label: 'Auditoria', adminOnly: true },
   { to: '/app/status', icon: Activity, label: 'Status do Sistema', adminOnly: true },
   { to: '/app/help', icon: HelpCircle, label: 'Ajuda' },
