@@ -172,15 +172,18 @@ async def take_over_conversation(
 
         from app.config import settings as _settings2
         from app.services.ws_manager import REDIS_CHANNEL
+
         _r = aioredis.from_url(_settings2.REDIS_URL, decode_responses=True)
         await _r.publish(
             REDIS_CHANNEL,
-            _json.dumps({
-                "type": "agent_took_over",
-                "tenant_id": str(tenant_id),
-                "conversation_id": str(conversation_id),
-                "agent_name": getattr(current_user, "full_name", "Agente"),
-            }),
+            _json.dumps(
+                {
+                    "type": "agent_took_over",
+                    "tenant_id": str(tenant_id),
+                    "conversation_id": str(conversation_id),
+                    "agent_name": getattr(current_user, "full_name", "Agente"),
+                }
+            ),
         )
         await _r.aclose()
     except Exception:

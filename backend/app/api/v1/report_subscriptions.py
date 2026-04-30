@@ -205,9 +205,7 @@ async def send_now(
 
     from app.tasks.executive_report_tasks import send_ad_hoc_report
 
-    result = await send_ad_hoc_report(
-        db, tenant_id, tenant.name, sub.period, recipients
-    )
+    result = await send_ad_hoc_report(db, tenant_id, tenant.name, sub.period, recipients)
     return result
 
 

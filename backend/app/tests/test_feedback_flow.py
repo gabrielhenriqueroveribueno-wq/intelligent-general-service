@@ -76,11 +76,36 @@ async def conversation_awaiting_feedback(
 # Estes triggers sao copiados do message_tasks.py — qualquer mudanca la deve
 # refletir aqui. O teste serve como contrato.
 FAREWELL_TRIGGERS = (
-    "não", "nao", "não obrigado", "nao obrigado", "era só isso", "era so isso",
-    "obrigado", "obrigada", "valeu", "tchau", "só isso", "so isso", "tá bom",
-    "ta bom", "até mais", "ate mais", "nada mais", "é isso", "e isso",
-    "só isso mesmo", "so isso mesmo", "não preciso", "nao preciso", "era isso",
-    "brigado", "brigada", "flw", "falou", "vlw", "tmj",
+    "não",
+    "nao",
+    "não obrigado",
+    "nao obrigado",
+    "era só isso",
+    "era so isso",
+    "obrigado",
+    "obrigada",
+    "valeu",
+    "tchau",
+    "só isso",
+    "so isso",
+    "tá bom",
+    "ta bom",
+    "até mais",
+    "ate mais",
+    "nada mais",
+    "é isso",
+    "e isso",
+    "só isso mesmo",
+    "so isso mesmo",
+    "não preciso",
+    "nao preciso",
+    "era isso",
+    "brigado",
+    "brigada",
+    "flw",
+    "falou",
+    "vlw",
+    "tmj",
 )
 
 
@@ -150,11 +175,17 @@ async def test_save_feedback_persists_score(
     )
     await db.commit()
 
-    surveys = (await db.execute(
-        select(SatisfactionSurvey).where(
-            SatisfactionSurvey.conversation_id == conversation_awaiting_feedback.id
+    surveys = (
+        (
+            await db.execute(
+                select(SatisfactionSurvey).where(
+                    SatisfactionSurvey.conversation_id == conversation_awaiting_feedback.id
+                )
+            )
         )
-    )).scalars().all()
+        .scalars()
+        .all()
+    )
 
     assert len(surveys) == 1
     assert surveys[0].score == 5
@@ -177,11 +208,13 @@ async def test_save_feedback_records_responder_type_bot(
     )
     await db.commit()
 
-    survey = (await db.execute(
-        select(SatisfactionSurvey).where(
-            SatisfactionSurvey.conversation_id == conversation_awaiting_feedback.id
+    survey = (
+        await db.execute(
+            select(SatisfactionSurvey).where(
+                SatisfactionSurvey.conversation_id == conversation_awaiting_feedback.id
+            )
         )
-    )).scalar_one()
+    ).scalar_one()
     assert survey.responder_type == "bot"
 
 
@@ -232,8 +265,7 @@ async def test_old_query_would_create_duplicate_conversation(
     Este teste documenta o comportamento incorreto pra evitar regressao.
     """
     result = await db.execute(
-        select(Conversation)
-        .where(
+        select(Conversation).where(
             Conversation.tenant_id == test_tenant.id,
             Conversation.contact_id == contact_verified.id,
             Conversation.status.in_(["active", "waiting_agent"]),  # SEM awaiting_feedback

@@ -152,18 +152,14 @@ async def process_saas_webhook(db: AsyncSession, payment_id: str) -> dict:
 
         if status == "approved":
             await db.execute(
-                update(Tenant)
-                .where(Tenant.id == tenant_id)
-                .values(is_active=True, plan=plan)
+                update(Tenant).where(Tenant.id == tenant_id).values(is_active=True, plan=plan)
             )
             await db.commit()
             logger.info("SaaS payment approved: tenant=%s plan=%s", tenant_id, plan)
             return {"success": True, "tenant_id": str(tenant_id), "plan": plan, "status": "active"}
 
         elif status in ("rejected", "cancelled"):
-            await db.execute(
-                update(Tenant).where(Tenant.id == tenant_id).values(is_active=False)
-            )
+            await db.execute(update(Tenant).where(Tenant.id == tenant_id).values(is_active=False))
             await db.commit()
             logger.warning("SaaS payment rejected: tenant=%s", tenant_id)
             return {"success": True, "tenant_id": str(tenant_id), "status": "suspended"}

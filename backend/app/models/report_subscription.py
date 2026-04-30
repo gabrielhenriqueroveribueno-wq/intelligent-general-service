@@ -28,9 +28,7 @@ class ReportSubscription(Base, TenantMixin, TimestampMixin):
 
     __tablename__ = "report_subscriptions"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     period: Mapped[str] = mapped_column(
         String(20), nullable=False, default="weekly"

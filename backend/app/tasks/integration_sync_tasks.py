@@ -49,7 +49,9 @@ async def _dispatch_async() -> None:
             run_integration_sync_task.delay(str(integ.id))
             logger.info(
                 "Sync agendada: integration=%s tenant=%s provider=%s",
-                integ.id, integ.tenant_id, integ.provider_type,
+                integ.id,
+                integ.tenant_id,
+                integ.provider_type,
             )
 
 
@@ -121,9 +123,13 @@ async def _run_sync_async(integration_id: str) -> None:
     from app.services.integrations.registry import decrypt_credentials, get_integrator
 
     async with AsyncSessionLocal() as db:
-        integ = (await db.execute(
-            select(AcademicIntegration).where(AcademicIntegration.id == uuid.UUID(integration_id))
-        )).scalar_one_or_none()
+        integ = (
+            await db.execute(
+                select(AcademicIntegration).where(
+                    AcademicIntegration.id == uuid.UUID(integration_id)
+                )
+            )
+        ).scalar_one_or_none()
 
         if not integ:
             logger.warning("Integration %s nao encontrada", integration_id)
@@ -167,5 +173,8 @@ async def _run_sync_async(integration_id: str) -> None:
 
         logger.info(
             "Sync completa: integration=%s registros=%d duracao=%dms erros=%d",
-            integration_id, result.records_synced, elapsed_ms, len(result.errors),
+            integration_id,
+            result.records_synced,
+            elapsed_ms,
+            len(result.errors),
         )

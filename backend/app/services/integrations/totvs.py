@@ -53,7 +53,9 @@ class TotvsIntegrator:
 
         self.base_url = (self.config.get("base_url") or "").rstrip("/")
         if not self.base_url:
-            raise ValueError("config.base_url eh obrigatorio (ex: https://escola.totvs.com.br/api/framework/v1)")
+            raise ValueError(
+                "config.base_url eh obrigatorio (ex: https://escola.totvs.com.br/api/framework/v1)"
+            )
 
         self.coligada = self.config.get("coligada", "1")
         self.mapping = {**TOTVS_DEFAULT_MAPPING, **(self.config.get("field_mapping") or {})}
@@ -270,6 +272,9 @@ class TotvsIntegrator:
         elapsed_ms = int((time.perf_counter() - start) * 1000)
         logger.info(
             "TOTVS sync_all em %dms: tenant=%s registros=%d erros=%d",
-            elapsed_ms, tenant_id, merged.records_synced, len(merged.errors),
+            elapsed_ms,
+            tenant_id,
+            merged.records_synced,
+            len(merged.errors),
         )
         return merged

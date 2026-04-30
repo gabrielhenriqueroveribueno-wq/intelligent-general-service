@@ -64,33 +64,23 @@ class AcademicSystemIntegrator(Protocol):
         """Verifica se as credenciais funcionam. Retorna (ok, mensagem)."""
         ...
 
-    async def sync_students(
-        self, db: AsyncSession, tenant_id: uuid.UUID
-    ) -> SyncResult:
+    async def sync_students(self, db: AsyncSession, tenant_id: uuid.UUID) -> SyncResult:
         """Importa/atualiza alunos."""
         ...
 
-    async def sync_employees(
-        self, db: AsyncSession, tenant_id: uuid.UUID
-    ) -> SyncResult:
+    async def sync_employees(self, db: AsyncSession, tenant_id: uuid.UUID) -> SyncResult:
         """Importa/atualiza funcionarios."""
         ...
 
-    async def sync_grades(
-        self, db: AsyncSession, tenant_id: uuid.UUID
-    ) -> SyncResult:
+    async def sync_grades(self, db: AsyncSession, tenant_id: uuid.UUID) -> SyncResult:
         """Sincroniza notas (apenas se a integracao suportar)."""
         ...
 
-    async def sync_boletos(
-        self, db: AsyncSession, tenant_id: uuid.UUID
-    ) -> SyncResult:
+    async def sync_boletos(self, db: AsyncSession, tenant_id: uuid.UUID) -> SyncResult:
         """Sincroniza boletos pendentes (apenas se a integracao suportar)."""
         ...
 
-    async def sync_all(
-        self, db: AsyncSession, tenant_id: uuid.UUID
-    ) -> SyncResult:
+    async def sync_all(self, db: AsyncSession, tenant_id: uuid.UUID) -> SyncResult:
         """Roda todas as sincronizacoes em sequencia."""
         ...
 

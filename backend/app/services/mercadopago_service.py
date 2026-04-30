@@ -63,7 +63,9 @@ async def create_checkout_preference(
         ],
         "payer": {
             "name": student_name.split()[0] if student_name else "Aluno",
-            "surname": " ".join(student_name.split()[1:]) if student_name and len(student_name.split()) > 1 else "",
+            "surname": " ".join(student_name.split()[1:])
+            if student_name and len(student_name.split()) > 1
+            else "",
         },
         "external_reference": external_ref,
         "payment_methods": {
@@ -186,16 +188,14 @@ async def process_payment_webhook(db: AsyncSession, payment_id: str) -> dict:
             return {"success": False, "message": "ID do boleto invalido."}
 
         if status == "approved":
-            await db.execute(
-                update(Boleto)
-                .where(Boleto.id == boleto_uuid)
-                .values(status="paid")
-            )
+            await db.execute(update(Boleto).where(Boleto.id == boleto_uuid).values(status="paid"))
             await db.commit()
 
             logger.info(
                 "Pagamento confirmado: boleto=%s metodo=%s valor=%.2f",
-                boleto_uuid, payment_method, amount,
+                boleto_uuid,
+                payment_method,
+                amount,
             )
 
             return {
@@ -213,7 +213,11 @@ async def process_payment_webhook(db: AsyncSession, payment_id: str) -> dict:
 
         elif status in ("rejected", "cancelled"):
             logger.warning("Pagamento recusado: boleto=%s status=%s", boleto_uuid, status)
-            return {"success": False, "status": status, "message": "Pagamento recusado ou cancelado."}
+            return {
+                "success": False,
+                "status": status,
+                "message": "Pagamento recusado ou cancelado.",
+            }
 
         return {"success": True, "status": status}
 

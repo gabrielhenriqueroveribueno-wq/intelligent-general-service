@@ -58,6 +58,7 @@ class PlanLimitMiddleware(BaseHTTPMiddleware):
     async def _get_redis(self):
         if self._redis is None:
             import redis.asyncio as aioredis
+
             self._redis = aioredis.from_url(self._redis_url, decode_responses=True)
         return self._redis
 
@@ -91,6 +92,7 @@ class PlanLimitMiddleware(BaseHTTPMiddleware):
         if msg_limit > 0 and path.startswith("/api/v1/webhook/whatsapp"):
             try:
                 from datetime import datetime
+
                 month_key = f"plan:msgs:{tenant_id}:{datetime.utcnow().strftime('%Y-%m')}"
                 redis = await self._get_redis()
                 count = int(await redis.get(month_key) or 0)
@@ -118,6 +120,7 @@ def _extract_tenant_plan(request: Request) -> tuple[str | None, str | None]:
         token = auth[7:]
         import base64
         import json
+
         parts = token.split(".")
         if len(parts) != 3:
             return None, None

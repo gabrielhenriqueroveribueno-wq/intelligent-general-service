@@ -375,9 +375,10 @@ async def _send_weekly_report_async():
                 satisfaction = avg_score.scalar()
 
                 # Monta relatório
-                intent_lines = "\n".join(
-                    f"  - {name}: {cnt}x" for name, cnt in intents_list
-                ) or "  - Sem dados"
+                intent_lines = (
+                    "\n".join(f"  - {name}: {cnt}x" for name, cnt in intents_list)
+                    or "  - Sem dados"
+                )
 
                 sat_text = f"{satisfaction:.1f}/5" if satisfaction else "Sem avaliações"
 
@@ -491,8 +492,7 @@ async def _check_evasion_risk_async():
                             f"Aluno: *{student.full_name}*\n"
                             f"RA: *{student.registration_number}*\n"
                             f"Curso: *{student.course}*\n\n"
-                            f"Sinais identificados:\n"
-                            + "\n".join(f"  - {s}" for s in risk_signals)
+                            f"Sinais identificados:\n" + "\n".join(f"  - {s}" for s in risk_signals)
                         )
 
                         # Envia para admins do tenant
@@ -610,23 +610,17 @@ async def _generate_document_async(contact_id: str, tenant_id: str, doc_type: st
     from app.services import whatsapp_service
 
     async with AsyncSessionLocal() as db:
-        contact = await db.execute(
-            select(Contact).where(Contact.id == _uuid.UUID(contact_id))
-        )
+        contact = await db.execute(select(Contact).where(Contact.id == _uuid.UUID(contact_id)))
         contact = contact.scalar_one_or_none()
         if not contact or not contact.student_id:
             return
 
-        student = await db.execute(
-            select(Student).where(Student.id == contact.student_id)
-        )
+        student = await db.execute(select(Student).where(Student.id == contact.student_id))
         student = student.scalar_one_or_none()
         if not student:
             return
 
-        tenant = await db.execute(
-            select(Tenant).where(Tenant.id == _uuid.UUID(tenant_id))
-        )
+        tenant = await db.execute(select(Tenant).where(Tenant.id == _uuid.UUID(tenant_id)))
         tenant = tenant.scalar_one_or_none()
         if not tenant or not tenant.whatsapp_phone_number_id or not tenant.whatsapp_token:
             return
@@ -652,14 +646,15 @@ async def _generate_document_async(contact_id: str, tenant_id: str, doc_type: st
         elif doc_type == "academic_history":
             from app.services import student_service
 
-            grades = await student_service.get_grades(
-                db, _uuid.UUID(tenant_id), student.id
+            grades = await student_service.get_grades(db, _uuid.UUID(tenant_id), student.id)
+            grade_lines = (
+                "\n".join(
+                    f"- *{g.subject_name}* ({g.academic_period}) — "
+                    f"{g.grade_type}: *{g.grade_value}* — {g.status or 'pendente'}"
+                    for g in grades
+                )
+                or "Nenhuma nota registrada."
             )
-            grade_lines = "\n".join(
-                f"- *{g.subject_name}* ({g.academic_period}) — "
-                f"{g.grade_type}: *{g.grade_value}* — {g.status or 'pendente'}"
-                for g in grades
-            ) or "Nenhuma nota registrada."
 
             doc_text = (
                 f"*HISTÓRICO ACADÊMICO*\n\n"

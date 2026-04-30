@@ -139,7 +139,11 @@ class SophiaIntegrator:
                     r.raise_for_status()
                     data = r.json()
 
-                    items = data if isinstance(data, list) else data.get("data") or data.get("alunos") or []
+                    items = (
+                        data
+                        if isinstance(data, list)
+                        else data.get("data") or data.get("alunos") or []
+                    )
                     if not items:
                         break
                     all_items.extend(items)
@@ -163,10 +167,14 @@ class SophiaIntegrator:
 
                 situacao = str(self._resolve(item, self.mapping["enrollment_status"]) or "").lower()
                 status_map = {
-                    "ativa": "active", "ativo": "active",
-                    "trancada": "locked", "trancado": "locked",
-                    "formada": "graduated", "formado": "graduated",
-                    "cancelada": "dropped", "cancelado": "dropped",
+                    "ativa": "active",
+                    "ativo": "active",
+                    "trancada": "locked",
+                    "trancado": "locked",
+                    "formada": "graduated",
+                    "formado": "graduated",
+                    "cancelada": "dropped",
+                    "cancelado": "dropped",
                 }
                 enrollment_status = status_map.get(situacao, "active")
 
@@ -263,6 +271,9 @@ class SophiaIntegrator:
         elapsed_ms = int((time.perf_counter() - start) * 1000)
         logger.info(
             "Sophia sync_all em %dms: tenant=%s registros=%d erros=%d",
-            elapsed_ms, tenant_id, merged.records_synced, len(merged.errors),
+            elapsed_ms,
+            tenant_id,
+            merged.records_synced,
+            len(merged.errors),
         )
         return merged

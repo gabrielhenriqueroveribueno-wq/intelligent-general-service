@@ -53,7 +53,9 @@ def _base(title: str, content: str) -> str:
 </html>"""
 
 
-def welcome(institution_name: str, admin_name: str, login_url: str = "https://igs.com.br/login") -> str:
+def welcome(
+    institution_name: str, admin_name: str, login_url: str = "https://igs.com.br/login"
+) -> str:
     content = f"""
 <h2>Bem-vindo(a) ao IGS, {admin_name}!</h2>
 <p>Sua conta da <strong>{institution_name}</strong> foi criada com sucesso.
@@ -77,11 +79,13 @@ Você tem <strong>14 dias de trial gratuito</strong> para testar todas as funcio
     return _base(f"Bem-vindo(a), {admin_name}!", content)
 
 
-def trial_expiring(institution_name: str, days_left: int, upgrade_url: str = "https://igs.com.br/upgrade") -> str:
+def trial_expiring(
+    institution_name: str, days_left: int, upgrade_url: str = "https://igs.com.br/upgrade"
+) -> str:
     content = f"""
-<h2>Seu trial expira em {days_left} {'dia' if days_left == 1 else 'dias'}</h2>
+<h2>Seu trial expira em {days_left} {"dia" if days_left == 1 else "dias"}</h2>
 <p>Sua conta da <strong>{institution_name}</strong> está no trial.
-Faltam <strong>{days_left} {'dia' if days_left == 1 else 'dias'}</strong> para o encerramento.</p>
+Faltam <strong>{days_left} {"dia" if days_left == 1 else "dias"}</strong> para o encerramento.</p>
 
 <p>Faça upgrade agora para continuar atendendo alunos sem interrupção:</p>
 <a href="{upgrade_url}" class="btn">Fazer upgrade →</a>
@@ -125,8 +129,7 @@ def weekly_report(
     top_intents = stats.get("top_intents", [])
 
     intents_rows = "".join(
-        f"<tr><td>{i['intent']}</td><td>{i['count']}</td></tr>"
-        for i in top_intents[:5]
+        f"<tr><td>{i['intent']}</td><td>{i['count']}</td></tr>" for i in top_intents[:5]
     )
 
     content = f"""
@@ -137,10 +140,10 @@ def weekly_report(
   <tr><th>Métrica</th><th>Valor</th></tr>
   <tr><td>Total de conversas</td><td><strong>{total}</strong></td></tr>
   <tr><td>Resolvidos pela IA</td>
-      <td><span class="pill {'green' if ai_pct >= 70 else 'blue'}">{ai_pct}%</span></td></tr>
+      <td><span class="pill {"green" if ai_pct >= 70 else "blue"}">{ai_pct}%</span></td></tr>
   <tr><td>Satisfação média</td>
       <td><strong>{satisfaction:.1f} / 5.0</strong></td></tr>
-  <tr><td>Tickets abertos</td><td>{stats.get('open_tickets', 0)}</td></tr>
+  <tr><td>Tickets abertos</td><td>{stats.get("open_tickets", 0)}</td></tr>
 </table>
 
 <h3 style="font-size:14px; margin-top:20px;">Top assuntos da semana:</h3>

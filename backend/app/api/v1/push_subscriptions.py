@@ -73,9 +73,7 @@ async def unsubscribe(
     current_user: User = Depends(get_current_user),
 ) -> dict:
     result = await db.execute(
-        select(PushSubscription).where(
-            PushSubscription.user_id == current_user.id
-        )
+        select(PushSubscription).where(PushSubscription.user_id == current_user.id)
     )
     subs = result.scalars().all()
     target = next(
@@ -84,8 +82,6 @@ async def unsubscribe(
     )
     if not target:
         raise HTTPException(status_code=404, detail="Subscription not found")
-    await db.execute(
-        delete(PushSubscription).where(PushSubscription.id == target.id)
-    )
+    await db.execute(delete(PushSubscription).where(PushSubscription.id == target.id))
     await db.commit()
     return {"status": "unsubscribed"}

@@ -89,9 +89,7 @@ INTENT_TEMPLATES: dict[str, str] = {
         "passando por uma instabilidade. Me diz o que você precisa que eu tento ajudar "
         "mesmo assim!"
     ),
-    "farewell": (
-        "Obrigada pelo contato! Qualquer coisa, é só me chamar. 😊"
-    ),
+    "farewell": ("Obrigada pelo contato! Qualquer coisa, é só me chamar. 😊"),
 }
 
 
@@ -154,11 +152,7 @@ async def _search_kb(
         return None
 
     try:
-        stmt = (
-            select(KnowledgeArticle)
-            .where(KnowledgeArticle.tenant_id == tenant_id)
-            .limit(20)
-        )
+        stmt = select(KnowledgeArticle).where(KnowledgeArticle.tenant_id == tenant_id).limit(20)
         result = await db.execute(stmt)
         articles = result.scalars().all()
     except Exception as exc:

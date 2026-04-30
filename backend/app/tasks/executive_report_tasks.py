@@ -60,7 +60,9 @@ async def _dispatch_async() -> None:
             send_subscription_report_task.delay(str(sub.id))
             logger.info(
                 "Agendado envio de relatorio: subscription=%s tenant=%s period=%s",
-                sub.id, sub.tenant_id, sub.period,
+                sub.id,
+                sub.tenant_id,
+                sub.period,
             )
 
 
@@ -103,9 +105,13 @@ async def _send_single_async(subscription_id: str) -> None:
     from app.services.email_service import send_email
 
     async with AsyncSessionLocal() as db:
-        sub = (await db.execute(
-            select(ReportSubscription).where(ReportSubscription.id == uuid.UUID(subscription_id))
-        )).scalar_one_or_none()
+        sub = (
+            await db.execute(
+                select(ReportSubscription).where(
+                    ReportSubscription.id == uuid.UUID(subscription_id)
+                )
+            )
+        ).scalar_one_or_none()
         if not sub:
             logger.warning("Subscription %s nao encontrada", subscription_id)
             return
@@ -113,15 +119,18 @@ async def _send_single_async(subscription_id: str) -> None:
             logger.warning("Subscription %s sem destinatarios", subscription_id)
             return
 
-        tenant = (await db.execute(
-            select(Tenant).where(Tenant.id == sub.tenant_id)
-        )).scalar_one_or_none()
+        tenant = (
+            await db.execute(select(Tenant).where(Tenant.id == sub.tenant_id))
+        ).scalar_one_or_none()
         if not tenant:
             logger.warning("Tenant %s nao encontrado", sub.tenant_id)
             return
 
         data = await executive_report_service.build_report(
-            db, sub.tenant_id, tenant.name, period=sub.period  # type: ignore[arg-type]
+            db,
+            sub.tenant_id,
+            tenant.name,
+            period=sub.period,  # type: ignore[arg-type]
         )
         html = executive_report_service.render_report_html(data)
         subject = executive_report_service.render_subject(data)
@@ -143,7 +152,10 @@ async def _send_single_async(subscription_id: str) -> None:
 
         logger.info(
             "Relatorio %s enviado: subscription=%s destinatarios=%d/%d",
-            sub.period, sub.id, sent_count, len(sub.recipients),
+            sub.period,
+            sub.id,
+            sent_count,
+            len(sub.recipients),
         )
 
 
@@ -167,7 +179,10 @@ async def send_ad_hoc_report(
     from app.services.email_service import send_email
 
     data = await executive_report_service.build_report(
-        db, tenant_id, tenant_name, period=period  # type: ignore[arg-type]
+        db,
+        tenant_id,
+        tenant_name,
+        period=period,  # type: ignore[arg-type]
     )
     html = executive_report_service.render_report_html(data)
     subject = executive_report_service.render_subject(data)

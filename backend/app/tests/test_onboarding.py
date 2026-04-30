@@ -65,16 +65,14 @@ async def test_create_tenant_with_admin_happy_path(db: AsyncSession):
     assert tenant.is_active is True
 
     # Verifica que settings foram criados
-    settings = (await db.execute(
-        select(TenantSettings).where(TenantSettings.tenant_id == result.tenant_id)
-    )).scalar_one()
+    settings = (
+        await db.execute(select(TenantSettings).where(TenantSettings.tenant_id == result.tenant_id))
+    ).scalar_one()
     assert settings.business_hours_start == "08:00"
     assert settings.business_hours_end == "18:00"
 
     # Verifica que admin user foi criado e vinculado ao tenant
-    admin = (await db.execute(
-        select(User).where(User.id == result.admin_user_id)
-    )).scalar_one()
+    admin = (await db.execute(select(User).where(User.id == result.admin_user_id))).scalar_one()
     assert admin.tenant_id == tenant.id
     assert admin.role == "admin"
     assert admin.password_hash != "SenhaForte@123"  # nao armazena em texto plano
@@ -135,51 +133,39 @@ async def test_import_students_basic(db: AsyncSession, test_tenant: Tenant):
         b"20241002,Bruno Costa,Engenharia,3,active,bruno@test.com,5511999992222\n"
     )
 
-    result = await onboarding_service.import_students_from_csv(
-        db, test_tenant.id, csv_content
-    )
+    result = await onboarding_service.import_students_from_csv(db, test_tenant.id, csv_content)
     await db.commit()
 
     assert result.created == 2
     assert result.skipped == 0
     assert result.errors == []
 
-    students = (await db.execute(
-        select(Student).where(Student.tenant_id == test_tenant.id)
-    )).scalars().all()
+    students = (
+        (await db.execute(select(Student).where(Student.tenant_id == test_tenant.id)))
+        .scalars()
+        .all()
+    )
     assert len(students) == 2
     assert {s.registration_number for s in students} == {"20241001", "20241002"}
 
 
 @pytest.mark.asyncio
 async def test_import_students_skips_duplicates(db: AsyncSession, test_tenant: Tenant):
-    csv_content = (
-        b"registration_number,full_name\n"
-        b"20241001,Ana Silva\n"
-    )
+    csv_content = b"registration_number,full_name\n20241001,Ana Silva\n"
     # Primeira importacao
     await onboarding_service.import_students_from_csv(db, test_tenant.id, csv_content)
     await db.commit()
 
     # Segunda importacao com mesmo RA
-    result = await onboarding_service.import_students_from_csv(
-        db, test_tenant.id, csv_content
-    )
+    result = await onboarding_service.import_students_from_csv(db, test_tenant.id, csv_content)
     assert result.created == 0
     assert result.skipped == 1
 
 
 @pytest.mark.asyncio
 async def test_import_students_validates_required_fields(db: AsyncSession, test_tenant: Tenant):
-    csv_content = (
-        b"registration_number,full_name\n"
-        b",Sem RA\n"
-        b"20241001,\n"
-        b"20241002,Valido\n"
-    )
-    result = await onboarding_service.import_students_from_csv(
-        db, test_tenant.id, csv_content
-    )
+    csv_content = b"registration_number,full_name\n,Sem RA\n20241001,\n20241002,Valido\n"
+    result = await onboarding_service.import_students_from_csv(db, test_tenant.id, csv_content)
     assert result.created == 1
     assert len(result.errors) == 2
 
@@ -187,13 +173,8 @@ async def test_import_students_validates_required_fields(db: AsyncSession, test_
 @pytest.mark.asyncio
 async def test_import_students_handles_utf8_bom(db: AsyncSession, test_tenant: Tenant):
     """CSVs do Excel costumam ter BOM UTF-8 — temos que aceitar."""
-    csv_content = (
-        b"\xef\xbb\xbfregistration_number,full_name\n"
-        b"20241001,Ana Silva\n"
-    )
-    result = await onboarding_service.import_students_from_csv(
-        db, test_tenant.id, csv_content
-    )
+    csv_content = b"\xef\xbb\xbfregistration_number,full_name\n20241001,Ana Silva\n"
+    result = await onboarding_service.import_students_from_csv(db, test_tenant.id, csv_content)
     assert result.created == 1
 
 
@@ -222,17 +203,17 @@ async def test_import_employees_basic(db: AsyncSession, test_tenant: Tenant):
         b"FUNC002,Patricia Lima,Financeiro,Analista,active,patricia@test.com,55119992222,2021-08-01\n"
     )
 
-    result = await onboarding_service.import_employees_from_csv(
-        db, test_tenant.id, csv_content
-    )
+    result = await onboarding_service.import_employees_from_csv(db, test_tenant.id, csv_content)
     await db.commit()
 
     assert result.created == 2
     assert result.skipped == 0
 
-    employees = (await db.execute(
-        select(Employee).where(Employee.tenant_id == test_tenant.id)
-    )).scalars().all()
+    employees = (
+        (await db.execute(select(Employee).where(Employee.tenant_id == test_tenant.id)))
+        .scalars()
+        .all()
+    )
     assert len(employees) == 2
 
     carlos = next(e for e in employees if e.employee_number == "FUNC001")
@@ -246,9 +227,7 @@ async def test_import_employees_records_invalid_dates(db: AsyncSession, test_ten
         b"employee_number,full_name,hire_date\n"
         b"FUNC001,Carlos Martins,15/03/2019\n"  # formato errado
     )
-    result = await onboarding_service.import_employees_from_csv(
-        db, test_tenant.id, csv_content
-    )
+    result = await onboarding_service.import_employees_from_csv(db, test_tenant.id, csv_content)
     await db.commit()
 
     # Funcionario foi criado (data e opcional), mas erro foi registrado
@@ -302,30 +281,27 @@ async def test_imported_students_are_isolated_per_tenant(
     db: AsyncSession, test_tenant: Tenant, second_tenant: Tenant
 ):
     """Importar mesma matricula em 2 tenants diferentes nao deve dar conflito."""
-    csv_content = (
-        b"registration_number,full_name\n"
-        b"20241001,Ana Silva\n"
-    )
+    csv_content = b"registration_number,full_name\n20241001,Ana Silva\n"
 
-    r1 = await onboarding_service.import_students_from_csv(
-        db, test_tenant.id, csv_content
-    )
+    r1 = await onboarding_service.import_students_from_csv(db, test_tenant.id, csv_content)
     await db.commit()
-    r2 = await onboarding_service.import_students_from_csv(
-        db, second_tenant.id, csv_content
-    )
+    r2 = await onboarding_service.import_students_from_csv(db, second_tenant.id, csv_content)
     await db.commit()
 
     assert r1.created == 1
     assert r2.created == 1  # mesmo RA, tenant diferente — deve criar
 
     # Cada tenant tem seu proprio aluno
-    s1 = (await db.execute(
-        select(Student).where(Student.tenant_id == test_tenant.id)
-    )).scalars().all()
-    s2 = (await db.execute(
-        select(Student).where(Student.tenant_id == second_tenant.id)
-    )).scalars().all()
+    s1 = (
+        (await db.execute(select(Student).where(Student.tenant_id == test_tenant.id)))
+        .scalars()
+        .all()
+    )
+    s2 = (
+        (await db.execute(select(Student).where(Student.tenant_id == second_tenant.id)))
+        .scalars()
+        .all()
+    )
     assert len(s1) == 1
     assert len(s2) == 1
     assert s1[0].id != s2[0].id

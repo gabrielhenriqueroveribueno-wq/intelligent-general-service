@@ -103,11 +103,11 @@ def _render_alert_html(summary: dict) -> str:
     <div style='font-family:sans-serif;max-width:640px;margin:auto'>
       <h2 style='color:{color}'>IGS — Alerta de Saude dos Providers de IA</h2>
       <p>Estado geral: <b style='color:{color}'>{overall.upper()}</b></p>
-      <p>{summary.get('healthy_count', 0)} de {summary.get('total_providers', 0)} providers saudaveis.</p>
+      <p>{summary.get("healthy_count", 0)} de {summary.get("total_providers", 0)} providers saudaveis.</p>
       {table}
       <hr style='margin:24px 0;border:none;border-top:1px solid #e5e7eb'/>
       <p style='color:#6b7280;font-size:12px'>
-        Verificado em {time.strftime('%d/%m/%Y %H:%M:%S', time.localtime(summary.get('checked_at', time.time())))}.<br>
+        Verificado em {time.strftime("%d/%m/%Y %H:%M:%S", time.localtime(summary.get("checked_at", time.time())))}.<br>
         Acesse o painel admin > IA Health para detalhes.
       </p>
     </div>

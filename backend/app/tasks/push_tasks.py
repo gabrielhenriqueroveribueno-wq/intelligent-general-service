@@ -35,9 +35,9 @@ async def _get_tenant_subscriptions(db, tenant_id: str):
     from app.models.user import User
 
     result = await db.execute(
-        select(PushSubscription).join(User, User.id == PushSubscription.user_id).where(
-            User.tenant_id == tenant_id
-        )
+        select(PushSubscription)
+        .join(User, User.id == PushSubscription.user_id)
+        .where(User.tenant_id == tenant_id)
     )
     return result.scalars().all()
 
@@ -76,9 +76,7 @@ async def _purge_expired(db, expired_endpoints: list[str]) -> None:
     from app.models.push_subscription import PushSubscription
 
     for ep in expired_endpoints:
-        await db.execute(
-            delete(PushSubscription).where(PushSubscription.endpoint == ep)
-        )
+        await db.execute(delete(PushSubscription).where(PushSubscription.endpoint == ep))
     await db.commit()
 
 

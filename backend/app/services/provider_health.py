@@ -183,12 +183,8 @@ def summarize(statuses: list[ProviderStatus]) -> dict:
     healthy_count = sum(1 for s in statuses if s.state == HEALTHY)
     total = len(statuses)
 
-    critical = [
-        s for s in statuses if s.state in (NO_CREDITS, AUTH_ERROR)
-    ]
-    degraded = [
-        s for s in statuses if s.state in (RATE_LIMITED, UNREACHABLE, UNKNOWN_ERROR)
-    ]
+    critical = [s for s in statuses if s.state in (NO_CREDITS, AUTH_ERROR)]
+    degraded = [s for s in statuses if s.state in (RATE_LIMITED, UNREACHABLE, UNKNOWN_ERROR)]
 
     if healthy_count == 0:
         overall = "critical"

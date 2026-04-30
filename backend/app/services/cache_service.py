@@ -19,9 +19,9 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-_TTL_KB = 300        # 5 min
+_TTL_KB = 300  # 5 min
 _TTL_SETTINGS = 600  # 10 min
-_TTL_DASHBOARD = 120 # 2 min
+_TTL_DASHBOARD = 120  # 2 min
 
 _redis_client: Optional[aioredis.Redis] = None
 
@@ -71,6 +71,7 @@ async def delete_pattern(pattern: str) -> None:
 
 # ── Helpers por domínio ───────────────────────────────────────────────────────
 
+
 def kb_key(tenant_id: uuid.UUID, query: str, applies_to: Optional[str] = None) -> str:
     h = hashlib.md5(f"{query}:{applies_to}".encode()).hexdigest()[:12]
     return f"kb:{tenant_id}:{h}"
@@ -84,11 +85,15 @@ def dashboard_key(tenant_id: uuid.UUID) -> str:
     return f"dashboard:{tenant_id}"
 
 
-async def get_kb(tenant_id: uuid.UUID, query: str, applies_to: Optional[str] = None) -> Optional[list]:
+async def get_kb(
+    tenant_id: uuid.UUID, query: str, applies_to: Optional[str] = None
+) -> Optional[list]:
     return await get(kb_key(tenant_id, query, applies_to))
 
 
-async def set_kb(tenant_id: uuid.UUID, query: str, applies_to: Optional[str], articles: list) -> None:
+async def set_kb(
+    tenant_id: uuid.UUID, query: str, applies_to: Optional[str], articles: list
+) -> None:
     await set(kb_key(tenant_id, query, applies_to), articles, ttl=_TTL_KB)
 
 

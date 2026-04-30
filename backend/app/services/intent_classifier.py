@@ -95,7 +95,9 @@ async def classify_intent(
     # Se a mensagem é curta (ex: "sim", "quero"), usa o contexto da última msg do bot
     user_msg = message
     if last_bot_message and len(message.strip()) <= 30:
-        user_msg = f"[Última mensagem do bot: {last_bot_message[:150]}]\nUsuário respondeu: {message}"
+        user_msg = (
+            f"[Última mensagem do bot: {last_bot_message[:150]}]\nUsuário respondeu: {message}"
+        )
 
     try:
         result = await ai_complete(

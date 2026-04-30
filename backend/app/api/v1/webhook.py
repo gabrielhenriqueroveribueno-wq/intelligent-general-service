@@ -127,18 +127,14 @@ async def _notify_payment_confirmed(db: AsyncSession, boleto_id: str):
     from app.models.tenant import Tenant
     from app.services import whatsapp_service
 
-    boleto_result = await db.execute(
-        select(Boleto).where(Boleto.id == _uuid.UUID(boleto_id))
-    )
+    boleto_result = await db.execute(select(Boleto).where(Boleto.id == _uuid.UUID(boleto_id)))
     boleto = boleto_result.scalar_one_or_none()
     if not boleto:
         return
 
     from app.models.student import Student
 
-    student_result = await db.execute(
-        select(Student).where(Student.id == boleto.student_id)
-    )
+    student_result = await db.execute(select(Student).where(Student.id == boleto.student_id))
     student = student_result.scalar_one_or_none()
     if not student:
         return
@@ -154,9 +150,7 @@ async def _notify_payment_confirmed(db: AsyncSession, boleto_id: str):
     if not contact:
         return
 
-    tenant_result = await db.execute(
-        select(Tenant).where(Tenant.id == boleto.tenant_id)
-    )
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == boleto.tenant_id))
     tenant = tenant_result.scalar_one_or_none()
     if not tenant or not tenant.whatsapp_phone_number_id or not tenant.whatsapp_token:
         return

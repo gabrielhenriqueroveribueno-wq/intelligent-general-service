@@ -84,17 +84,13 @@ async def create_tenant_with_admin(
     """Cria tenant, settings iniciais e usuario admin. Flush, sem commit."""
     slug = _normalize_slug(tenant_slug)
     if not SLUG_PATTERN.match(slug):
-        raise ValueError(
-            "Slug invalido. Use letras minusculas, numeros e hifens (3-64 chars)."
-        )
+        raise ValueError("Slug invalido. Use letras minusculas, numeros e hifens (3-64 chars).")
 
     existing = await db.execute(select(Tenant).where(Tenant.slug == slug))
     if existing.scalar_one_or_none():
         raise ValueError(f"Slug '{slug}' ja esta em uso")
 
-    existing_user = await db.execute(
-        select(User).where(User.email == admin_email.lower())
-    )
+    existing_user = await db.execute(select(User).where(User.email == admin_email.lower()))
     if existing_user.scalar_one_or_none():
         raise ValueError(f"Email '{admin_email}' ja esta em uso")
 
@@ -131,7 +127,9 @@ async def create_tenant_with_admin(
 
     logger.info(
         "Tenant '%s' criado com admin '%s' (tenant_id=%s)",
-        slug, admin.email, tenant.id,
+        slug,
+        admin.email,
+        tenant.id,
     )
 
     return OnboardingResult(
@@ -239,7 +237,10 @@ async def import_students_from_csv(
     await db.flush()
     logger.info(
         "Import alunos: tenant=%s criados=%d ignorados=%d erros=%d",
-        tenant_id, created, skipped, len(errors),
+        tenant_id,
+        created,
+        skipped,
+        len(errors),
     )
     return ImportResult(created=created, skipped=skipped, errors=errors[:50])
 
@@ -304,7 +305,10 @@ async def import_employees_from_csv(
     await db.flush()
     logger.info(
         "Import funcionarios: tenant=%s criados=%d ignorados=%d erros=%d",
-        tenant_id, created, skipped, len(errors),
+        tenant_id,
+        created,
+        skipped,
+        len(errors),
     )
     return ImportResult(created=created, skipped=skipped, errors=errors[:50])
 
@@ -318,24 +322,28 @@ def generate_students_csv_template() -> str:
     buf = io.StringIO()
     writer = csv.writer(buf)
     writer.writerow(STUDENT_CSV_HEADERS)
-    writer.writerow([
-        "20241001",
-        "Ana Carolina Silva",
-        "Ciencia da Computacao",
-        "4",
-        "active",
-        "ana.silva@aluno.anchieta.edu.br",
-        "5511999881234",
-    ])
-    writer.writerow([
-        "20241002",
-        "Pedro Henrique Santos",
-        "Engenharia Civil",
-        "3",
-        "active",
-        "pedro.santos@aluno.anchieta.edu.br",
-        "5511998774321",
-    ])
+    writer.writerow(
+        [
+            "20241001",
+            "Ana Carolina Silva",
+            "Ciencia da Computacao",
+            "4",
+            "active",
+            "ana.silva@aluno.anchieta.edu.br",
+            "5511999881234",
+        ]
+    )
+    writer.writerow(
+        [
+            "20241002",
+            "Pedro Henrique Santos",
+            "Engenharia Civil",
+            "3",
+            "active",
+            "pedro.santos@aluno.anchieta.edu.br",
+            "5511998774321",
+        ]
+    )
     return buf.getvalue()
 
 
@@ -343,24 +351,28 @@ def generate_employees_csv_template() -> str:
     buf = io.StringIO()
     writer = csv.writer(buf)
     writer.writerow(EMPLOYEE_CSV_HEADERS)
-    writer.writerow([
-        "FUNC001",
-        "Carlos Eduardo Martins",
-        "Secretaria Academica",
-        "Coordenador",
-        "active",
-        "carlos.martins@anchieta.edu.br",
-        "5511998001234",
-        "2019-03-15",
-    ])
-    writer.writerow([
-        "FUNC002",
-        "Patricia Souza Lima",
-        "Financeiro",
-        "Analista Financeiro",
-        "active",
-        "patricia.lima@anchieta.edu.br",
-        "5511997442118",
-        "2021-08-01",
-    ])
+    writer.writerow(
+        [
+            "FUNC001",
+            "Carlos Eduardo Martins",
+            "Secretaria Academica",
+            "Coordenador",
+            "active",
+            "carlos.martins@anchieta.edu.br",
+            "5511998001234",
+            "2019-03-15",
+        ]
+    )
+    writer.writerow(
+        [
+            "FUNC002",
+            "Patricia Souza Lima",
+            "Financeiro",
+            "Analista Financeiro",
+            "active",
+            "patricia.lima@anchieta.edu.br",
+            "5511997442118",
+            "2021-08-01",
+        ]
+    )
     return buf.getvalue()

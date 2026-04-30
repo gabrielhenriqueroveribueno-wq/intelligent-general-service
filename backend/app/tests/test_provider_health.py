@@ -52,6 +52,7 @@ async def test_check_anthropic_returns_not_configured_when_key_missing():
         mock_settings.ANTHROPIC_API_KEY = ""
         # Recarregamos o modulo provider_health pra pegar o settings mockado
         from importlib import reload
+
         reload(provider_health)
         with patch.object(provider_health, "settings") as mock_settings2:
             mock_settings2.ANTHROPIC_API_KEY = ""
@@ -104,9 +105,7 @@ def test_summarize_partial_healthy_is_degraded():
 
 
 def test_provider_status_to_dict_serializable():
-    status = provider_health.ProviderStatus(
-        name="anthropic", state="healthy", latency_ms=250
-    )
+    status = provider_health.ProviderStatus(name="anthropic", state="healthy", latency_ms=250)
     data = status.to_dict()
     assert data["name"] == "anthropic"
     assert data["state"] == "healthy"
@@ -142,9 +141,11 @@ async def test_check_all_providers_includes_circuit_state():
     async def mock_gemini():
         return provider_health.ProviderStatus(name="gemini", state="healthy", latency_ms=100)
 
-    with patch.object(provider_health, "_check_anthropic", new=mock_anthropic), \
-         patch.object(provider_health, "_check_groq", new=mock_groq), \
-         patch.object(provider_health, "_check_gemini", new=mock_gemini):
+    with (
+        patch.object(provider_health, "_check_anthropic", new=mock_anthropic),
+        patch.object(provider_health, "_check_groq", new=mock_groq),
+        patch.object(provider_health, "_check_gemini", new=mock_gemini),
+    ):
         statuses = await provider_health.check_all_providers()
 
     anthropic = next(s for s in statuses if s.name == "anthropic")

@@ -42,8 +42,7 @@ async def search_articles(
 
     # Serializa para cache (apenas campos necessários para o AI service)
     serialized = [
-        {"title": a.title, "content": a.content, "applies_to": a.applies_to}
-        for a in articles
+        {"title": a.title, "content": a.content, "applies_to": a.applies_to} for a in articles
     ]
     await cache_service.set_kb(tenant_id, query, applies_to, serialized)
 

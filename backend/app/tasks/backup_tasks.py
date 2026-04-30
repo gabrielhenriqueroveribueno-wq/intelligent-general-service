@@ -74,10 +74,14 @@ def backup_database_task() -> str:
 
     dump_cmd = [
         "pg_dump",
-        "-h", host,
-        "-p", port,
-        "-U", user,
-        "-d", database,
+        "-h",
+        host,
+        "-p",
+        port,
+        "-U",
+        user,
+        "-d",
+        database,
         "--no-owner",
         "--no-acl",
         "--format=plain",

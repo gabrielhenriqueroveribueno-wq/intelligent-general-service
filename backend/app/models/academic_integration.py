@@ -32,9 +32,7 @@ class AcademicIntegration(Base, TenantMixin, TimestampMixin):
         UniqueConstraint("tenant_id", "provider_type", name="uq_integration_tenant_provider"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
     # Tipo: 'sophia', 'totvs', 'generic_rest'
     provider_type: Mapped[str] = mapped_column(String(50), nullable=False)

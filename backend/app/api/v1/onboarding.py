@@ -127,9 +127,7 @@ async def import_students(
     content = await _read_upload(file)
 
     try:
-        result = await onboarding_service.import_students_from_csv(
-            db, target_tenant_id, content
-        )
+        result = await onboarding_service.import_students_from_csv(db, target_tenant_id, content)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -162,9 +160,7 @@ async def import_employees(
     content = await _read_upload(file)
 
     try:
-        result = await onboarding_service.import_employees_from_csv(
-            db, target_tenant_id, content
-        )
+        result = await onboarding_service.import_employees_from_csv(db, target_tenant_id, content)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

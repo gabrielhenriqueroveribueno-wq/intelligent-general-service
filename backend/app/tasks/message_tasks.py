@@ -280,9 +280,9 @@ async def _process_message_async(message_id: str):
 
             sr = analyze_sentiment(message.content)
             await db.execute(
-                update(Message).where(Message.id == message.id).values(
-                    sentiment=sr.label, sentiment_score=sr.score
-                )
+                update(Message)
+                .where(Message.id == message.id)
+                .values(sentiment=sr.label, sentiment_score=sr.score)
             )
             message.sentiment = sr.label
             message.sentiment_score = sr.score
@@ -375,12 +375,14 @@ async def _process_message_async(message_id: str):
         # Fallback: se o status não é awaiting_feedback mas a última msg do bot pediu nota,
         # aceitar mesmo assim (caso o [FEEDBACK_REQUEST] não tenha sido incluído pelo Claude)
         _msg_stripped = (message.content or "").strip()
-        _is_feedback_score = (
-            contact.is_verified
-            and _msg_stripped in ("1", "2", "3", "4", "5")
+        _is_feedback_score = contact.is_verified and _msg_stripped in ("1", "2", "3", "4", "5")
+        logger.info(
+            "Feedback check: msg='%s', is_verified=%s, conv_status='%s', _is_feedback=%s",
+            _msg_stripped,
+            contact.is_verified,
+            conversation.status,
+            _is_feedback_score,
         )
-        logger.info("Feedback check: msg='%s', is_verified=%s, conv_status='%s', _is_feedback=%s",
-                     _msg_stripped, contact.is_verified, conversation.status, _is_feedback_score)
         if _is_feedback_score:
             # Refresh conversation status from DB (may have been updated by previous task)
             await db.refresh(conversation)
@@ -394,8 +396,15 @@ async def _process_message_async(message_id: str):
                     .limit(1)
                 )
                 last_bot = last_bot_msg.scalar_one_or_none()
-                logger.info("Feedback fallback: last_bot='%s'", (last_bot.content or "")[:80] if last_bot else "None")
-                if not (last_bot and "nota de" in (last_bot.content or "").lower() and "1 a 5" in (last_bot.content or "")):
+                logger.info(
+                    "Feedback fallback: last_bot='%s'",
+                    (last_bot.content or "")[:80] if last_bot else "None",
+                )
+                if not (
+                    last_bot
+                    and "nota de" in (last_bot.content or "").lower()
+                    and "1 a 5" in (last_bot.content or "")
+                ):
                     _is_feedback_score = False
                     logger.info("Feedback fallback: NOT a feedback score, skipping")
 
@@ -413,8 +422,10 @@ async def _process_message_async(message_id: str):
             hour = datetime.now(timezone.utc).hour - 3  # UTC-3 (São Paulo)
             if hour < 0:
                 hour += 24
-            greeting = "Tenha uma ótima noite!" if hour >= 18 else (
-                "Tenha um ótimo dia!" if hour >= 12 else "Tenha uma ótima manhã!"
+            greeting = (
+                "Tenha uma ótima noite!"
+                if hour >= 18
+                else ("Tenha um ótimo dia!" if hour >= 12 else "Tenha uma ótima manhã!")
             )
 
             first_name = contact.name.split()[0]
@@ -451,11 +462,36 @@ async def _process_message_async(message_id: str):
 
         # ── 2b. Interceptar despedida e forçar pedido de feedback (sem IA) ──
         _farewell_triggers = (
-            "não", "nao", "não obrigado", "nao obrigado", "era só isso", "era so isso",
-            "obrigado", "obrigada", "valeu", "tchau", "só isso", "so isso", "tá bom", "ta bom",
-            "até mais", "ate mais", "nada mais", "é isso", "e isso", "só isso mesmo",
-            "so isso mesmo", "não preciso", "nao preciso", "era isso", "brigado", "brigada",
-            "flw", "falou", "vlw", "tmj",
+            "não",
+            "nao",
+            "não obrigado",
+            "nao obrigado",
+            "era só isso",
+            "era so isso",
+            "obrigado",
+            "obrigada",
+            "valeu",
+            "tchau",
+            "só isso",
+            "so isso",
+            "tá bom",
+            "ta bom",
+            "até mais",
+            "ate mais",
+            "nada mais",
+            "é isso",
+            "e isso",
+            "só isso mesmo",
+            "so isso mesmo",
+            "não preciso",
+            "nao preciso",
+            "era isso",
+            "brigado",
+            "brigada",
+            "flw",
+            "falou",
+            "vlw",
+            "tmj",
         )
         _msg_lower = (message.content or "").strip().lower().rstrip("!.,;")
         if (
@@ -477,9 +513,14 @@ async def _process_message_async(message_id: str):
             if not _fb_check.scalar_one_or_none():
                 from datetime import datetime
                 from datetime import timezone as tz
+
                 feedback_reply = f"Que bom que pude ajudar, {contact.name.split()[0]}! Me dá uma nota de *1 a 5* pro atendimento? 1 = ruim, 5 = excelente 😊"
-                msg_id = await whatsapp_service.send_text_message(phone_id, token, to, feedback_reply)
-                _save_bot_message(db, conversation, feedback_reply, tenant_id, whatsapp_msg_id=msg_id)
+                msg_id = await whatsapp_service.send_text_message(
+                    phone_id, token, to, feedback_reply
+                )
+                _save_bot_message(
+                    db, conversation, feedback_reply, tenant_id, whatsapp_msg_id=msg_id
+                )
                 await db.execute(
                     update(Conversation)
                     .where(Conversation.id == conversation.id)
@@ -489,7 +530,10 @@ async def _process_message_async(message_id: str):
                     update(Message).where(Message.id == message.id).values(intent="farewell")
                 )
                 await db.commit()
-                logger.info("Farewell interceptado, feedback pedido direto (sem IA): conversa=%s", conversation.id)
+                logger.info(
+                    "Farewell interceptado, feedback pedido direto (sem IA): conversa=%s",
+                    conversation.id,
+                )
                 await _engine.dispose()
                 return
 
@@ -517,9 +561,7 @@ async def _process_message_async(message_id: str):
             intent = classification["intent"]
             entities = classification["entities"]
 
-            await db.execute(
-                update(Message).where(Message.id == message.id).values(intent=intent)
-            )
+            await db.execute(update(Message).where(Message.id == message.id).values(intent=intent))
 
             if contact.contact_type == "student" and contact.student_id:
                 student_id = contact.student_id
@@ -593,9 +635,7 @@ async def _process_message_async(message_id: str):
                         intent=intent,
                         entities=entities,
                         student_id=(
-                            contact.student_id
-                            if contact.contact_type == "student"
-                            else None
+                            contact.student_id if contact.contact_type == "student" else None
                         ),
                     )
                     if action_result:
@@ -637,7 +677,9 @@ async def _process_message_async(message_id: str):
         )
 
         # ── 5. Gera resposta via IA ──────────────────────────────────────
-        data_str = _format_data_for_agent(data_context) if data_context else "Nenhum dado carregado."
+        data_str = (
+            _format_data_for_agent(data_context) if data_context else "Nenhum dado carregado."
+        )
         kb_str = (
             "\n".join(f"[{a['title']}] {a['content']}" for a in kb_data[:3])
             if kb_data
@@ -704,9 +746,7 @@ async def _process_message_async(message_id: str):
                 parts = cmd.split(":", 2)
                 if len(parts) == 3:
                     id_type, id_value = parts[1], parts[2]
-                    await _handle_identification(
-                        db, contact, tenant_id, id_type, id_value.strip()
-                    )
+                    await _handle_identification(db, contact, tenant_id, id_type, id_value.strip())
 
             elif cmd.startswith("PASSWORD:"):
                 password = cmd[9:].strip()
@@ -746,9 +786,7 @@ async def _process_message_async(message_id: str):
                 doc_type = cmd.split(":", 1)[1].strip()
                 from app.tasks.notification_tasks import generate_document_task
 
-                generate_document_task.delay(
-                    str(contact.id), str(tenant_id), doc_type
-                )
+                generate_document_task.delay(str(contact.id), str(tenant_id), doc_type)
 
             elif cmd == "CANCEL":
                 contact.metadata_ = {}
@@ -759,9 +797,9 @@ async def _process_message_async(message_id: str):
             _save_bot_message(db, conversation, reply.strip(), tenant_id, whatsapp_msg_id=msg_id)
 
         await db.execute(
-            update(Message).where(Message.id == message.id).values(
-                ai_tokens_used=tokens, intent=intent
-            )
+            update(Message)
+            .where(Message.id == message.id)
+            .values(ai_tokens_used=tokens, intent=intent)
         )
 
         from datetime import datetime, timezone
@@ -796,7 +834,9 @@ async def _process_message_async(message_id: str):
         await db.commit()
         logger.info("Mensagem %s processada em %.2fs (intent=%s)", message_id, elapsed, intent)
 
-        await _notify_external(db, tenant_id, conversation, message, intent, resolution_type, contact)
+        await _notify_external(
+            db, tenant_id, conversation, message, intent, resolution_type, contact
+        )
 
     await _engine.dispose()
 
@@ -809,7 +849,17 @@ async def _process_message_async(message_id: str):
 def _extract_commands(raw_reply: str) -> tuple[str, list[str]]:
     """Extrai comandos [COMMAND] da resposta da IA e retorna texto limpo + lista de comandos."""
     commands = []
-    valid_prefixes = ("HANDOFF", "IDENTIFY:", "PASSWORD:", "CANCEL", "FEEDBACK_REQUEST", "FEEDBACK:", "REMINDERS_ON", "REMINDERS_OFF", "GENERATE_DOC:")
+    valid_prefixes = (
+        "HANDOFF",
+        "IDENTIFY:",
+        "PASSWORD:",
+        "CANCEL",
+        "FEEDBACK_REQUEST",
+        "FEEDBACK:",
+        "REMINDERS_ON",
+        "REMINDERS_OFF",
+        "GENERATE_DOC:",
+    )
     for match in re.finditer(r"\[([A-Z_]+(?::[^\]]*)?)\]", raw_reply):
         cmd = match.group(1)
         if cmd.startswith(valid_prefixes):

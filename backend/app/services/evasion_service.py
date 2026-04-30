@@ -56,7 +56,9 @@ async def compute_student_risk(db: AsyncSession, student_id: uuid.UUID) -> Evasi
 
     # ── Status de matrícula ──────────────────────────────────────────────────
     if student.enrollment_status == "dropped":
-        return EvasionRisk(student_id=student_id, score=100, level="critical", factors=["Matrícula cancelada"])
+        return EvasionRisk(
+            student_id=student_id, score=100, level="critical", factors=["Matrícula cancelada"]
+        )
     if student.enrollment_status == "locked":
         score += 40
         factors.append("Matrícula trancada")
@@ -94,9 +96,7 @@ async def compute_student_risk(db: AsyncSession, student_id: uuid.UUID) -> Evasi
 
     # ── Boletos em atraso ────────────────────────────────────────────────────
     boletos_res = await db.execute(
-        select(func.count()).where(
-            Boleto.student_id == student_id, Boleto.status == "overdue"
-        )
+        select(func.count()).where(Boleto.student_id == student_id, Boleto.status == "overdue")
     )
     overdue_count: int = boletos_res.scalar() or 0
     if overdue_count >= 2:
@@ -107,9 +107,7 @@ async def compute_student_risk(db: AsyncSession, student_id: uuid.UUID) -> Evasi
         factors.append("1 boleto em atraso")
 
     # ── Sentimento negativo recente ──────────────────────────────────────────
-    contact_res = await db.execute(
-        select(Contact).where(Contact.student_id == student_id)
-    )
+    contact_res = await db.execute(select(Contact).where(Contact.student_id == student_id))
     contact = contact_res.scalar_one_or_none()
     if contact:
         neg_count_res = await db.execute(
@@ -138,9 +136,7 @@ async def compute_student_risk(db: AsyncSession, student_id: uuid.UUID) -> Evasi
     )
 
 
-async def compute_all_risks(
-    db: AsyncSession, tenant_id: uuid.UUID
-) -> list[EvasionRisk]:
+async def compute_all_risks(db: AsyncSession, tenant_id: uuid.UUID) -> list[EvasionRisk]:
     from app.models.student import Student
 
     students_res = await db.execute(

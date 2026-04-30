@@ -262,9 +262,7 @@ def _arrow(delta: Optional[float]) -> str:
 
 def render_report_html(data: ExecutiveReportData) -> str:
     period_label = PERIOD_LABEL[data.period]
-    period_str = (
-        f"{data.start_date.strftime('%d/%m/%Y')} a {data.end_date.strftime('%d/%m/%Y')}"
-    )
+    period_str = f"{data.start_date.strftime('%d/%m/%Y')} a {data.end_date.strftime('%d/%m/%Y')}"
     sat_str = f"{data.avg_satisfaction:.1f}/5" if data.avg_satisfaction is not None else "—"
 
     intents_rows = "".join(
@@ -287,7 +285,7 @@ def render_report_html(data: ExecutiveReportData) -> str:
             f'padding:12px;margin:16px 0">'
             f'<strong style="color:#dc2626">⚠️ Atencao:</strong> '
             f'<span style="color:#7f1d1d">{data.sla_breached} ticket(s) com SLA violado</span>'
-            f'</div>'
+            f"</div>"
         )
 
     return f"""

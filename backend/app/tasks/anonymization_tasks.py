@@ -51,14 +51,18 @@ async def _run() -> dict:
         for tenant in tenants:
             # Alunos inativos além do prazo
             students = (
-                await db.execute(
-                    select(Student).where(
-                        Student.tenant_id == tenant.id,
-                        Student.enrollment_status.in_(["dropped", "graduated"]),
-                        Student.updated_at < cutoff,
+                (
+                    await db.execute(
+                        select(Student).where(
+                            Student.tenant_id == tenant.id,
+                            Student.enrollment_status.in_(["dropped", "graduated"]),
+                            Student.updated_at < cutoff,
+                        )
                     )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
 
             for student in students:
                 try:
@@ -74,14 +78,18 @@ async def _run() -> dict:
 
             # Funcionários demitidos além do prazo
             employees = (
-                await db.execute(
-                    select(Employee).where(
-                        Employee.tenant_id == tenant.id,
-                        Employee.status == "inactive",
-                        Employee.updated_at < cutoff,
+                (
+                    await db.execute(
+                        select(Employee).where(
+                            Employee.tenant_id == tenant.id,
+                            Employee.status == "inactive",
+                            Employee.updated_at < cutoff,
+                        )
                     )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
 
             for employee in employees:
                 try:

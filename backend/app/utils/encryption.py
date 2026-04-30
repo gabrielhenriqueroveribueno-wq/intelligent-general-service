@@ -64,7 +64,7 @@ def decrypt(ciphertext: str) -> Optional[str]:
         return None
 
     if ciphertext.startswith("plain:"):
-        return ciphertext[len("plain:"):]
+        return ciphertext[len("plain:") :]
 
     cipher = _get_cipher()
     if cipher is None:

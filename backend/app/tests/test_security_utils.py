@@ -94,7 +94,11 @@ def test_decode_refresh_token_rejects_access_token():
 
 def test_decode_access_token_invalid_signature():
     """Token assinado com chave errada deve ser rejeitado."""
-    payload = {"sub": "user-123", "type": "access", "exp": datetime.now(timezone.utc) + timedelta(minutes=15)}
+    payload = {
+        "sub": "user-123",
+        "type": "access",
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=15),
+    }
     token = jwt.encode(payload, "chave-errada", algorithm=settings.JWT_ALGORITHM)
     assert decode_access_token(token) is None
 

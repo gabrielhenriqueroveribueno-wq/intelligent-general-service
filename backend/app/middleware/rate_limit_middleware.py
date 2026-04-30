@@ -21,7 +21,14 @@ logger = logging.getLogger(__name__)
 # Endpoints com limites especiais (prefixo após /api/v1/)
 _STRICT_PATHS = {"/api/v1/auth/login": (10, 60)}  # 10 req em 60s
 _WEBHOOK_PATHS = {"/api/v1/webhook/"}  # mais tolerante
-_EXEMPT_PATHS = {"/api/v1/health", "/api/v1/health/", "/metrics", "/docs", "/redoc", "/openapi.json"}
+_EXEMPT_PATHS = {
+    "/api/v1/health",
+    "/api/v1/health/",
+    "/metrics",
+    "/docs",
+    "/redoc",
+    "/openapi.json",
+}
 
 _DEFAULT_LIMIT = 600  # req por janela
 _DEFAULT_WINDOW = 60  # segundos
@@ -78,8 +85,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 retry_after = window - (now % window)
                 return JSONResponse(
                     status_code=429,
-                    content={"detail": "Muitas requisições. Tente novamente em instantes.", "code": "RATE_LIMIT_EXCEEDED"},
-                    headers={"Retry-After": str(retry_after), "X-RateLimit-Limit": str(limit), "X-RateLimit-Remaining": "0"},
+                    content={
+                        "detail": "Muitas requisições. Tente novamente em instantes.",
+                        "code": "RATE_LIMIT_EXCEEDED",
+                    },
+                    headers={
+                        "Retry-After": str(retry_after),
+                        "X-RateLimit-Limit": str(limit),
+                        "X-RateLimit-Remaining": "0",
+                    },
                 )
 
             response = await call_next(request)

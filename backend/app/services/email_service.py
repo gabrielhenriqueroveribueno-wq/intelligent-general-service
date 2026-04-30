@@ -38,6 +38,7 @@ async def send_email_async(
 
     if attachment:
         import base64
+
         payload["attachments"] = [
             {
                 "filename": attachment_name,

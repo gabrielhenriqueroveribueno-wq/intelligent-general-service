@@ -82,6 +82,7 @@ class GenericRestIntegrator:
 
         if auth_type == "basic":
             import base64
+
             user = auth.get("username", "")
             pwd = auth.get("password", "")
             raw = f"{user}:{pwd}".encode("utf-8")
@@ -176,9 +177,7 @@ class GenericRestIntegrator:
     # ── Test connection ─────────────────────────────────────────────────────
 
     async def test_connection(self) -> tuple[bool, str]:
-        endpoint = self.config.get("test_endpoint") or self.config.get(
-            "students_endpoint", "/"
-        )
+        endpoint = self.config.get("test_endpoint") or self.config.get("students_endpoint", "/")
         url = f"{self.base_url}{endpoint}"
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
@@ -221,7 +220,9 @@ class GenericRestIntegrator:
 
         for item in items:
             try:
-                ra = str(self._resolve_path(item, mapping.get("registration_number", "matricula")) or "").strip()
+                ra = str(
+                    self._resolve_path(item, mapping.get("registration_number", "matricula")) or ""
+                ).strip()
                 name = str(self._resolve_path(item, mapping.get("full_name", "nome")) or "").strip()
                 if not ra or not name:
                     continue
@@ -234,13 +235,17 @@ class GenericRestIntegrator:
                     tenant_id,
                     registration_number=ra,
                     full_name=name,
-                    course=str(self._resolve_path(item, mapping.get("course", "curso")) or "") or None,
+                    course=str(self._resolve_path(item, mapping.get("course", "curso")) or "")
+                    or None,
                     semester=semester,
                     enrollment_status=str(
-                        self._resolve_path(item, mapping.get("enrollment_status", "status")) or "active"
+                        self._resolve_path(item, mapping.get("enrollment_status", "status"))
+                        or "active"
                     ),
-                    email=str(self._resolve_path(item, mapping.get("email", "email")) or "") or None,
-                    phone=str(self._resolve_path(item, mapping.get("phone", "telefone")) or "") or None,
+                    email=str(self._resolve_path(item, mapping.get("email", "email")) or "")
+                    or None,
+                    phone=str(self._resolve_path(item, mapping.get("phone", "telefone")) or "")
+                    or None,
                 )
                 if created:
                     result.students_created += 1
@@ -253,7 +258,10 @@ class GenericRestIntegrator:
         await db.flush()
         logger.info(
             "GenericREST sync_students: tenant=%s criados=%d atualizados=%d erros=%d",
-            tenant_id, result.students_created, result.students_updated, len(result.errors),
+            tenant_id,
+            result.students_created,
+            result.students_updated,
+            len(result.errors),
         )
         return result
 
@@ -265,9 +273,7 @@ class GenericRestIntegrator:
         if not endpoint:
             return result
 
-        mapping = self.config.get("employee_field_mapping") or self.config.get(
-            "field_mapping", {}
-        )
+        mapping = self.config.get("employee_field_mapping") or self.config.get("field_mapping", {})
         root_path = self.config.get("employees_root_path", "")
         pagination = self.config.get("employees_pagination")
 
@@ -294,13 +300,17 @@ class GenericRestIntegrator:
                     full_name=name,
                     department=str(
                         self._resolve_path(item, mapping.get("department", "departamento")) or ""
-                    ) or None,
-                    position=str(
-                        self._resolve_path(item, mapping.get("position", "cargo")) or ""
-                    ) or None,
-                    status=str(self._resolve_path(item, mapping.get("status", "status")) or "active"),
-                    email=str(self._resolve_path(item, mapping.get("email", "email")) or "") or None,
-                    phone=str(self._resolve_path(item, mapping.get("phone", "telefone")) or "") or None,
+                    )
+                    or None,
+                    position=str(self._resolve_path(item, mapping.get("position", "cargo")) or "")
+                    or None,
+                    status=str(
+                        self._resolve_path(item, mapping.get("status", "status")) or "active"
+                    ),
+                    email=str(self._resolve_path(item, mapping.get("email", "email")) or "")
+                    or None,
+                    phone=str(self._resolve_path(item, mapping.get("phone", "telefone")) or "")
+                    or None,
                 )
                 if created:
                     result.employees_created += 1
@@ -333,6 +343,9 @@ class GenericRestIntegrator:
         elapsed_ms = int((time.perf_counter() - start) * 1000)
         logger.info(
             "GenericREST sync_all completo em %dms: tenant=%s registros=%d erros=%d",
-            elapsed_ms, tenant_id, merged.records_synced, len(merged.errors),
+            elapsed_ms,
+            tenant_id,
+            merged.records_synced,
+            len(merged.errors),
         )
         return merged

@@ -37,6 +37,7 @@ async def me(current_user=Depends(get_current_user)):
 
 # ── Self-service Signup ───────────────────────────────────────────────────────
 
+
 class SignupRequest(BaseModel):
     institution_name: str
     slug: str
