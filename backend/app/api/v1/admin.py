@@ -180,7 +180,9 @@ async def super_overview(
 
     # MRR: soma dos preços por plano dos tenants ativos
     tenants_result = await db.execute(
-        select(Tenant.plan, func.count(Tenant.id)).where(Tenant.is_active.is_(True)).group_by(Tenant.plan)
+        select(Tenant.plan, func.count(Tenant.id))
+        .where(Tenant.is_active.is_(True))
+        .group_by(Tenant.plan)
     )
     plan_counts: dict[str, int] = {row[0]: row[1] for row in tenants_result.all()}
 
