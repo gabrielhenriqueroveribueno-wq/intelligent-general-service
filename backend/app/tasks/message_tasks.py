@@ -265,9 +265,9 @@ async def _process_message_async(message_id: str):
         pool_size=5,
         max_overflow=10,
     )
-    _SessionLocal = async_sessionmaker(_engine, class_=AsyncSession, expire_on_commit=False)
+    _session_local = async_sessionmaker(_engine, class_=AsyncSession, expire_on_commit=False)
 
-    async with _SessionLocal() as db:
+    async with _session_local() as db:
         result = await db.execute(select(Message).where(Message.id == uuid.UUID(message_id)))
         message = result.scalar_one_or_none()
         if not message:
@@ -612,7 +612,7 @@ async def _process_message_async(message_id: str):
             kb_data = [{"title": a.title, "content": a.content} for a in kb_articles]
 
             try:
-                similar = await learning_service.find_similar_resolutions(
+                await learning_service.find_similar_resolutions(
                     db, tenant_id, message.content, limit=3
                 )
             except Exception:

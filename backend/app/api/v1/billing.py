@@ -7,7 +7,6 @@ POST /billing/webhook        — recebe notificacoes do Mercado Pago
 """
 
 import logging
-import uuid
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
