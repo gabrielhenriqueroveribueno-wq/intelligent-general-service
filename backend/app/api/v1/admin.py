@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_db, require_roles
-from app.models.audit import FailedTask
+from app.models.audit import AuditLog, FailedTask
 from app.utils.exceptions import NotFoundError
 
 router = APIRouter()
@@ -72,6 +72,52 @@ async def retry_failed_task(
     _retry.delay(str(task_id))
 
     return {"message": "Tarefa reenfileirada para reprocessamento", "task_id": str(task_id)}
+
+
+# ── Audit Logs ───────────────────────────────────────────────────────────────
+
+
+@router.get("/audit-logs")
+async def list_audit_logs(
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_roles("super_admin", "admin")),
+    action: Optional[str] = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    size: int = Query(default=30, ge=1, le=100),
+):
+    """Lista o log de auditoria do tenant."""
+    from sqlalchemy import and_
+
+    filters = [AuditLog.tenant_id == current_user.tenant_id]
+    if action:
+        filters.append(AuditLog.action.ilike(f"%{action}%"))
+
+    query = select(AuditLog).where(and_(*filters))
+    count_q = select(func.count()).select_from(query.subquery())
+    total = (await db.execute(count_q)).scalar()
+
+    query = query.order_by(AuditLog.created_at.desc()).offset((page - 1) * size).limit(size)
+    result = await db.execute(query)
+    logs = result.scalars().all()
+
+    return {
+        "items": [
+            {
+                "id": str(lg.id),
+                "user_id": str(lg.user_id) if lg.user_id else None,
+                "action": lg.action,
+                "entity_type": lg.entity_type,
+                "entity_id": str(lg.entity_id) if lg.entity_id else None,
+                "details": lg.details,
+                "ip_address": lg.ip_address,
+                "created_at": lg.created_at.isoformat() if lg.created_at else None,
+            }
+            for lg in logs
+        ],
+        "total": total,
+        "page": page,
+        "size": size,
+    }
 
 
 # ── LGPD: Direito ao Esquecimento ────────────────────────────────────────────

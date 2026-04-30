@@ -14,6 +14,9 @@ class StudentResponse(BaseModel):
     enrollment_status: str
     email: Optional[str]
     phone: Optional[str]
+    evasion_risk_score: Optional[int] = 0
+    evasion_risk_level: Optional[str] = "low"
+    evasion_factors: Optional[str] = None
 
     class Config:
         from_attributes = True

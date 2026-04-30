@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { api } from '../api/client'
-import { Bot, Clock, Key, MessageSquare, Loader2, Check, Send } from 'lucide-react'
+import { Bell, Bot, Clock, Key, MessageSquare, Loader2, Check, Send } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { usePushNotifications } from '../hooks/usePushNotifications'
 
 interface SettingsData {
   bot_name: string
@@ -14,6 +15,7 @@ interface SettingsData {
 }
 
 export default function Settings() {
+  const push = usePushNotifications()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [data, setData] = useState<SettingsData>({
@@ -302,6 +304,45 @@ export default function Settings() {
           </div>
         </div>
       </div>
+
+      {push.state !== 'unsupported' && (
+        <div className="card">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="bg-purple-100 p-2 rounded-lg">
+              <Bell size={18} className="text-purple-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold">Notificacoes Push</h3>
+              <p className="text-xs text-gray-500">Receba alertas no navegador mesmo sem ter o painel aberto</p>
+            </div>
+          </div>
+          {push.state === 'denied' && (
+            <p className="text-sm text-red-500">Notificacoes bloqueadas pelo navegador. Habilite nas configuracoes do navegador.</p>
+          )}
+          {push.state === 'subscribed' && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-green-600 font-medium">Notificacoes ativas neste dispositivo</span>
+              <button
+                onClick={push.unsubscribe}
+                disabled={push.loading}
+                className="text-sm text-red-500 hover:underline disabled:opacity-50"
+              >
+                {push.loading ? 'Aguarde...' : 'Desativar'}
+              </button>
+            </div>
+          )}
+          {push.state === 'unsubscribed' && (
+            <button
+              onClick={push.subscribe}
+              disabled={push.loading}
+              className="btn-primary flex items-center gap-2 text-sm"
+            >
+              {push.loading ? <Loader2 className="animate-spin" size={14} /> : <Bell size={14} />}
+              {push.loading ? 'Ativando...' : 'Ativar Notificacoes'}
+            </button>
+          )}
+        </div>
+      )}
 
       <button
         onClick={handleSave}

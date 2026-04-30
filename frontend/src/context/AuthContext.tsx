@@ -19,12 +19,24 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
+// DEMO MODE: set to true to bypass auth and show demo data
+const DEMO_MODE = true
+
+const DEMO_USER: User = {
+  id: 'demo-001',
+  email: 'gestor@anchieta.edu.br',
+  full_name: 'Gabriel Bueno',
+  role: 'admin',
+  tenant_id: 'tenant-001',
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [token, setToken] = useState<string | null>(localStorage.getItem('access_token'))
-  const [isLoading, setIsLoading] = useState(true)
+  const [user, setUser] = useState<User | null>(DEMO_MODE ? DEMO_USER : null)
+  const [token, setToken] = useState<string | null>(DEMO_MODE ? 'demo-token' : localStorage.getItem('access_token'))
+  const [isLoading, setIsLoading] = useState(DEMO_MODE ? false : true)
 
   useEffect(() => {
+    if (DEMO_MODE) return
     const savedToken = localStorage.getItem('access_token')
     if (savedToken) {
       api.defaults.headers.common['Authorization'] = `Bearer ${savedToken}`

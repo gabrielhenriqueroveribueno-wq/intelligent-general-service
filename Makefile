@@ -1,4 +1,7 @@
-.PHONY: help up down build restart logs shell migrate seed seed-demo test lint format backup ssl
+.PHONY: help up down build restart logs shell migrate seed seed-demo test lint format backup ssl deploy validate-restore
+
+DEPLOY_HOST ?=
+DEPLOY_PATH ?= /opt/igs
 
 # Exibe ajuda
 help:
@@ -19,6 +22,8 @@ help:
 	@echo "  make format     - Formata o código (ruff format)"
 	@echo "  make backup     - Executa backup manual do banco"
 	@echo "  make ssl        - Obtém certificado SSL Let's Encrypt (DOMAIN= EMAIL=)"
+	@echo "  make deploy     - Deploy remoto via SSH (DEPLOY_HOST=ubuntu@ip)"
+	@echo "  make validate-restore - Valida restauração do último backup"
 
 up:
 	docker compose up -d
@@ -86,3 +91,12 @@ up-prod:
 
 down-prod:
 	docker compose -f docker-compose.prod.yml down
+
+# Deploy remoto via SSH (requer DEPLOY_HOST=usuario@ip)
+deploy:
+	@if [ -z "$(DEPLOY_HOST)" ]; then echo "Uso: make deploy DEPLOY_HOST=ubuntu@IP"; exit 1; fi
+	DEPLOY_HOST=$(DEPLOY_HOST) DEPLOY_PATH=$(DEPLOY_PATH) bash scripts/deploy.sh
+
+# Valida restauração do último backup
+validate-restore:
+	bash scripts/validate_restore.sh $(file)

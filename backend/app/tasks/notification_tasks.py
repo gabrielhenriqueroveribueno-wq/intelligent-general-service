@@ -745,6 +745,8 @@ async def _check_sla_async():
         breaches = await check_sla_breaches(db)
         if breaches:
             logger.warning("SLA violado em %d tickets", len(breaches))
+            from app.tasks.push_tasks import send_sla_breach_push_task
+
             for b in breaches:
                 logger.warning(
                     "SLA breach: tenant=%s ticket=%s priority=%s deadline=%s",
@@ -753,4 +755,6 @@ async def _check_sla_async():
                     b["priority"],
                     b["deadline"],
                 )
+                if b.get("ticket_id"):
+                    send_sla_breach_push_task.delay(str(b["ticket_id"]), str(b["tenant_id"]))
         await db.commit()

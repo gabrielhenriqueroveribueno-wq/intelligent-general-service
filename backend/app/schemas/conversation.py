@@ -28,6 +28,8 @@ class ConversationResponse(BaseModel):
     started_at: datetime
     last_message_at: Optional[datetime]
     satisfaction_score: Optional[int]
+    last_sentiment: Optional[str] = None  # positive, neutral, negative
+    assigned_agent_id: Optional[uuid.UUID] = None
 
     class Config:
         from_attributes = True

@@ -53,7 +53,7 @@ export default function EmployeeDetail() {
     return (
       <div className="text-center py-12 text-gray-500">
         <p>Funcionário não encontrado</p>
-        <Link to="/employees" className="text-blue-600 hover:underline mt-2 block">Voltar</Link>
+        <Link to="/app/employees" className="text-blue-600 hover:underline mt-2 block">Voltar</Link>
       </div>
     )
   }
@@ -61,19 +61,19 @@ export default function EmployeeDetail() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <button onClick={() => navigate('/employees')} className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100">
+      <div className="flex flex-wrap items-center gap-3">
+        <button onClick={() => navigate('/app/employees')} className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 shrink-0">
           <ArrowLeft size={18} />
         </button>
-        <div className="bg-purple-100 p-3 rounded-full">
+        <div className="bg-purple-100 p-3 rounded-full shrink-0">
           <Users size={22} className="text-purple-600" />
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{employee.full_name}</h1>
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{employee.full_name}</h1>
           <p className="text-sm text-gray-500">Matrícula: {employee.employee_number}</p>
         </div>
         <span className={clsx(
-          'badge ml-2 px-2.5 py-1 rounded-full text-xs font-medium',
+          'badge px-2.5 py-1 rounded-full text-xs font-medium shrink-0',
           employee.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600',
         )}>
           {employee.status === 'active' ? 'Ativo' : employee.status}

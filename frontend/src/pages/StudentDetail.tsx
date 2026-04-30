@@ -1,10 +1,24 @@
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, GraduationCap, BookOpen, Calendar, FileText } from 'lucide-react'
+import { ArrowLeft, GraduationCap, BookOpen, Calendar, FileText, AlertTriangle } from 'lucide-react'
 import { api } from '../api/client'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import clsx from 'clsx'
+
+const riskColors: Record<string, string> = {
+  critical: 'bg-red-50 border-red-200 text-red-700',
+  high: 'bg-orange-50 border-orange-200 text-orange-700',
+  medium: 'bg-yellow-50 border-yellow-200 text-yellow-700',
+  low: 'bg-green-50 border-green-200 text-green-700',
+}
+
+const riskLabels: Record<string, string> = {
+  critical: 'Risco Crítico de Evasão',
+  high: 'Risco Alto de Evasão',
+  medium: 'Risco Médio de Evasão',
+  low: 'Risco Baixo',
+}
 
 const enrollmentLabels: Record<string, string> = {
   active: 'Ativo',
@@ -72,7 +86,7 @@ export default function StudentDetail() {
     return (
       <div className="text-center py-12 text-gray-500">
         <p>Aluno não encontrado</p>
-        <Link to="/students" className="text-blue-600 hover:underline mt-2 block">Voltar</Link>
+        <Link to="/app/students" className="text-blue-600 hover:underline mt-2 block">Voltar</Link>
       </div>
     )
   }
@@ -80,18 +94,18 @@ export default function StudentDetail() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <button onClick={() => navigate('/students')} className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100">
+      <div className="flex flex-wrap items-center gap-3">
+        <button onClick={() => navigate('/app/students')} className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 shrink-0">
           <ArrowLeft size={18} />
         </button>
-        <div className="bg-blue-100 p-3 rounded-full">
+        <div className="bg-blue-100 p-3 rounded-full shrink-0">
           <GraduationCap size={22} className="text-blue-600" />
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{student.full_name}</h1>
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{student.full_name}</h1>
           <p className="text-sm text-gray-500">RA: {student.registration_number}</p>
         </div>
-        <span className={clsx('badge ml-2 px-2.5 py-1 rounded-full text-xs font-medium', enrollmentColors[student.enrollment_status] || 'bg-gray-100')}>
+        <span className={clsx('badge px-2.5 py-1 rounded-full text-xs font-medium shrink-0', enrollmentColors[student.enrollment_status] || 'bg-gray-100')}>
           {enrollmentLabels[student.enrollment_status] || student.enrollment_status}
         </span>
       </div>
@@ -110,6 +124,30 @@ export default function StudentDetail() {
           </div>
         ))}
       </div>
+
+      {/* Risco de Evasão */}
+      {student.evasion_risk_level && student.evasion_risk_level !== 'low' && (
+        <div className={clsx('rounded-xl border p-4', riskColors[student.evasion_risk_level])}>
+          <div className="flex items-start gap-3">
+            <AlertTriangle size={20} className="flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold">
+                {riskLabels[student.evasion_risk_level]} — Score: {student.evasion_risk_score}/100
+              </p>
+              {student.evasion_factors && (() => {
+                try {
+                  const factors: string[] = JSON.parse(student.evasion_factors)
+                  return (
+                    <ul className="mt-1 text-sm space-y-0.5 opacity-80">
+                      {factors.map((f: string, i: number) => <li key={i}>· {f}</li>)}
+                    </ul>
+                  )
+                } catch { return null }
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Notas */}
       <div className="card p-0 overflow-hidden">

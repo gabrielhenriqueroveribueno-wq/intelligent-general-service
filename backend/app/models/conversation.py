@@ -2,7 +2,16 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -79,6 +88,9 @@ class Message(Base, TenantMixin, TimestampMixin):
     whatsapp_media_id: Mapped[Optional[str]] = mapped_column(String(255))
     media_url: Mapped[Optional[str]] = mapped_column(String(500))
     media_mime_type: Mapped[Optional[str]] = mapped_column(String(100))
+    # Análise de sentimento
+    sentiment: Mapped[Optional[str]] = mapped_column(String(20))  # positive, neutral, negative
+    sentiment_score: Mapped[Optional[float]] = mapped_column(Numeric(4, 3))
 
     conversation: Mapped[object] = relationship(
         "Conversation", back_populates="messages", lazy="noload"

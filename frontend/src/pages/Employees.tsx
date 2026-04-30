@@ -37,6 +37,7 @@ export default function Employees() {
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
           </div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b">
               <tr>
@@ -49,7 +50,7 @@ export default function Employees() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {data?.items?.map((emp: any) => (
-                <tr key={emp.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/employees/${emp.id}`)}>
+                <tr key={emp.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/app/employees/${emp.id}`)}>
                   <td className="px-4 py-3 text-sm font-mono">{emp.employee_number}</td>
                   <td className="px-4 py-3 text-sm font-medium">{emp.full_name}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{emp.department || '—'}</td>
@@ -71,6 +72,7 @@ export default function Employees() {
               )}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

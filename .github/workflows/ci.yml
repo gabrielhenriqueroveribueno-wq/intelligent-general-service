@@ -46,6 +46,8 @@ jobs:
       ANTHROPIC_API_KEY: sk-test-placeholder
       WHATSAPP_APP_SECRET: test-secret
       WHATSAPP_VERIFY_TOKEN: igs-verify-token
+      SENTRY_DSN: ""
+      RESEND_API_KEY: ""
       APP_ENV: test
       APP_DEBUG: "false"
 
@@ -71,8 +73,37 @@ jobs:
       - name: Run linting (ruff)
         run: ruff check app/
 
-      - name: Run tests
-        run: pytest app/tests/ -v --tb=short --cov=app --cov-report=term-missing
+      - name: Run tests with coverage
+        run: |
+          pytest tests/ -v --tb=short \
+            --cov=app \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            --ignore=tests/integration
+
+      - name: Run integration tests
+        run: |
+          pytest tests/integration/ -v --tb=short \
+            --cov=app \
+            --cov-append \
+            --cov-report=xml
+        continue-on-error: false
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          files: backend/coverage.xml
+          flags: backend
+          fail_ci_if_error: false
+
+      - name: Upload coverage HTML
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: backend/htmlcov/
+          retention-days: 7
 
   lint-backend:
     name: Backend Lint
@@ -118,3 +149,5 @@ jobs:
         run: npm run build
         env:
           VITE_API_URL: http://localhost:8000
+          VITE_SENTRY_DSN: ""
+          VITE_GA_MEASUREMENT_ID: ""

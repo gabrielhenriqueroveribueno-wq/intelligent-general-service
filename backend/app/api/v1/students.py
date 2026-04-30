@@ -28,8 +28,11 @@ async def list_students(
     search: Optional[str] = Query(default=None),
     page: int = Query(default=1, ge=1),
     size: int = Query(default=20, ge=1, le=100),
+    evasion_risk_level: Optional[str] = Query(default=None),
 ):
-    students, total = await student_service.list_students(db, tenant_id, search, page, size)
+    students, total = await student_service.list_students(
+        db, tenant_id, search, page, size, evasion_risk_level=evasion_risk_level
+    )
     return StudentListResponse(
         items=[StudentResponse.model_validate(s) for s in students],
         total=total,

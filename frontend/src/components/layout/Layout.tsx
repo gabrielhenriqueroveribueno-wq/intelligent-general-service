@@ -27,7 +27,7 @@ export default function Layout() {
           onBellClick={markAllRead}
           wsConnected={isConnected}
         />
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
           <Outlet />
         </main>
       </div>

@@ -32,12 +32,12 @@ export default function Tickets() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Tickets</h1>
           <p className="text-sm text-gray-500">Gerenciamento de solicitações</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {['', 'open', 'in_progress', 'resolved', 'closed'].map((s) => (
             <button
               key={s}
@@ -59,6 +59,7 @@ export default function Tickets() {
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
           </div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b">
               <tr>
@@ -115,6 +116,7 @@ export default function Tickets() {
               )}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

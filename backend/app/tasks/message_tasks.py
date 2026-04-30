@@ -9,7 +9,6 @@ Abordagem: Agente Conversacional
 """
 
 import asyncio
-import json
 import logging
 import re
 import time
@@ -145,11 +144,19 @@ BEHAVIOR_VERIFIED = """O contato é *{name}* ({contact_type}).
 - Dados ruins? Empatia real + orientação. Dados bons? Celebre.
 - Sempre termine com uma pergunta natural: "Precisa de mais alguma coisa?" — mas SÓ se ainda não perguntou isso na última mensagem.
 
-═══ PESQUISA DE SATISFAÇÃO ═══
-- Quando o usuário indicar que NÃO precisa de mais nada (ex: "não", "era só isso", "obrigado", "valeu", "tchau", "só isso mesmo"), agradeça e peça avaliação: "Que bom que pude ajudar! Me dá uma nota de *1 a 5* pro atendimento? 1 = ruim, 5 = excelente" e adicione [FEEDBACK_REQUEST].
-- NÃO peça avaliação se já pediu no histórico. Olhe o histórico: se a Billie já disse "nota de 1 a 5" ou "1 = ruim, 5 = excelente", NÃO repita. Em vez disso, diga "Tudo certo! Qualquer coisa, é só chamar. Até mais!"
-- Se o usuário mandar um número de 1 a 5 após pedido de avaliação, o sistema processa automaticamente. NÃO adicione [FEEDBACK:N] — o sistema já cuida disso.
-- NUNCA peça avaliação duas vezes na mesma conversa.
+═══ PESQUISA DE SATISFAÇÃO — PRIORIDADE MÁXIMA ═══
+⚠️ ESTA REGRA TEM PRIORIDADE SOBRE QUALQUER OUTRA RESPOSTA DE DESPEDIDA.
+Quando o usuário indicar que não precisa de mais nada, você NÃO PODE simplesmente se despedir.
+
+GATILHOS (qualquer uma dessas frases): "não", "não obrigado", "era só isso", "obrigado", "valeu", "tchau", "só isso", "tá bom", "até mais", "nada mais", "é isso", "só isso mesmo", "não preciso"
+
+Ao detectar QUALQUER gatilho acima, sua resposta OBRIGATORIAMENTE deve ser:
+"Que bom que pude ajudar! Me dá uma nota de *1 a 5* pro atendimento? 1 = ruim, 5 = excelente"
+Seguido de [FEEDBACK_REQUEST] na última linha.
+
+RESPOSTA PROIBIDA: "Tudo certo! Qualquer coisa, é só chamar." — NUNCA encerre sem pedir nota.
+EXCEÇÃO ÚNICA: Só NÃO peça se "nota de 1 a 5" já aparece no histórico desta conversa.
+Se o usuário mandar um número de 1 a 5 após pedido de avaliação, o sistema processa automaticamente.
 
 ═══ TUTOR — MATÉRIAS DA PROVA ═══
 - Se o aluno perguntar sobre provas, o que estudar, ou o que cai na prova, use os dados de GRADES e SCHEDULES para listar as disciplinas do semestre atual.
@@ -245,7 +252,7 @@ async def _process_message_async(message_id: str):
         transcription_service,
         whatsapp_service,
     )
-    from app.services.ai_client import ai_complete
+    from app.services.ai_client import ai_complete, ai_complete_safe  # noqa: F401
 
     start_time = time.perf_counter()
 
@@ -267,11 +274,42 @@ async def _process_message_async(message_id: str):
             logger.error("Mensagem não encontrada: %s", message_id)
             return
 
+        # ── Análise de sentimento (apenas mensagens do usuário) ───────────
+        if message.sender_type == "user" and message.content:
+            from app.services.sentiment_service import analyze as analyze_sentiment
+
+            sr = analyze_sentiment(message.content)
+            await db.execute(
+                update(Message).where(Message.id == message.id).values(
+                    sentiment=sr.label, sentiment_score=sr.score
+                )
+            )
+            message.sentiment = sr.label
+            message.sentiment_score = sr.score
+
+            if sr.label == "negative" and sr.score <= -0.5:
+                logger.info(
+                    "Sentimento negativo detectado (score=%.2f): msg=%s", sr.score, message.id
+                )
+
         conv_result = await db.execute(
             select(Conversation).where(Conversation.id == message.conversation_id)
         )
         conversation = conv_result.scalar_one_or_none()
         if not conversation:
+            return
+
+        # ── Inibição do bot — agente humano ativo ────────────────────────
+        # Se a conversa está aguardando agente ou um agente já assumiu,
+        # o bot NÃO responde. A mensagem foi salva; apenas silenciamos.
+        if conversation.assigned_agent_id or conversation.status == "waiting_agent":
+            await db.commit()
+            logger.info(
+                "Bot inibido (agente humano): conv=%s status=%s",
+                conversation.id,
+                conversation.status,
+            )
+            await _engine.dispose()
             return
 
         contact_result = await db.execute(
@@ -334,12 +372,34 @@ async def _process_message_async(message_id: str):
         intent = "conversation"
 
         # ── 2a. Interceptar feedback direto (sem IA) ─────────────────────
-        if (
+        # Fallback: se o status não é awaiting_feedback mas a última msg do bot pediu nota,
+        # aceitar mesmo assim (caso o [FEEDBACK_REQUEST] não tenha sido incluído pelo Claude)
+        _msg_stripped = (message.content or "").strip()
+        _is_feedback_score = (
             contact.is_verified
-            and conversation.status == "awaiting_feedback"
-            and message.content
-            and message.content.strip() in ("1", "2", "3", "4", "5")
-        ):
+            and _msg_stripped in ("1", "2", "3", "4", "5")
+        )
+        logger.info("Feedback check: msg='%s', is_verified=%s, conv_status='%s', _is_feedback=%s",
+                     _msg_stripped, contact.is_verified, conversation.status, _is_feedback_score)
+        if _is_feedback_score:
+            # Refresh conversation status from DB (may have been updated by previous task)
+            await db.refresh(conversation)
+            logger.info("Feedback check refreshed: conv_status='%s'", conversation.status)
+            if conversation.status != "awaiting_feedback":
+                # Fallback: check if last bot message asked for rating
+                last_bot_msg = await db.execute(
+                    select(Message)
+                    .where(Message.conversation_id == conversation.id, Message.sender_type == "bot")
+                    .order_by(Message.created_at.desc())
+                    .limit(1)
+                )
+                last_bot = last_bot_msg.scalar_one_or_none()
+                logger.info("Feedback fallback: last_bot='%s'", (last_bot.content or "")[:80] if last_bot else "None")
+                if not (last_bot and "nota de" in (last_bot.content or "").lower() and "1 a 5" in (last_bot.content or "")):
+                    _is_feedback_score = False
+                    logger.info("Feedback fallback: NOT a feedback score, skipping")
+
+        if _is_feedback_score:
             score = int(message.content.strip())
             await _save_feedback(db, tenant_id, conversation.id, contact.id, score)
             await db.execute(
@@ -357,12 +417,13 @@ async def _process_message_async(message_id: str):
                 "Tenha um ótimo dia!" if hour >= 12 else "Tenha uma ótima manhã!"
             )
 
+            first_name = contact.name.split()[0]
             thanks_map = {
-                1: f"Poxa, sinto muito que não foi bom. Vou repassar pro time pra melhorarmos. {greeting} 🙂",
-                2: f"Entendi, vou repassar pro time pra gente melhorar. {greeting} 🙂",
-                3: f"Obrigada pela nota! Vamos trabalhar pra melhorar sempre. {greeting} 😊",
-                4: f"Fico feliz! Obrigada pela avaliação, {contact.name.split()[0]}! {greeting} 😄",
-                5: f"Que ótimo, fico muito feliz! Obrigada, {contact.name.split()[0]}! {greeting} 😊",
+                1: f"Poxa, sinto muito que não foi bom. Vou repassar pro time pra melhorarmos. Qualquer coisa, é só me chamar! {greeting} 🙂",
+                2: f"Entendi, vou repassar pro time pra gente melhorar. Qualquer coisa, é só me chamar! {greeting} 🙂",
+                3: f"Obrigada pela nota, {first_name}! Vamos trabalhar pra melhorar sempre. Qualquer coisa, é só me chamar! {greeting} 😊",
+                4: f"Obrigada pela nota, {first_name}! Fico feliz que gostou. Qualquer coisa, é só me mandar mensagem! {greeting} 😄",
+                5: f"Obrigada pela nota, {first_name}! Fico muito feliz! Qualquer coisa, é só me mandar mensagem. {greeting} 😊",
             }
             reply = thanks_map.get(score, f"Obrigada pela nota! {greeting}")
 
@@ -387,6 +448,50 @@ async def _process_message_async(message_id: str):
             logger.info("Feedback direto processado: nota=%d, conversa=%s", score, conversation.id)
             await _engine.dispose()
             return
+
+        # ── 2b. Interceptar despedida e forçar pedido de feedback (sem IA) ──
+        _farewell_triggers = (
+            "não", "nao", "não obrigado", "nao obrigado", "era só isso", "era so isso",
+            "obrigado", "obrigada", "valeu", "tchau", "só isso", "so isso", "tá bom", "ta bom",
+            "até mais", "ate mais", "nada mais", "é isso", "e isso", "só isso mesmo",
+            "so isso mesmo", "não preciso", "nao preciso", "era isso", "brigado", "brigada",
+            "flw", "falou", "vlw", "tmj",
+        )
+        _msg_lower = (message.content or "").strip().lower().rstrip("!.,;")
+        if (
+            contact.is_verified
+            and conversation.status == "active"
+            and _msg_lower
+            and any(t in _msg_lower for t in _farewell_triggers)
+        ):
+            # Verifica se já pediu feedback nessa conversa
+            _fb_check = await db.execute(
+                select(Message)
+                .where(
+                    Message.conversation_id == conversation.id,
+                    Message.sender_type == "bot",
+                    Message.content.ilike("%nota de%1 a 5%"),
+                )
+                .limit(1)
+            )
+            if not _fb_check.scalar_one_or_none():
+                from datetime import datetime
+                from datetime import timezone as tz
+                feedback_reply = f"Que bom que pude ajudar, {contact.name.split()[0]}! Me dá uma nota de *1 a 5* pro atendimento? 1 = ruim, 5 = excelente 😊"
+                msg_id = await whatsapp_service.send_text_message(phone_id, token, to, feedback_reply)
+                _save_bot_message(db, conversation, feedback_reply, tenant_id, whatsapp_msg_id=msg_id)
+                await db.execute(
+                    update(Conversation)
+                    .where(Conversation.id == conversation.id)
+                    .values(status="awaiting_feedback", last_message_at=datetime.now(tz.utc))
+                )
+                await db.execute(
+                    update(Message).where(Message.id == message.id).values(intent="farewell")
+                )
+                await db.commit()
+                logger.info("Farewell interceptado, feedback pedido direto (sem IA): conversa=%s", conversation.id)
+                await _engine.dispose()
+                return
 
         if contact.is_verified:
             from app.services import intent_classifier
@@ -548,11 +653,15 @@ async def _process_message_async(message_id: str):
         )
 
         api_key = tenant.claude_api_key or None
-        ai_result = await ai_complete(
+        ai_result = await ai_complete_safe(
             system=system_prompt,
             message=message.content or "",
             max_tokens=800,
             api_key=api_key,
+            user_message=message.content or "",
+            contact_name=contact.name,
+            db=db,
+            tenant_id=tenant_id,
         )
 
         raw_reply = ai_result.text
@@ -579,6 +688,17 @@ async def _process_message_async(message_id: str):
                     .values(status="waiting_agent")
                 )
                 resolution_type = "handoff"
+                # Push notification para agentes disponíveis
+                try:
+                    from app.tasks.push_tasks import send_handoff_push_task
+
+                    send_handoff_push_task.delay(
+                        str(conversation.id),
+                        str(tenant_id),
+                        contact.name or contact.phone_number or "Usuário",
+                    )
+                except Exception:
+                    pass
 
             elif cmd.startswith("IDENTIFY:"):
                 parts = cmd.split(":", 2)

@@ -63,8 +63,36 @@ async def list_conversations(
         for ct in ct_result.scalars().all():
             contacts_map[ct.id] = ct
 
+    # Carrega último sentimento de mensagem do usuário por conversa
+    conv_ids = [c.id for c in convs]
+    sentiment_map: dict[uuid.UUID, Optional[str]] = {}
+    if conv_ids:
+        from sqlalchemy import and_
+
+        last_msg_sq = (
+            select(Message.conversation_id, Message.sentiment)
+            .where(
+                and_(
+                    Message.conversation_id.in_(conv_ids),
+                    Message.sender_type == "user",
+                    Message.sentiment.is_not(None),
+                )
+            )
+            .order_by(Message.conversation_id, Message.created_at.desc())
+            .distinct(Message.conversation_id)
+        )
+        sm_result = await db.execute(last_msg_sq)
+        for row in sm_result.all():
+            sentiment_map[row[0]] = row[1]
+
+    items = []
+    for c in convs:
+        resp = _conv_to_response(c, contacts_map.get(c.contact_id))
+        resp.last_sentiment = sentiment_map.get(c.id)
+        items.append(resp)
+
     return ConversationListResponse(
-        items=[_conv_to_response(c, contacts_map.get(c.contact_id)) for c in convs],
+        items=items,
         total=total,
         page=page,
         size=size,
@@ -103,6 +131,82 @@ async def get_conversation(
         detail.contact_phone = contact.phone_number
     detail.messages = [MessageResponse.model_validate(m) for m in messages]
     return detail
+
+
+@router.post("/{conversation_id}/take-over", response_model=ConversationResponse)
+async def take_over_conversation(
+    conversation_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
+    current_user=Depends(require_roles("super_admin", "admin", "manager", "agent")),
+):
+    """Agente assume o atendimento humano — inibe o bot nessa conversa."""
+    result = await db.execute(
+        select(Conversation).where(
+            Conversation.id == conversation_id, Conversation.tenant_id == tenant_id
+        )
+    )
+    conv = result.scalar_one_or_none()
+    if not conv:
+        raise NotFoundError("Conversa")
+
+    await db.execute(
+        update(Conversation)
+        .where(Conversation.id == conversation_id)
+        .values(
+            assigned_agent_id=current_user.id,
+            status="active",
+        )
+    )
+    await db.commit()
+
+    result = await db.execute(select(Conversation).where(Conversation.id == conversation_id))
+    conv = result.scalar_one()
+    ct_result = await db.execute(select(Contact).where(Contact.id == conv.contact_id))
+
+    # Notifica painel via WebSocket
+    try:
+        import json as _json
+
+        import redis.asyncio as aioredis
+
+        from app.config import settings as _settings2
+        from app.services.ws_manager import REDIS_CHANNEL
+        _r = aioredis.from_url(_settings2.REDIS_URL, decode_responses=True)
+        await _r.publish(
+            REDIS_CHANNEL,
+            _json.dumps({
+                "type": "agent_took_over",
+                "tenant_id": str(tenant_id),
+                "conversation_id": str(conversation_id),
+                "agent_name": getattr(current_user, "full_name", "Agente"),
+            }),
+        )
+        await _r.aclose()
+    except Exception:
+        pass
+
+    return _conv_to_response(conv, ct_result.scalar_one_or_none())
+
+
+@router.post("/{conversation_id}/release", response_model=ConversationResponse)
+async def release_conversation(
+    conversation_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
+    _=Depends(require_roles("super_admin", "admin", "manager", "agent")),
+):
+    """Devolve a conversa para o bot (remove atribuição do agente)."""
+    await db.execute(
+        update(Conversation)
+        .where(Conversation.id == conversation_id, Conversation.tenant_id == tenant_id)
+        .values(assigned_agent_id=None, status="active")
+    )
+    await db.commit()
+    result = await db.execute(select(Conversation).where(Conversation.id == conversation_id))
+    conv = result.scalar_one()
+    ct_result = await db.execute(select(Contact).where(Contact.id == conv.contact_id))
+    return _conv_to_response(conv, ct_result.scalar_one_or_none())
 
 
 @router.post("/{conversation_id}/assign", response_model=ConversationResponse)

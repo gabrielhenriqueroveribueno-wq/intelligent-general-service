@@ -62,6 +62,24 @@ class Settings(BaseSettings):
     # Encryption (Fernet key for CPF, tokens)
     ENCRYPTION_KEY: str = ""
 
+    # VAPID keys para Web Push (gere com: openssl ecparam -name prime256v1 -genkey)
+    VAPID_PUBLIC_KEY: str = ""
+    VAPID_PRIVATE_KEY: str = ""
+    VAPID_SUBJECT: str = "mailto:contato@igs.com.br"
+
+    # Sentry error tracking
+    SENTRY_DSN: str = ""
+    SENTRY_TRACES_SAMPLE_RATE: float = 0.1
+    SENTRY_PROFILES_SAMPLE_RATE: float = 0.05
+
+    # Email — Resend API (preferred) or SMTP fallback
+    RESEND_API_KEY: str = ""
+
+    # SaaS billing plans (tenant monthly fee)
+    SAAS_PLAN_STARTER_PRICE: float = 297.0
+    SAAS_PLAN_PRO_PRICE: float = 497.0
+    SAAS_BILLING_NOTIFICATION_URL: str = ""  # MP webhook callback URL
+
     # Row-Level Security
     RLS_ENABLED: bool = False  # Set True in production after running RLS migration
     RLS_APP_PASSWORD: str = "igs_app_secure_2026"

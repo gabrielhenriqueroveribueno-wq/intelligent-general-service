@@ -429,6 +429,9 @@ async def ai_complete(
 
     Se o provider principal falhar (timeout, 429, 500), tenta automaticamente
     os providers de fallback na ordem definida em FALLBACK_CHAINS.
+
+    Levanta RuntimeError se TODOS os providers falharem.
+    Para comportamento com fallback offline use `ai_complete_safe`.
     """
     primary = settings.AI_PROVIDER.lower()
     providers_to_try = [primary] + FALLBACK_CHAINS.get(primary, [])
@@ -475,3 +478,61 @@ async def ai_complete(
     error_msg = f"Todos os providers de IA falharam. Último erro: {last_error}"
     logger.critical(error_msg)
     raise RuntimeError(error_msg) from last_error
+
+
+async def ai_complete_safe(
+    system: str,
+    message: str,
+    max_tokens: int = 1024,
+    api_key: Optional[str] = None,
+    user_message: Optional[str] = None,
+    contact_name: Optional[str] = None,
+    db=None,
+    tenant_id=None,
+) -> AIResponse:
+    """
+    Versao resiliente de ai_complete: NUNCA levanta excecao.
+
+    Se todos os providers falharem, usa fallback offline baseado em:
+    - Keyword match para intents comuns
+    - Busca na KB (se db + tenant_id fornecidos)
+    - Resposta generica com [HANDOFF]
+
+    Args:
+        system: system prompt (usado pelos providers)
+        message: mensagem para o provider (inclui contexto)
+        max_tokens: limite de tokens
+        api_key: chave Anthropic per-tenant
+        user_message: mensagem original do usuario (para intent matching no fallback);
+                      se None, usa `message`
+        contact_name: nome do contato (para personalizar fallback)
+        db: sessao async (opcional, habilita busca KB no fallback)
+        tenant_id: tenant para filtrar KB
+    """
+    try:
+        return await ai_complete(
+            system=system,
+            message=message,
+            max_tokens=max_tokens,
+            api_key=api_key,
+        )
+    except Exception as exc:
+        logger.warning(
+            "ai_complete_safe: todos providers falharam, usando fallback offline (%s)",
+            str(exc)[:120],
+        )
+
+    from app.services import ai_fallback
+
+    probe_text = user_message or message
+    fb = await ai_fallback.generate_fallback_response(
+        user_message=probe_text,
+        db=db,
+        tenant_id=tenant_id,
+        contact_name=contact_name,
+    )
+    return AIResponse(
+        text=fb.text,
+        tokens_used=fb.tokens_used,
+        provider_used=fb.provider_used,
+    )

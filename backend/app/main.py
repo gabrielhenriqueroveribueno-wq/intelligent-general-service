@@ -2,17 +2,45 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 
+import sentry_sdk
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
 from app.api.v1.router import api_router
 from app.config import settings
 from app.middleware.logging_middleware import LoggingMiddleware
 from app.middleware.metrics_middleware import setup_metrics
+from app.middleware.plan_limit_middleware import PlanLimitMiddleware
+from app.middleware.rate_limit_middleware import RateLimitMiddleware
 from app.utils.exceptions import IGSException
 
 logger = logging.getLogger(__name__)
+
+
+def _init_sentry() -> None:
+    if not settings.SENTRY_DSN:
+        return
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        environment=settings.APP_ENV,
+        release=settings.APP_VERSION,
+        traces_sample_rate=settings.SENTRY_TRACES_SAMPLE_RATE,
+        profiles_sample_rate=settings.SENTRY_PROFILES_SAMPLE_RATE,
+        integrations=[
+            FastApiIntegration(),
+            SqlalchemyIntegration(),
+            LoggingIntegration(level=logging.WARNING, event_level=logging.ERROR),
+        ],
+        send_default_pii=False,
+    )
+    logger.info("Sentry inicializado (env=%s)", settings.APP_ENV)
+
+
+_init_sentry()
 
 
 @asynccontextmanager
@@ -46,6 +74,8 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.add_middleware(LoggingMiddleware)
+    app.add_middleware(RateLimitMiddleware, redis_url=settings.REDIS_URL.replace("/0", "/3"))
+    app.add_middleware(PlanLimitMiddleware, redis_url=settings.REDIS_URL.replace("/0", "/3"))
 
     # ── Prometheus ────────────────────────────────────────────
     if settings.PROMETHEUS_ENABLED:

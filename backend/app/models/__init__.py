@@ -1,3 +1,4 @@
+from app.models.academic_integration import AcademicIntegration
 from app.models.appointment import Appointment
 from app.models.audit import AuditLog, FailedTask, SLAConfig
 from app.models.base import Base
@@ -8,6 +9,8 @@ from app.models.knowledge_base import ClassMaterial, KBArticle, KBCategory
 from app.models.library import Book, Loan
 from app.models.metrics import ResponseTimeMetric, WhatsAppMonitoredAccount
 from app.models.notification import MessageTemplate, ScheduledNotification
+from app.models.push_subscription import PushSubscription
+from app.models.report_subscription import ReportSubscription
 from app.models.satisfaction import OnboardingSession, SatisfactionSurvey
 from app.models.schedule import ClassSchedule
 from app.models.service_request import ServiceRequest
@@ -59,4 +62,7 @@ __all__ = [
     "SlidePresentation",
     "SlideGenerationLog",
     "Appointment",
+    "ReportSubscription",
+    "AcademicIntegration",
+    "PushSubscription",
 ]

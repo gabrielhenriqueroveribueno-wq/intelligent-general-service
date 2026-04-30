@@ -14,6 +14,12 @@ celery_app = Celery(
         "app.tasks.dlq_tasks",
         "app.tasks.backup_tasks",
         "app.tasks.webhook_tasks",
+        "app.tasks.health_check_tasks",
+        "app.tasks.executive_report_tasks",
+        "app.tasks.integration_sync_tasks",
+        "app.tasks.evasion_tasks",
+        "app.tasks.push_tasks",
+        "app.tasks.anonymization_tasks",
     ],
 )
 
@@ -48,10 +54,10 @@ celery_app.conf.update(
             "task": "app.tasks.notification_tasks.send_grade_notifications_task",
             "schedule": crontab(hour="*/6", minute=30),
         },
-        # Backup semanal do banco — toda segunda-feira às 3h
-        "weekly-db-backup": {
+        # Backup diário — todo dia às 3h
+        "daily-db-backup": {
             "task": "app.tasks.backup_tasks.backup_database_task",
-            "schedule": crontab(hour=3, minute=0, day_of_week=1),
+            "schedule": crontab(hour=3, minute=0),
         },
         # Relatório semanal para gestores via WhatsApp — toda segunda-feira às 8h
         "weekly-manager-report": {
@@ -72,6 +78,31 @@ celery_app.conf.update(
         "reenrollment-campaign": {
             "task": "app.tasks.notification_tasks.send_reenrollment_campaign_task",
             "schedule": crontab(hour=9, minute=30),
+        },
+        # Health check dos providers de IA — a cada 15 minutos
+        "ai-providers-health-check": {
+            "task": "app.tasks.health_check_tasks.check_ai_providers_task",
+            "schedule": crontab(minute="*/15"),
+        },
+        # Despacha relatorios executivos por email — de hora em hora
+        "dispatch-scheduled-reports": {
+            "task": "app.tasks.executive_report_tasks.dispatch_scheduled_reports_task",
+            "schedule": crontab(minute=5),  # minuto 5 de cada hora
+        },
+        # Despacha syncs de sistemas academicos — de hora em hora
+        "dispatch-integration-syncs": {
+            "task": "app.tasks.integration_sync_tasks.dispatch_integration_syncs_task",
+            "schedule": crontab(minute=15),  # minuto 15 de cada hora
+        },
+        # Calcula risco de evasão — a cada hora
+        "compute-evasion-risks": {
+            "task": "app.tasks.evasion_tasks.compute_evasion_risks_task",
+            "schedule": crontab(minute=45),  # minuto 45 de cada hora
+        },
+        # Anonimização LGPD automática — todo dia 1° às 2h
+        "auto-anonymize-lgpd": {
+            "task": "app.tasks.anonymization_tasks.auto_anonymize_task",
+            "schedule": crontab(hour=2, minute=0, day_of_month=1),
         },
     },
 )

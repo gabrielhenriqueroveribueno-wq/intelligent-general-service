@@ -253,7 +253,7 @@ async def _handle_incoming_message(
         .where(
             Conversation.tenant_id == tenant_id,
             Conversation.contact_id == contact.id,
-            Conversation.status.in_(["active", "waiting_agent"]),
+            Conversation.status.in_(["active", "waiting_agent", "awaiting_feedback"]),
         )
         .order_by(Conversation.started_at.desc())
         .limit(1)

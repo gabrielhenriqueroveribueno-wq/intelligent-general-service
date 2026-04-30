@@ -22,7 +22,7 @@ export default function Login() {
     setIsLoading(true)
     try {
       await login(data.email, data.password)
-      navigate('/dashboard')
+      navigate('/app/dashboard')
     } catch {
       toast.error('Email ou senha incorretos')
     } finally {

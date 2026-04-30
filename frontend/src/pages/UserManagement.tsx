@@ -29,6 +29,7 @@ export default function UserManagement() {
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
           </div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b">
               <tr>
@@ -59,6 +60,7 @@ export default function UserManagement() {
               )}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

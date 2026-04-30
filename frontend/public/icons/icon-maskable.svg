@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Maskable: garante area de 80% no centro (safe zone) -->
+  <rect width="512" height="512" fill="#1d4ed8"/>
+  <g fill="white" transform="translate(102 102)">
+    <path d="M154 0c-15.7 0-28.5 12.8-28.5 28.5V39H111c-23.5 0-42.7 19.2-42.7 42.7v92.4c0 23.5 19.2 42.7 42.7 42.7h85.3c23.5 0 42.7-19.2 42.7-42.7V81.7c0-23.5-19.2-42.7-42.7-42.7h-14V28.5C182.5 12.8 169.7 0 154 0zM91 110a14 14 0 1 1 0 28 14 14 0 0 1 0-28zm78 0a14 14 0 1 1 0 28 14 14 0 0 1 0-28z"/>
+    <rect x="93" y="245" width="128" height="11" rx="5"/>
+  </g>
+</svg>

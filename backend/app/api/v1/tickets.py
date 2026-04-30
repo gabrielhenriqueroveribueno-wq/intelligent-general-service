@@ -56,6 +56,14 @@ async def create_ticket(
     except Exception:
         pass
 
+    # Dispara push notification para admins do tenant
+    try:
+        from app.tasks.push_tasks import send_ticket_push_task
+
+        send_ticket_push_task.delay(str(ticket.id), str(tenant_id))
+    except Exception:
+        pass
+
     return TicketResponse.model_validate(ticket)
 
 

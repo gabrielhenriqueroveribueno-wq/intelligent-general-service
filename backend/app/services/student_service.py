@@ -40,6 +40,7 @@ async def list_students(
     search: Optional[str] = None,
     page: int = 1,
     size: int = 20,
+    evasion_risk_level: Optional[str] = None,
 ) -> tuple[list[Student], int]:
     query = select(Student).where(Student.tenant_id == tenant_id)
 
@@ -49,10 +50,14 @@ async def list_students(
             | Student.registration_number.ilike(f"%{search}%")
         )
 
+    if evasion_risk_level:
+        query = query.where(Student.evasion_risk_level == evasion_risk_level)
+
     count_q = select(func.count()).select_from(query.subquery())
     total = (await db.execute(count_q)).scalar()
 
-    query = query.offset((page - 1) * size).limit(size).order_by(Student.full_name)
+    order = Student.evasion_risk_score.desc() if evasion_risk_level else Student.full_name
+    query = query.offset((page - 1) * size).limit(size).order_by(order)
     result = await db.execute(query)
     return result.scalars().all(), total
 

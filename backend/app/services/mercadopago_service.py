@@ -9,7 +9,6 @@ import hashlib
 import hmac
 import logging
 import uuid
-from decimal import Decimal
 
 import httpx
 from sqlalchemy import select, update

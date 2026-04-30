@@ -2,7 +2,7 @@ import uuid
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import Date, ForeignKey, Numeric, String, UniqueConstraint
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -29,6 +29,11 @@ class Student(Base, TenantMixin, TimestampMixin):
         String(50), default="active"
     )  # active, locked, graduated, dropped
     enrollment_date: Mapped[Optional[object]] = mapped_column(Date)
+    # Risco de evasão (calculado por Celery periodicamente)
+    evasion_risk_score: Mapped[int] = mapped_column(Integer, default=0)
+    evasion_risk_level: Mapped[str] = mapped_column(String(20), default="low", index=True)
+    evasion_risk_updated_at: Mapped[Optional[object]] = mapped_column(DateTime(timezone=True))
+    evasion_factors: Mapped[Optional[str]] = mapped_column(Text)  # JSON serializado
 
     # Relationships
     tenant: Mapped[object] = relationship("Tenant", back_populates="students", lazy="noload")

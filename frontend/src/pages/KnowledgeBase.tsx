@@ -36,7 +36,7 @@ export default function KnowledgeBase() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Base de Conhecimento</h1>
           <p className="text-sm text-gray-500">Gerencie respostas automáticas e FAQs</p>

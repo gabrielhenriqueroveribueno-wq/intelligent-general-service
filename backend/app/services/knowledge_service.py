@@ -5,6 +5,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.knowledge_base import KBArticle, KBCategory
+from app.services import cache_service
 
 
 async def search_articles(
@@ -14,7 +15,12 @@ async def search_articles(
     applies_to: Optional[str] = None,
     limit: int = 5,
 ) -> list[KBArticle]:
-    """Busca artigos na KB por texto (full-text simples com ILIKE)."""
+    """Busca artigos na KB por texto (full-text simples com ILIKE). Resultado cacheado 5 min."""
+    cached = await cache_service.get_kb(tenant_id, query, applies_to)
+    if cached is not None:
+        # Retorna dados simples do cache (sem ORM objects para não poluir a session)
+        return cached  # type: ignore[return-value]
+
     q = select(KBArticle).where(
         KBArticle.tenant_id == tenant_id,
         KBArticle.is_published,
@@ -33,6 +39,13 @@ async def search_articles(
     # Incrementa contador de uso
     for article in articles:
         article.usage_count += 1
+
+    # Serializa para cache (apenas campos necessários para o AI service)
+    serialized = [
+        {"title": a.title, "content": a.content, "applies_to": a.applies_to}
+        for a in articles
+    ]
+    await cache_service.set_kb(tenant_id, query, applies_to, serialized)
 
     return articles
 
@@ -78,6 +91,7 @@ async def create_article(
     )
     db.add(article)
     await db.flush()
+    await cache_service.invalidate_kb(tenant_id)
     return article
 
 
