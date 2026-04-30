@@ -46,7 +46,7 @@ const navItems: NavItem[] = [
   { to: '/app/knowledge-base', icon: BookOpen, label: 'Base de Conhecimento' },
   { to: '/app/slides', icon: Presentation, label: 'Slides IA' },
   { to: '/app/reports', icon: BarChart2, label: 'Relatórios' },
-  { to: '/app/report-subscriptions', icon: Mail, label: 'Email Reports', adminOnly: true },
+  { to: '/app/report-subscriptions', icon: Mail, label: 'Relatórios por Email', adminOnly: true },
   { to: '/app/integrations', icon: Plug, label: 'Integrações', adminOnly: true },
   { to: '/app/metrics', icon: TrendingUp, label: 'Métricas IA vs Humano' },
   { to: '/app/learning', icon: Brain, label: 'Aprendizado IA' },

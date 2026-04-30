@@ -204,7 +204,7 @@ export default function Demo() {
                 </div>
                 <div>
                   <p className="text-white text-sm font-medium">Billie — Fac. Anchieta</p>
-                  <p className="text-green-200 text-xs">Online</p>
+                  <p className="text-green-200 text-xs">Disponível</p>
                 </div>
               </div>
 
@@ -233,7 +233,7 @@ export default function Demo() {
                     <div className="flex flex-col sm:flex-row gap-2 justify-center">
                       <button onClick={handleReset} className="btn-secondary text-xs">
                         <RefreshCw size={12} className="inline mr-1" />
-                        Replay
+                        Repetir
                       </button>
                       <Link to="/signup" className="btn-primary text-xs">
                         Começar grátis
