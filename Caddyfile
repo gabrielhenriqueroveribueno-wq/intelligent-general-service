@@ -1,0 +1,25 @@
+# Caddyfile — IGS produção (E2.1.Micro / A1.Flex)
+# Caddy obtém e renova SSL automaticamente via Let's Encrypt
+# Substitua SEU_DOMINIO pelo domínio real (ex: api.minhaigs.com.br)
+# Se não tiver domínio, use o IP para testes (sem HTTPS):
+#   :80 { reverse_proxy api:8000 }
+
+{$DOMAIN:localhost} {
+    # Proxy para a API FastAPI
+    reverse_proxy api:8000
+
+    # Logs de acesso
+    log {
+        output stdout
+        format console
+    }
+
+    # Headers de segurança
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+    }
+}
