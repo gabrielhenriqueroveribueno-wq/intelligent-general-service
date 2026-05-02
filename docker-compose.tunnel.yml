@@ -1,0 +1,28 @@
+# Cloudflare Tunnel — sobrepõe qualquer docker-compose para expor a API via HTTPS
+#
+# MODO RÁPIDO (sem conta, URL temporária — muda ao reiniciar):
+#   docker compose -f docker-compose.yml -f docker-compose.tunnel.yml up -d
+#   docker compose logs cloudflared   ← copie a URL trycloudflare.com
+#
+# MODO PERMANENTE (com token do Cloudflare):
+#   Adicione CLOUDFLARE_TUNNEL_TOKEN=eyJ... no seu .env
+#   A URL estará configurada no painel Cloudflare Zero Trust
+
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: igs_cloudflared
+    restart: unless-stopped
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        if [ -n "$$CLOUDFLARE_TUNNEL_TOKEN" ]; then
+          exec cloudflared tunnel --no-autoupdate run --token $$CLOUDFLARE_TUNNEL_TOKEN
+        else
+          exec cloudflared tunnel --no-autoupdate --url http://api:8000
+        fi
+    environment:
+      - CLOUDFLARE_TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on:
+      - api
