@@ -1,5 +1,7 @@
 # IGS — Intelligent General Service
 
+**[🌐 Site de apresentação](https://site-wine-nine-59.vercel.app)**
+
 SaaS de atendimento inteligente via WhatsApp para instituições de ensino. A Billie (agente de IA) responde automaticamente sobre notas, boletos, frequência, holerite, férias e muito mais — usando dados reais da instituição, 24h por dia.
 
 ## Funcionalidades
@@ -172,6 +174,8 @@ Veja `docs/CONTEXT.md` para decisões de arquitetura e estado atual do projeto.
 
 ## Documentação
 
+- [Site de Apresentação](https://site-wine-nine-59.vercel.app)
+- [Resumo do Projeto](docs/RESUMO_APRESENTACAO.md)
 - [Manual do Administrador](docs/ADMIN_MANUAL.md)
 - [Contexto do Projeto](docs/CONTEXT.md)
 - [Configuração do Webhook](docs/WEBHOOK_CONFIG.md)
