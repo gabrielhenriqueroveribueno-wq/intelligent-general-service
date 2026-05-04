@@ -18,25 +18,21 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT || 22 }}
+          port: 22
           script: |
             set -e
-            cd ${{ secrets.DEPLOY_PATH || '/opt/igs' }}
+            cd /opt/igs
 
             echo "=== Pulling latest images ==="
-            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod-light.yml pull
 
             echo "=== Running database migrations ==="
-            docker compose -f docker-compose.prod.yml run --rm api alembic upgrade head
+            docker compose -f docker-compose.prod-light.yml run --rm api alembic upgrade head
 
-            echo "=== Restarting services (zero-downtime rolling) ==="
-            docker compose -f docker-compose.prod.yml up -d --no-deps --scale api=2 api
-            sleep 10
-            docker compose -f docker-compose.prod.yml up -d --no-deps --scale api=1 api
-
-            docker compose -f docker-compose.prod.yml up -d --no-deps celery_worker
-            docker compose -f docker-compose.prod.yml up -d --no-deps celery_beat
-            docker compose -f docker-compose.prod.yml up -d --no-deps nginx
+            echo "=== Restarting services ==="
+            docker compose -f docker-compose.prod-light.yml up -d --no-deps api
+            docker compose -f docker-compose.prod-light.yml up -d --no-deps celery_worker
+            docker compose -f docker-compose.prod-light.yml up -d --no-deps celery_beat
 
             echo "=== Cleaning old images ==="
             docker image prune -f
