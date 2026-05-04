@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IGS — Atendimento inteligente via WhatsApp para escolas</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green:   #25D366;
+      --green-d: #128C7E;
+      --blue:    #0052CC;
+      --blue-l:  #1A73E8;
+      --dark:    #0F172A;
+      --gray:    #64748B;
+      --light:   #F8FAFC;
+      --white:   #FFFFFF;
+      --border:  #E2E8F0;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: var(--dark);
+      line-height: 1.6;
+      background: var(--white);
+    }
+
+    /* ─── NAV ─── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 2rem;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .logo { font-weight: 800; font-size: 1.3rem; color: var(--dark); letter-spacing: -0.5px; }
+    .logo span { color: var(--green-d); }
+    nav a { color: var(--gray); text-decoration: none; font-size: 0.9rem; margin-left: 1.5rem; }
+    nav a:hover { color: var(--dark); }
+    .nav-cta {
+      background: var(--green); color: #fff; padding: 0.5rem 1.2rem;
+      border-radius: 8px; font-weight: 600; margin-left: 1.5rem;
+    }
+    .nav-cta:hover { background: var(--green-d); color: #fff; }
+
+    /* ─── HERO ─── */
+    .hero {
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      text-align: center;
+      padding: 8rem 1.5rem 4rem;
+      background: linear-gradient(160deg, #F0FFF4 0%, #E8F5FF 50%, #F0F4FF 100%);
+      position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; top: -10%; left: 50%; transform: translateX(-50%);
+      width: 800px; height: 800px;
+      background: radial-gradient(circle, rgba(37,211,102,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: rgba(37,211,102,0.15); border: 1px solid rgba(37,211,102,0.3);
+      color: var(--green-d); border-radius: 999px;
+      padding: 0.35rem 0.9rem; font-size: 0.8rem; font-weight: 600;
+      margin-bottom: 1.5rem;
+    }
+    .hero h1 {
+      font-size: clamp(2.2rem, 5vw, 3.8rem);
+      font-weight: 900; letter-spacing: -1.5px; line-height: 1.1;
+      max-width: 780px; margin: 0 auto 1.2rem;
+    }
+    .hero h1 span { color: var(--green-d); }
+    .hero p {
+      font-size: 1.15rem; color: var(--gray);
+      max-width: 560px; margin: 0 auto 2rem;
+    }
+    .btn-group { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      padding: 0.85rem 1.8rem; border-radius: 10px;
+      font-size: 1rem; font-weight: 700; cursor: pointer;
+      text-decoration: none; display: inline-block;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+    .btn-primary { background: var(--green); color: #fff; }
+    .btn-primary:hover { background: var(--green-d); }
+    .btn-secondary { background: #fff; color: var(--dark); border: 1.5px solid var(--border); }
+
+    /* WhatsApp phone mockup */
+    .phone-wrapper {
+      margin-top: 3.5rem;
+      display: flex; justify-content: center;
+    }
+    .phone {
+      width: 300px; background: #fff;
+      border-radius: 30px; padding: 1rem;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.14), 0 0 0 8px #1a1a1a;
+      position: relative;
+    }
+    .phone-header {
+      background: var(--green-d); border-radius: 18px 18px 0 0;
+      padding: 0.7rem 1rem; display: flex; align-items: center; gap: 0.6rem;
+    }
+    .phone-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: #fff; display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem;
+    }
+    .phone-name { color: #fff; font-weight: 700; font-size: 0.9rem; }
+    .phone-status { color: rgba(255,255,255,0.7); font-size: 0.72rem; }
+    .phone-body {
+      background: #E5DDD5; border-radius: 0 0 18px 18px;
+      padding: 0.8rem; min-height: 220px;
+      display: flex; flex-direction: column; gap: 0.6rem;
+    }
+    .msg {
+      max-width: 80%; padding: 0.5rem 0.8rem;
+      border-radius: 10px; font-size: 0.78rem; line-height: 1.4;
+    }
+    .msg-in { background: #fff; align-self: flex-start; border-radius: 0 10px 10px 10px; }
+    .msg-out { background: #DCF8C6; align-self: flex-end; border-radius: 10px 0 10px 10px; }
+    .msg-time { font-size: 0.62rem; color: var(--gray); text-align: right; margin-top: 2px; }
+
+    /* ─── NUMBERS ─── */
+    .numbers {
+      padding: 4rem 1.5rem;
+      background: var(--dark);
+    }
+    .numbers-grid {
+      max-width: 900px; margin: 0 auto;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 2rem; text-align: center;
+    }
+    .number-item .val {
+      font-size: 2.6rem; font-weight: 900; color: var(--green);
+      letter-spacing: -1px;
+    }
+    .number-item .label { color: rgba(255,255,255,0.6); font-size: 0.85rem; margin-top: 0.25rem; }
+
+    /* ─── SECTION ─── */
+    section { padding: 5rem 1.5rem; }
+    .section-inner { max-width: 1060px; margin: 0 auto; }
+    .section-tag {
+      display: inline-block; color: var(--green-d); font-size: 0.78rem;
+      font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+    h2 {
+      font-size: clamp(1.8rem, 3.5vw, 2.6rem); font-weight: 800;
+      letter-spacing: -0.5px; margin-bottom: 0.75rem; line-height: 1.2;
+    }
+    .sub { color: var(--gray); font-size: 1.05rem; max-width: 560px; }
+    .divider { width: 48px; height: 4px; background: var(--green); border-radius: 2px; margin: 1rem 0 2.5rem; }
+
+    /* ─── PROBLEM ─── */
+    .problem { background: #FFFBF0; }
+    .problem-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 4rem;
+      align-items: center;
+    }
+    @media(max-width: 700px) { .problem-grid { grid-template-columns: 1fr; gap: 2rem; } }
+    .pain-list { list-style: none; display: flex; flex-direction: column; gap: 0.8rem; }
+    .pain-list li {
+      display: flex; gap: 0.8rem; align-items: flex-start;
+      background: #fff; padding: 0.9rem 1rem; border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05); font-size: 0.92rem;
+    }
+    .pain-icon { font-size: 1.1rem; }
+    .solution-card {
+      background: linear-gradient(135deg, var(--green-d), #075E54);
+      color: #fff; border-radius: 20px; padding: 2rem;
+    }
+    .solution-card h3 { font-size: 1.3rem; margin-bottom: 1rem; }
+    .solution-card ul { list-style: none; display: flex; flex-direction: column; gap: 0.6rem; }
+    .solution-card li { font-size: 0.9rem; display: flex; gap: 0.5rem; }
+    .solution-card li::before { content: '✅'; }
+
+    /* ─── HOW IT WORKS ─── */
+    .steps {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem; margin-top: 2.5rem;
+    }
+    .step-card {
+      background: var(--light); border-radius: 16px; padding: 1.5rem;
+      border: 1px solid var(--border); position: relative;
+      transition: box-shadow 0.2s;
+    }
+    .step-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.09); }
+    .step-num {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--green); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 0.9rem; margin-bottom: 0.8rem;
+    }
+    .step-card h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.4rem; }
+    .step-card p { font-size: 0.82rem; color: var(--gray); }
+
+    /* ─── INTENTS ─── */
+    .intents-bg { background: var(--light); }
+    .intent-cols {
+      display: grid; grid-template-columns: 1fr 1fr 1fr;
+      gap: 1.5rem; margin-top: 2.5rem;
+    }
+    @media(max-width: 720px) { .intent-cols { grid-template-columns: 1fr 1fr; } }
+    @media(max-width: 480px) { .intent-cols { grid-template-columns: 1fr; } }
+    .intent-group { background: #fff; border-radius: 16px; padding: 1.5rem; border: 1px solid var(--border); }
+    .intent-group h4 { font-size: 0.85rem; font-weight: 700; color: var(--green-d); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.8rem; }
+    .intent-group ul { list-style: none; display: flex; flex-direction: column; gap: 0.4rem; }
+    .intent-group li { font-size: 0.82rem; color: var(--gray); display: flex; gap: 0.5rem; }
+    .intent-group li::before { content: '→'; color: var(--green-d); font-weight: 700; }
+
+    /* ─── FEATURES ─── */
+    .feat-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.5rem; margin-top: 2.5rem;
+    }
+    .feat-card {
+      border-radius: 16px; padding: 1.5rem;
+      border: 1px solid var(--border);
+      transition: box-shadow 0.2s;
+    }
+    .feat-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.09); }
+    .feat-icon { font-size: 2rem; margin-bottom: 0.8rem; }
+    .feat-card h4 { font-size: 1rem; font-weight: 700; margin-bottom: 0.4rem; }
+    .feat-card p { font-size: 0.85rem; color: var(--gray); }
+
+    /* ─── ROI TABLE ─── */
+    .roi-bg { background: var(--dark); }
+    .roi-bg h2 { color: #fff; }
+    .roi-bg .section-tag { color: var(--green); }
+    .roi-bg .divider { background: var(--green); }
+    .roi-bg .sub { color: rgba(255,255,255,0.6); }
+    .roi-table {
+      width: 100%; border-collapse: collapse; margin-top: 2rem;
+      border-radius: 16px; overflow: hidden;
+    }
+    .roi-table th {
+      background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.5);
+      font-size: 0.78rem; text-transform: uppercase; letter-spacing: 1px;
+      padding: 0.9rem 1.2rem; text-align: left;
+    }
+    .roi-table td {
+      padding: 0.9rem 1.2rem; font-size: 0.9rem;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.85);
+    }
+    .roi-table tr:last-child td { border-bottom: none; }
+    .roi-table .before { color: rgba(255,100,100,0.9); }
+    .roi-table .after { color: var(--green); font-weight: 700; }
+    .roi-highlight {
+      background: linear-gradient(135deg, rgba(37,211,102,0.15), rgba(37,211,102,0.05));
+      border: 1px solid rgba(37,211,102,0.25); border-radius: 16px;
+      padding: 2rem; text-align: center; margin-top: 2rem;
+    }
+    .roi-highlight .big { font-size: 3rem; font-weight: 900; color: var(--green); letter-spacing: -2px; }
+    .roi-highlight p { color: rgba(255,255,255,0.6); margin-top: 0.25rem; }
+
+    /* ─── TECH ─── */
+    .tech-chips {
+      display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 2rem;
+    }
+    .chip {
+      background: var(--light); border: 1px solid var(--border);
+      border-radius: 999px; padding: 0.35rem 0.85rem;
+      font-size: 0.78rem; font-weight: 600; color: var(--dark);
+    }
+    .chip.green { background: rgba(37,211,102,0.1); border-color: rgba(37,211,102,0.3); color: var(--green-d); }
+    .chip.blue { background: rgba(26,115,232,0.1); border-color: rgba(26,115,232,0.3); color: var(--blue-l); }
+
+    /* ─── PRICING ─── */
+    .pricing-bg { background: var(--light); }
+    .pricing-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.5rem; margin-top: 2.5rem; align-items: start;
+    }
+    .plan-card {
+      background: #fff; border-radius: 20px; padding: 2rem;
+      border: 1.5px solid var(--border);
+      transition: box-shadow 0.2s;
+    }
+    .plan-card:hover { box-shadow: 0 12px 32px rgba(0,0,0,0.1); }
+    .plan-card.featured {
+      border-color: var(--green); position: relative;
+      box-shadow: 0 8px 32px rgba(37,211,102,0.18);
+    }
+    .featured-badge {
+      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+      background: var(--green); color: #fff;
+      font-size: 0.72rem; font-weight: 700; border-radius: 999px;
+      padding: 0.25rem 0.8rem; white-space: nowrap;
+    }
+    .plan-name { font-size: 0.8rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gray); }
+    .plan-price { font-size: 2.4rem; font-weight: 900; letter-spacing: -1px; margin: 0.5rem 0 0.2rem; }
+    .plan-price span { font-size: 1rem; font-weight: 500; color: var(--gray); }
+    .plan-desc { font-size: 0.83rem; color: var(--gray); margin-bottom: 1.5rem; }
+    .plan-features { list-style: none; display: flex; flex-direction: column; gap: 0.55rem; margin-bottom: 1.8rem; }
+    .plan-features li { font-size: 0.85rem; display: flex; gap: 0.5rem; }
+    .plan-features li .ok { color: var(--green); font-weight: 700; }
+    .plan-features li .no { color: var(--border); }
+    .plan-btn {
+      display: block; text-align: center; padding: 0.8rem;
+      border-radius: 10px; font-weight: 700; font-size: 0.9rem;
+      text-decoration: none; transition: all 0.15s;
+    }
+    .plan-btn-outline {
+      border: 1.5px solid var(--border); color: var(--dark);
+    }
+    .plan-btn-outline:hover { border-color: var(--green-d); color: var(--green-d); }
+    .plan-btn-solid { background: var(--green); color: #fff; }
+    .plan-btn-solid:hover { background: var(--green-d); }
+    .plan-btn-dark { background: var(--dark); color: #fff; }
+    .plan-btn-dark:hover { background: #1e293b; }
+
+    /* ─── STACK ─── */
+    .stack-cols {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 3rem; margin-top: 2.5rem; align-items: start;
+    }
+    @media(max-width: 640px) { .stack-cols { grid-template-columns: 1fr; gap: 1.5rem; } }
+    .stack-group h4 {
+      font-size: 0.78rem; font-weight: 700; letter-spacing: 1.5px;
+      text-transform: uppercase; color: var(--gray); margin-bottom: 0.8rem;
+    }
+    table.stack-table { width: 100%; border-collapse: collapse; }
+    .stack-table td { padding: 0.55rem 0; font-size: 0.85rem; border-bottom: 1px solid var(--border); }
+    .stack-table td:first-child { color: var(--gray); width: 42%; }
+    .stack-table td:last-child { font-weight: 600; }
+    .stack-table tr:last-child td { border-bottom: none; }
+
+    /* ─── CTA ─── */
+    .cta-section {
+      background: linear-gradient(135deg, var(--dark) 0%, #1E3A5F 100%);
+      text-align: center; padding: 5rem 1.5rem;
+    }
+    .cta-section h2 { color: #fff; margin-bottom: 0.75rem; font-size: clamp(1.8rem, 3vw, 2.8rem); }
+    .cta-section p { color: rgba(255,255,255,0.6); margin-bottom: 2rem; }
+    .cta-contacts {
+      display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap;
+      margin-top: 2.5rem;
+    }
+    .cta-contact { color: rgba(255,255,255,0.55); font-size: 0.85rem; display: flex; align-items: center; gap: 0.4rem; }
+
+    /* ─── FOOTER ─── */
+    footer {
+      background: #080F1A; padding: 2rem 1.5rem;
+      text-align: center; color: rgba(255,255,255,0.3); font-size: 0.8rem;
+    }
+
+    /* ─── UTILS ─── */
+    @media(max-width: 700px) {
+      nav a:not(.nav-cta) { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="logo">IGS <span>·</span> Billie</div>
+  <div style="display:flex;align-items:center">
+    <a href="#como-funciona">Como funciona</a>
+    <a href="#resultados">Resultados</a>
+    <a href="#planos">Planos</a>
+    <a href="#contato" class="nav-cta">Agendar demo</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div>
+    <div class="badge">🤖 IA + WhatsApp Business</div>
+    <h1>Atendimento inteligente para sua escola, <span>24h por dia</span></h1>
+    <p>A Billie responde notas, boletos, frequência e holerites em segundos —
+      direto no WhatsApp, com dados reais do seu sistema.</p>
+    <div class="btn-group">
+      <a href="#contato" class="btn btn-primary">Agendar demonstração grátis</a>
+      <a href="#resultados" class="btn btn-secondary">Ver resultados</a>
+    </div>
+
+    <div class="phone-wrapper">
+      <div class="phone">
+        <div class="phone-header">
+          <div class="phone-avatar">🎓</div>
+          <div>
+            <div class="phone-name">Billie · Anchieta</div>
+            <div class="phone-status">online agora</div>
+          </div>
+        </div>
+        <div class="phone-body">
+          <div class="msg msg-in">Oi! Qual a minha nota em Cálculo?<div class="msg-time">09:14</div></div>
+          <div class="msg msg-out">
+            Olá, Gabriel! 📊<br><br>
+            <strong>Cálculo II — 2º Bimestre</strong><br>
+            Nota: <strong>8,5</strong> · Média: 7,2<br>
+            Situação: <strong>Aprovado ✅</strong>
+            <div class="msg-time">09:14 ✓✓</div>
+          </div>
+          <div class="msg msg-in">E meu boleto de maio?<div class="msg-time">09:15</div></div>
+          <div class="msg msg-out">
+            💳 Boleto de <strong>maio/2026</strong><br>
+            Valor: R$ 1.250,00 · Vence <strong>10/05</strong><br>
+            Posso gerar o <strong>código PIX</strong> agora? 🔑
+            <div class="msg-time">09:15 ✓✓</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- NUMBERS -->
+<div class="numbers">
+  <div class="numbers-grid">
+    <div class="number-item">
+      <div class="val">87%</div>
+      <div class="label">Resolução automática</div>
+    </div>
+    <div class="number-item">
+      <div class="val">40</div>
+      <div class="label">Tipos de intent reconhecidos</div>
+    </div>
+    <div class="number-item">
+      <div class="val">-68%</div>
+      <div class="label">Redução de custo de atendimento</div>
+    </div>
+    <div class="number-item">
+      <div class="val">24/7</div>
+      <div class="label">Disponibilidade (vs 8h/dia)</div>
+    </div>
+    <div class="number-item">
+      <div class="val">3x</div>
+      <div class="label">Mais conversas atendidas</div>
+    </div>
+  </div>
+</div>
+
+<!-- PROBLEM & SOLUTION -->
+<section class="problem">
+  <div class="section-inner">
+    <div class="problem-grid">
+      <div>
+        <div class="section-tag">O problema</div>
+        <h2>Atendimento manual é caro e lento</h2>
+        <div class="divider"></div>
+        <ul class="pain-list">
+          <li><span class="pain-icon">💸</span> <span>3–4 atendentes custam <strong>R$26.800/mês</strong></span></li>
+          <li><span class="pain-icon">🕐</span> <span>Disponível só em horário comercial — alunos aguardam</span></li>
+          <li><span class="pain-icon">⏱️</span> <span>Tempo médio de resposta: <strong>8 minutos</strong></span></li>
+          <li><span class="pain-icon">📈</span> <span>Em período de provas o atendimento triplica</span></li>
+          <li><span class="pain-icon">😤</span> <span>Equipe esgotada com perguntas repetitivas</span></li>
+        </ul>
+      </div>
+      <div>
+        <div class="solution-card">
+          <h3>💡 A Billie resolve isso</h3>
+          <ul>
+            <li>Responde em segundos, 24 horas por dia</li>
+            <li>Consulta dados reais do banco acadêmico</li>
+            <li>Gera boletos e código PIX na hora</li>
+            <li>Escala para centenas de alunos simultâneos</li>
+            <li>Transfere para humano quando necessário</li>
+            <li>Alerta gestores sobre risco de evasão</li>
+            <li>Dashboard em tempo real com métricas</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="como-funciona">
+  <div class="section-inner">
+    <div class="section-tag">Como funciona</div>
+    <h2>Do WhatsApp à resposta em segundos</h2>
+    <div class="divider"></div>
+    <div class="steps">
+      <div class="step-card">
+        <div class="step-num">1</div>
+        <h4>Aluno envia mensagem</h4>
+        <p>No WhatsApp Business da escola. Verificação por RA na primeira mensagem.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">2</div>
+        <h4>IA classifica o intent</h4>
+        <p>Claude API identifica o que o aluno precisa entre 40 categorias diferentes.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">3</div>
+        <h4>Busca os dados reais</h4>
+        <p>Consulta o banco acadêmico ou ERP. Nunca inventa — só usa dados reais.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">4</div>
+        <h4>Gera a resposta</h4>
+        <p>Resposta personalizada com o nome do aluno e os dados corretos.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">5</div>
+        <h4>Envia via WhatsApp</h4>
+        <p>Resposta entregue em menos de 3 segundos. Histórico salvo no painel.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">6</div>
+        <h4>Gestor acompanha</h4>
+        <p>Dashboard em tempo real, alertas de evasão, relatórios semanais por email.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- INTENTS -->
+<section class="intents-bg">
+  <div class="section-inner">
+    <div class="section-tag">Capacidades</div>
+    <h2>40 tipos de solicitação reconhecidos</h2>
+    <div class="divider"></div>
+    <p class="sub">A Billie atende alunos, funcionários e gestores com respostas precisas e dados reais.</p>
+    <div class="intent-cols" style="margin-top:2rem">
+      <div class="intent-group">
+        <h4>🎓 Aluno — Acadêmico</h4>
+        <ul>
+          <li>Consulta de notas por disciplina</li>
+          <li>Frequência e faltas</li>
+          <li>Grade / horários de aula</li>
+          <li>Calendário acadêmico</li>
+          <li>Solicitação de histórico</li>
+          <li>Renovação de biblioteca</li>
+          <li>Dúvida com tutor</li>
+          <li>Atestado médico</li>
+        </ul>
+      </div>
+      <div class="intent-group">
+        <h4>💳 Aluno — Financeiro</h4>
+        <ul>
+          <li>Boleto do mês</li>
+          <li>Geração de PIX</li>
+          <li>Negociação de débito</li>
+          <li>Status de pagamento</li>
+          <li>Extrato financeiro</li>
+          <li>Solicitação de chamado</li>
+          <li>Abrir ticket de suporte</li>
+        </ul>
+      </div>
+      <div class="intent-group">
+        <h4>👔 Funcionários &amp; Gestão</h4>
+        <ul>
+          <li>Holerite / contracheque</li>
+          <li>Solicitação de férias</li>
+          <li>Consulta de ponto</li>
+          <li>Solicitações de RH</li>
+          <li>Métricas de atendimento</li>
+          <li>Relatório semanal</li>
+          <li>Score de evasão</li>
+          <li>Handoff para humano</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section>
+  <div class="section-inner">
+    <div class="section-tag">Diferenciais</div>
+    <h2>Construído para não falhar</h2>
+    <div class="divider"></div>
+    <div class="feat-grid">
+      <div class="feat-card">
+        <div class="feat-icon">🧠</div>
+        <h4>Multi-IA com Circuit Breaker</h4>
+        <p>Anthropic → Groq → Gemini em failover automático. Se todos caem, a Billie responde offline com templates.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🛡️</div>
+        <h4>Segurança & LGPD</h4>
+        <p>CPFs mascarados, isolamento por tenant (RLS PostgreSQL), JWT + refresh, HMAC no webhook, conformidade LGPD.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">📊</div>
+        <h4>Dashboard em tempo real</h4>
+        <p>Conversas, tickets, satisfação, custo IA vs humano, score de evasão — tudo visível no painel admin.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🚨</div>
+        <h4>Alerta de evasão</h4>
+        <p>Score 0–100 calculado de hora em hora. Identifica alunos em risco antes de desistirem.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🔌</div>
+        <h4>Integração com ERPs</h4>
+        <p>Sophia (Prima), TOTVS RM Educacional e REST genérico. Credenciais encriptadas com Fernet.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">📱</div>
+        <h4>PWA completo</h4>
+        <p>Painel admin instalável como app. Push notifications, offline-first, funciona no celular do gestor.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">⚡</div>
+        <h4>Multi-tenancy</h4>
+        <p>Cada escola é isolada. RLS no PostgreSQL garante que dados nunca vazam entre instituições.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">📈</div>
+        <h4>Monitoramento robusto</h4>
+        <p>Prometheus + Grafana + Loki + AlertManager. 9 alertas customizados para o time de operações.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">😊</div>
+        <h4>Análise de sentimento</h4>
+        <p>Detecta frustração, satisfação e urgência em cada mensagem. Prioriza atendimentos críticos automaticamente.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ROI TABLE -->
+<section class="roi-bg" id="resultados">
+  <div class="section-inner">
+    <div class="section-tag">Resultados</div>
+    <h2>Números reais em 90 dias</h2>
+    <div class="divider"></div>
+    <p class="sub">Comparativo antes e depois da implementação do IGS em uma escola com 1.500 alunos.</p>
+    <table class="roi-table">
+      <thead>
+        <tr>
+          <th>Métrica</th>
+          <th>Antes</th>
+          <th>Com IGS</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Custo mensal de atendimento</td>
+          <td class="before">R$ 26.800</td>
+          <td class="after">R$ 8.620 (−68%)</td>
+        </tr>
+        <tr>
+          <td>Tempo médio de resposta</td>
+          <td class="before">8 minutos</td>
+          <td class="after">2,4 minutos</td>
+        </tr>
+        <tr>
+          <td>Conversas atendidas / mês</td>
+          <td class="before">1.250</td>
+          <td class="after">3.842 (3,1×)</td>
+        </tr>
+        <tr>
+          <td>Resolução automática</td>
+          <td class="before">0%</td>
+          <td class="after">87,3%</td>
+        </tr>
+        <tr>
+          <td>Satisfação dos alunos</td>
+          <td class="before">3,2 / 5</td>
+          <td class="after">4,6 / 5</td>
+        </tr>
+        <tr>
+          <td>Disponibilidade</td>
+          <td class="before">8h/dia (seg–sex)</td>
+          <td class="after">24h/dia, 7 dias</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="roi-highlight">
+      <div class="big">R$ 218.000</div>
+      <p>Economia anual projetada para uma escola com 1.500 alunos</p>
+    </div>
+  </div>
+</section>
+
+<!-- STACK -->
+<section>
+  <div class="section-inner">
+    <div class="section-tag">Tecnologia</div>
+    <h2>Stack de produção, sério desde o começo</h2>
+    <div class="divider"></div>
+    <div class="tech-chips">
+      <span class="chip green">FastAPI</span>
+      <span class="chip green">Python 3.12</span>
+      <span class="chip green">PostgreSQL 16</span>
+      <span class="chip green">Redis 7 + Celery</span>
+      <span class="chip green">SQLAlchemy 2.0 async</span>
+      <span class="chip blue">React 18 + TypeScript</span>
+      <span class="chip blue">TailwindCSS + Vite</span>
+      <span class="chip blue">PWA + Push Notifications</span>
+      <span class="chip">Anthropic Claude</span>
+      <span class="chip">Groq (Llama 3.3)</span>
+      <span class="chip">Gemini 2.0 Flash</span>
+      <span class="chip">Meta Cloud API</span>
+      <span class="chip">Docker + Compose</span>
+      <span class="chip">Caddy + Let's Encrypt</span>
+      <span class="chip">Prometheus + Grafana</span>
+      <span class="chip">Sentry</span>
+      <span class="chip">GitHub Actions CI/CD</span>
+      <span class="chip">Mercado Pago</span>
+    </div>
+    <div class="stack-cols">
+      <div class="stack-group">
+        <h4>Backend</h4>
+        <table class="stack-table">
+          <tr><td>Framework</td><td>FastAPI 0.115 (async)</td></tr>
+          <tr><td>ORM</td><td>SQLAlchemy 2.0 + asyncpg</td></tr>
+          <tr><td>Migrations</td><td>Alembic (11 versões)</td></tr>
+          <tr><td>Tasks</td><td>Celery 5.4 + Redis Beat</td></tr>
+          <tr><td>Autenticação</td><td>JWT 15min + Refresh 7d</td></tr>
+          <tr><td>Criptografia</td><td>Fernet (CPF, tokens ERP)</td></tr>
+          <tr><td>Rate limiting</td><td>Sliding window por IP/tenant</td></tr>
+        </table>
+      </div>
+      <div class="stack-group">
+        <h4>Infraestrutura</h4>
+        <table class="stack-table">
+          <tr><td>Produção</td><td>Oracle Cloud Free Tier</td></tr>
+          <tr><td>Servidor</td><td>VM 1 vCPU · 1GB RAM · SP</td></tr>
+          <tr><td>Proxy</td><td>Caddy + TLS automático</td></tr>
+          <tr><td>Deploy</td><td>GitHub Actions + SSH</td></tr>
+          <tr><td>Containers</td><td>5 serviços leves em prod</td></tr>
+          <tr><td>Alertas</td><td>9 regras Prometheus</td></tr>
+          <tr><td>Billing</td><td>Mercado Pago Checkout Pro</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing-bg" id="planos">
+  <div class="section-inner">
+    <div class="section-tag">Planos</div>
+    <h2>Comece em 5 dias úteis</h2>
+    <div class="divider"></div>
+    <p class="sub">Sem taxa de setup. Sem fidelidade. Cancele quando quiser.</p>
+    <div class="pricing-grid">
+      <div class="plan-card">
+        <div class="plan-name">Starter</div>
+        <div class="plan-price">R$297<span>/mês</span></div>
+        <div class="plan-desc">Até 500 alunos · trial 14 dias grátis</div>
+        <ul class="plan-features">
+          <li><span class="ok">✓</span> Atendimento WhatsApp 24/7</li>
+          <li><span class="ok">✓</span> Painel admin completo</li>
+          <li><span class="ok">✓</span> Análise de sentimento</li>
+          <li><span class="ok">✓</span> Score de evasão</li>
+          <li><span class="ok">✓</span> Importação CSV de alunos</li>
+          <li><span class="no">—</span> Cobrança PIX/cartão</li>
+          <li><span class="no">—</span> Relatórios executivos PDF</li>
+          <li><span class="no">—</span> Integração ERP</li>
+        </ul>
+        <a href="#contato" class="plan-btn plan-btn-outline">Começar trial grátis</a>
+      </div>
+
+      <div class="plan-card featured">
+        <div class="featured-badge">⭐ Mais popular</div>
+        <div class="plan-name">Pro</div>
+        <div class="plan-price">R$497<span>/mês</span></div>
+        <div class="plan-desc">Até 2.000 alunos · trial 14 dias grátis</div>
+        <ul class="plan-features">
+          <li><span class="ok">✓</span> Atendimento WhatsApp 24/7</li>
+          <li><span class="ok">✓</span> Painel admin completo</li>
+          <li><span class="ok">✓</span> Análise de sentimento</li>
+          <li><span class="ok">✓</span> Score de evasão</li>
+          <li><span class="ok">✓</span> Importação CSV de alunos</li>
+          <li><span class="ok">✓</span> Cobrança PIX/cartão</li>
+          <li><span class="ok">✓</span> Relatórios executivos PDF</li>
+          <li><span class="no">—</span> Integração ERP</li>
+        </ul>
+        <a href="#contato" class="plan-btn plan-btn-solid">Começar trial grátis</a>
+      </div>
+
+      <div class="plan-card">
+        <div class="plan-name">Enterprise</div>
+        <div class="plan-price" style="font-size:1.8rem">Sob consulta</div>
+        <div class="plan-desc">Acima de 2.000 alunos · SLA garantido</div>
+        <ul class="plan-features">
+          <li><span class="ok">✓</span> Tudo do Pro</li>
+          <li><span class="ok">✓</span> Integração Sophia / TOTVS RM</li>
+          <li><span class="ok">✓</span> SLA contratual garantido</li>
+          <li><span class="ok">✓</span> Suporte dedicado</li>
+          <li><span class="ok">✓</span> Chave Claude própria</li>
+          <li><span class="ok">✓</span> Onboarding presencial</li>
+          <li><span class="ok">✓</span> Treinamento da equipe</li>
+          <li><span class="ok">✓</span> Customizações sob demanda</li>
+        </ul>
+        <a href="#contato" class="plan-btn plan-btn-dark">Falar com vendas</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section" id="contato">
+  <div>
+    <h2>Pronto para modernizar o atendimento da sua escola?</h2>
+    <p>Demonstração gratuita de 30 minutos. Mostramos a Billie funcionando no seu próprio WhatsApp.</p>
+    <div class="btn-group">
+      <a href="mailto:gabriel.henrique.roveri.bueno@gmail.com" class="btn btn-primary">Agendar demonstração →</a>
+    </div>
+    <div class="cta-contacts">
+      <span class="cta-contact">📧 gabriel.henrique.roveri.bueno@gmail.com</span>
+      <span class="cta-contact">⚡ Resposta em até 2 horas úteis</span>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>© 2026 IGS — Intelligent General Service · Construído com FastAPI, React e Claude API</p>
+</footer>
+
+</body>
+</html>
