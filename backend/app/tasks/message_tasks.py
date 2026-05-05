@@ -1034,6 +1034,17 @@ async def _fetch_student_data(db, tenant_id, student_id, intent, entities, stude
 
         data["library"] = await get_library_summary(db, tenant_id, student_id)
 
+    elif intent == "enrollment_query":
+        student = await student_service.get_student_by_id(db, tenant_id, student_id)
+        if student:
+            data["enrollment"] = {
+                "course": student.course,
+                "semester": student.semester,
+                "enrollment_status": student.enrollment_status,
+                "enrollment_date": str(student.enrollment_date) if student.enrollment_date else None,
+                "registration_number": student.registration_number,
+            }
+
     return data
 
 

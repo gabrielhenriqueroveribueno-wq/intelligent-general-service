@@ -47,6 +47,7 @@ VALID_INTENTS = [
     "schedule_appointment",  # Agendar atendimento presencial
     "cancel_appointment",  # Cancelar agendamento
     "document_ocr",  # Reconhecimento de documento via foto
+    "open_ticket",  # Abrir chamado de suporte geral (problema não categorizado)
     "unknown",  # Intenção não reconhecida
 ]
 
@@ -61,7 +62,7 @@ event_registration, library_query, financial_negotiation, certificate_request,
 slide_generate, slide_update, generate_pix, facility_ticket, library_renewal,
 tutor_question, medical_certificate, feedback_response, enable_reminders,
 disable_reminders, farewell, schedule_appointment, cancel_appointment,
-document_ocr, unknown
+document_ocr, open_ticket, unknown
 
 DICAS DE CLASSIFICAÇÃO:
 - "sim", "quero", "pode", "gera", "faz" após contexto de boleto/pagamento → generate_pix
@@ -69,6 +70,7 @@ DICAS DE CLASSIFICAÇÃO:
 - "agendar", "marcar horário", "ir na secretaria" → schedule_appointment
 - "cancelar agendamento" → cancel_appointment
 - "analisar documento", "ler documento" → document_ocr
+- "abrir chamado", "preciso de ajuda", "tenho um problema", "quero registrar" → open_ticket
 
 Responda APENAS com um JSON no formato: {"intent": "nome_da_intencao", "entities": {}}
 Para entities, extraia dados relevantes como: subject (matéria), period (período), month (mês), type (tipo), amount (valor), date (data), time (horário).

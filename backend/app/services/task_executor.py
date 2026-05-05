@@ -38,6 +38,7 @@ ACTION_INTENTS = {
     "slide_generate",
     "slide_update",
     "generate_pix",
+    "open_ticket",
     "facility_ticket",
     "library_renewal",
     "tutor_question",
@@ -386,6 +387,42 @@ async def _handle_financial_negotiation(
     )
 
 
+async def _handle_open_ticket(
+    db: AsyncSession,
+    tenant_id: UUID,
+    contact_id: UUID,
+    entities: dict,
+    student_id: UUID | None,
+) -> dict[str, Any]:
+    """Cria chamado de suporte geral para qualquer problema não categorizado."""
+    from app.services.ticket_service import create_ticket
+
+    subject = entities.get("subject", "Chamado de Suporte via WhatsApp")
+    description = entities.get("description", "Chamado aberto via WhatsApp")
+    priority = entities.get("priority", "medium")
+
+    ticket = await create_ticket(
+        db=db,
+        tenant_id=tenant_id,
+        subject=subject,
+        priority=priority,
+        category="support",
+        description=description,
+        contact_id=contact_id,
+    )
+
+    return {
+        "success": True,
+        "ticket_id": str(ticket.id),
+        "protocol": ticket.protocol_number,
+        "message": (
+            f"Chamado aberto com protocolo *{ticket.protocol_number}*. "
+            "Nossa equipe entrará em contato em breve. "
+            "Você pode acompanhar pelo painel ou aguardar nossa resposta aqui."
+        ),
+    }
+
+
 async def _handle_facility_ticket(
     db: AsyncSession,
     tenant_id: UUID,
@@ -647,6 +684,7 @@ _HANDLERS = {
     "slide_generate": _handle_slide_generate,
     "slide_update": _handle_slide_update,
     "generate_pix": _handle_generate_pix,
+    "open_ticket": _handle_open_ticket,
     "facility_ticket": _handle_facility_ticket,
     "library_renewal": _handle_library_renewal,
     "tutor_question": _handle_tutor_question,
