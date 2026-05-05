@@ -4,7 +4,7 @@
 # Se não tiver domínio, use o IP para testes (sem HTTPS):
 #   :80 { reverse_proxy api:8000 }
 
-{$DOMAIN:localhost} {
+{$DOMAIN::80} {
     # Proxy para a API FastAPI
     reverse_proxy api:8000
 
