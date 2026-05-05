@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '../api/client'
-import { Bell, Bot, Clock, Key, MessageSquare, Loader2, Check, Send } from 'lucide-react'
+import { Bell, Bot, Clock, Copy, ExternalLink, Key, MessageSquare, Loader2, Check, Send, Webhook } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { usePushNotifications } from '../hooks/usePushNotifications'
 
@@ -12,6 +12,34 @@ interface SettingsData {
   out_of_hours_message: string | null
   has_whatsapp_config: boolean
   has_ai_key: boolean
+}
+
+function CopyField({ label, value }: { label: string; value: string }) {
+  const [copied, setCopied] = useState(false)
+  function copy() {
+    navigator.clipboard.writeText(value)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+  return (
+    <div>
+      <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+      <div className="flex items-center gap-2">
+        <input
+          readOnly
+          className="input flex-1 font-mono text-xs bg-gray-50"
+          value={value}
+        />
+        <button
+          onClick={copy}
+          className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+          title="Copiar"
+        >
+          {copied ? <Check size={14} className="text-green-600" /> : <Copy size={14} className="text-gray-500" />}
+        </button>
+      </div>
+    </div>
+  )
 }
 
 export default function Settings() {
@@ -28,12 +56,16 @@ export default function Settings() {
     has_ai_key: false,
   })
 
-  // Integration fields (not returned by GET for security)
   const [waPhoneId, setWaPhoneId] = useState('')
   const [waToken, setWaToken] = useState('')
   const [aiKey, setAiKey] = useState('')
   const [testPhone, setTestPhone] = useState('')
   const [testing, setTesting] = useState(false)
+
+  const apiBase = window.location.hostname === 'localhost'
+    ? 'http://localhost:8000'
+    : `https://${window.location.hostname}`
+  const webhookUrl = `${apiBase}/api/v1/webhook/whatsapp`
 
   useEffect(() => {
     loadSettings()
@@ -68,7 +100,7 @@ export default function Settings() {
       setWaPhoneId('')
       setWaToken('')
       setAiKey('')
-      toast.success('Configuracoes salvas com sucesso!')
+      toast.success('Configurações salvas com sucesso!')
     } catch {
       /* interceptor handles */
     }
@@ -77,7 +109,7 @@ export default function Settings() {
 
   async function handleTestWhatsApp() {
     if (!testPhone.trim()) {
-      toast.error('Digite um numero de telefone para teste')
+      toast.error('Digite um número de telefone para teste')
       return
     }
     setTesting(true)
@@ -104,8 +136,40 @@ export default function Settings() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Configuracoes</h1>
-        <p className="text-sm text-gray-500">Configure o sistema e integracoes</p>
+        <h1 className="text-2xl font-bold text-gray-900">Configurações</h1>
+        <p className="text-sm text-gray-500">Configure o sistema e integrações</p>
+      </div>
+
+      {/* Webhook URL — seção destacada para facilitar setup do WhatsApp */}
+      <div className="card border-blue-100 bg-blue-50">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="bg-blue-600 p-2 rounded-lg">
+            <Webhook size={18} className="text-white" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-blue-900">URL do Webhook WhatsApp</h3>
+            <p className="text-xs text-blue-600">Cole esta URL no painel Meta Developer para receber mensagens</p>
+          </div>
+        </div>
+        <div className="space-y-3">
+          <CopyField label="URL do Callback" value={webhookUrl} />
+          <CopyField label="Token de Verificação" value={import.meta.env.VITE_WHATSAPP_VERIFY_TOKEN || 'igs-verify-token'} />
+          <div className="flex items-center gap-2 pt-1">
+            <a
+              href="https://developers.facebook.com/apps"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+            >
+              <ExternalLink size={12} />
+              Abrir Meta Developer Console
+            </a>
+            <span className="text-gray-300">·</span>
+            <span className="text-xs text-gray-500">
+              Configure em: WhatsApp → Configuração → Webhook
+            </span>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -135,7 +199,7 @@ export default function Settings() {
                 rows={3}
                 value={data.welcome_message || ''}
                 onChange={(e) => setData({ ...data, welcome_message: e.target.value })}
-                placeholder="Ola! Como posso ajudar?"
+                placeholder="Olá! Sou o assistente virtual. Como posso ajudar?"
               />
             </div>
           </div>
@@ -146,7 +210,7 @@ export default function Settings() {
             <div className="bg-green-100 p-2 rounded-lg">
               <Clock size={18} className="text-green-600" />
             </div>
-            <h3 className="font-semibold">Horario de Funcionamento</h3>
+            <h3 className="font-semibold">Horário de Funcionamento</h3>
           </div>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-2">
@@ -171,14 +235,14 @@ export default function Settings() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                Mensagem fora do horario
+                Mensagem fora do horário
               </label>
               <textarea
                 className="input resize-none"
                 rows={2}
                 value={data.out_of_hours_message || ''}
                 onChange={(e) => setData({ ...data, out_of_hours_message: e.target.value })}
-                placeholder="Estamos fora do horario..."
+                placeholder="Estamos fora do horário de atendimento. Retornaremos em breve!"
               />
             </div>
           </div>
@@ -189,7 +253,7 @@ export default function Settings() {
             <div className="bg-purple-100 p-2 rounded-lg">
               <Key size={18} className="text-purple-600" />
             </div>
-            <h3 className="font-semibold">Integracoes</h3>
+            <h3 className="font-semibold">Integrações</h3>
           </div>
           <div className="space-y-3">
             <div>
@@ -244,7 +308,7 @@ export default function Settings() {
             {data.has_whatsapp_config && (
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Testar conexao WhatsApp
+                  Testar conexão WhatsApp
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -267,7 +331,7 @@ export default function Settings() {
                   </button>
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
-                  Envia uma mensagem de teste para validar a configuracao
+                  Envia uma mensagem de teste para validar a configuração
                 </p>
               </div>
             )}
@@ -279,27 +343,27 @@ export default function Settings() {
             <div className="bg-orange-100 p-2 rounded-lg">
               <MessageSquare size={18} className="text-orange-600" />
             </div>
-            <h3 className="font-semibold">SLA Padrao</h3>
+            <h3 className="font-semibold">SLA Padrão</h3>
           </div>
           <div className="space-y-3 text-sm text-gray-600">
             <div className="flex justify-between items-center py-2 border-b">
-              <span>Critico</span>
-              <span>Resposta: 15min / Resolucao: 1h</span>
+              <span>Crítico</span>
+              <span className="text-xs">Resposta: 15min / Resolução: 1h</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b">
               <span>Alto</span>
-              <span>Resposta: 30min / Resolucao: 4h</span>
+              <span className="text-xs">Resposta: 30min / Resolução: 4h</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b">
-              <span>Medio</span>
-              <span>Resposta: 1h / Resolucao: 8h</span>
+              <span>Médio</span>
+              <span className="text-xs">Resposta: 1h / Resolução: 8h</span>
             </div>
             <div className="flex justify-between items-center py-2">
               <span>Baixo</span>
-              <span>Resposta: 2h / Resolucao: 24h</span>
+              <span className="text-xs">Resposta: 2h / Resolução: 24h</span>
             </div>
             <p className="text-xs text-gray-400">
-              SLA configuravel por prioridade via banco de dados
+              SLA configurável por prioridade via banco de dados
             </p>
           </div>
         </div>
@@ -312,16 +376,16 @@ export default function Settings() {
               <Bell size={18} className="text-purple-600" />
             </div>
             <div>
-              <h3 className="font-semibold">Notificacoes Push</h3>
+              <h3 className="font-semibold">Notificações Push</h3>
               <p className="text-xs text-gray-500">Receba alertas no navegador mesmo sem ter o painel aberto</p>
             </div>
           </div>
           {push.state === 'denied' && (
-            <p className="text-sm text-red-500">Notificacoes bloqueadas pelo navegador. Habilite nas configuracoes do navegador.</p>
+            <p className="text-sm text-red-500">Notificações bloqueadas pelo navegador. Habilite nas configurações do navegador.</p>
           )}
           {push.state === 'subscribed' && (
             <div className="flex items-center justify-between">
-              <span className="text-sm text-green-600 font-medium">Notificacoes ativas neste dispositivo</span>
+              <span className="text-sm text-green-600 font-medium">Notificações ativas neste dispositivo</span>
               <button
                 onClick={push.unsubscribe}
                 disabled={push.loading}
@@ -338,7 +402,7 @@ export default function Settings() {
               className="btn-primary flex items-center gap-2 text-sm"
             >
               {push.loading ? <Loader2 className="animate-spin" size={14} /> : <Bell size={14} />}
-              {push.loading ? 'Ativando...' : 'Ativar Notificacoes'}
+              {push.loading ? 'Ativando...' : 'Ativar Notificações'}
             </button>
           )}
         </div>
@@ -350,7 +414,7 @@ export default function Settings() {
         className="btn-primary flex items-center gap-2"
       >
         {saving ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
-        {saving ? 'Salvando...' : 'Salvar Configuracoes'}
+        {saving ? 'Salvando...' : 'Salvar Configurações'}
       </button>
     </div>
   )
