@@ -2,13 +2,18 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 
-import sentry_sdk
+try:
+    import sentry_sdk
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    from sentry_sdk.integrations.logging import LoggingIntegration
+    from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+    _SENTRY_AVAILABLE = True
+except ImportError:
+    _SENTRY_AVAILABLE = False
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sentry_sdk.integrations.fastapi import FastApiIntegration
-from sentry_sdk.integrations.logging import LoggingIntegration
-from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
 from app.api.v1.router import api_router
 from app.config import settings
@@ -22,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 def _init_sentry() -> None:
-    if not settings.SENTRY_DSN:
+    if not _SENTRY_AVAILABLE or not settings.SENTRY_DSN:
         return
     sentry_sdk.init(
         dsn=settings.SENTRY_DSN,

@@ -5,10 +5,60 @@ on:
     tags:
       - "v*"
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/igs-api
+
 jobs:
+  build:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+      image_digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=sha-,format=short
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
+    needs: build
     environment: production
 
     steps:
@@ -19,47 +69,80 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
+          envs: IMAGE_TAG
           script: |
             set -e
             cd /opt/igs
 
-            echo "=== Pulling latest images ==="
-            docker compose -f docker-compose.prod-light.yml pull
+            echo "=== Atualizando código ==="
+            git fetch origin master
+            git reset --hard origin/master
 
-            echo "=== Running database migrations ==="
-            docker compose -f docker-compose.prod-light.yml run --rm api alembic upgrade head
+            echo "=== Configurando imagem: ${{ needs.build.outputs.image_tag }} ==="
+            export API_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}"
 
-            echo "=== Restarting services ==="
-            docker compose -f docker-compose.prod-light.yml up -d --no-deps api
-            docker compose -f docker-compose.prod-light.yml up -d --no-deps celery_worker
-            docker compose -f docker-compose.prod-light.yml up -d --no-deps celery_beat
+            echo "=== Baixando nova imagem ==="
+            docker pull $API_IMAGE
 
-            echo "=== Cleaning old images ==="
+            echo "=== Salvando estado atual para rollback ==="
+            PREVIOUS_IMAGE=$(docker inspect igs_api --format='{{.Config.Image}}' 2>/dev/null || echo "none")
+            echo "Imagem anterior: $PREVIOUS_IMAGE"
+
+            echo "=== Rodando migrações ==="
+            docker compose -f docker-compose.prod-light.yml run --rm \
+              -e API_IMAGE=$API_IMAGE api alembic upgrade head
+
+            echo "=== Reiniciando serviços ==="
+            docker compose -f docker-compose.prod-light.yml up -d \
+              --no-deps \
+              --force-recreate \
+              api celery-worker celery-beat
+
+            echo "=== Health check (aguardando 30s) ==="
+            sleep 30
+            HTTP_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:8000/api/v1/health || echo "000")
+            if [ "$HTTP_STATUS" != "200" ]; then
+              echo "ERRO: Health check falhou (HTTP $HTTP_STATUS). Executando rollback..."
+              if [ "$PREVIOUS_IMAGE" != "none" ]; then
+                docker compose -f docker-compose.prod-light.yml up -d --no-deps --force-recreate api
+                echo "Rollback concluído para: $PREVIOUS_IMAGE"
+              fi
+              exit 1
+            fi
+            echo "Health check OK (HTTP $HTTP_STATUS)"
+
+            echo "=== Limpando imagens antigas ==="
             docker image prune -f
 
             echo "=== Deploy concluído: $(date) ==="
 
   notify:
-    name: Notify Deploy Result
+    name: Notificar Resultado
     runs-on: ubuntu-latest
-    needs: deploy
+    needs: [build, deploy]
     if: always()
+
     steps:
-      - name: Set status
-        id: status
+      - name: Resumo
         run: |
-          if [ "${{ needs.deploy.result }}" == "success" ]; then
-            echo "emoji=✅" >> $GITHUB_OUTPUT
-            echo "msg=Deploy ${{ github.ref_name }} concluído com sucesso" >> $GITHUB_OUTPUT
+          BUILD="${{ needs.build.result }}"
+          DEPLOY="${{ needs.deploy.result }}"
+
+          if [ "$DEPLOY" == "success" ]; then
+            STATUS="✅ Deploy ${{ github.ref_name }} concluído"
+          elif [ "$BUILD" != "success" ]; then
+            STATUS="❌ Build ${{ github.ref_name }} falhou"
           else
-            echo "emoji=❌" >> $GITHUB_OUTPUT
-            echo "msg=Deploy ${{ github.ref_name }} falhou" >> $GITHUB_OUTPUT
+            STATUS="❌ Deploy ${{ github.ref_name }} falhou (build OK)"
           fi
 
-      - name: GitHub Summary
-        run: |
-          echo "## ${{ steps.status.outputs.emoji }} ${{ steps.status.outputs.msg }}" >> $GITHUB_STEP_SUMMARY
+          echo "## $STATUS" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Tag:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "| Campo | Valor |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Tag | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build | $BUILD |" >> $GITHUB_STEP_SUMMARY
+          echo "| Deploy | $DEPLOY |" >> $GITHUB_STEP_SUMMARY
+          echo "| Ator | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Imagem | \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
