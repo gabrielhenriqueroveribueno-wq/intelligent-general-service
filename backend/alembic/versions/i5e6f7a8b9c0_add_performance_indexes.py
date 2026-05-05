@@ -77,13 +77,6 @@ def upgrade() -> None:
         ["tenant_id", "status", "priority"],
         if_not_exists=True,
     )
-    # SLA check — tickets abertos com prazo próximo
-    op.create_index(
-        "ix_tickets_due_date",
-        "tickets",
-        ["due_date", "status"],
-        if_not_exists=True,
-    )
 
     # ── Boletos ──────────────────────────────────────────────────────────────
     # Boletos vencidos para lembretes
@@ -106,7 +99,6 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_index("ix_audit_logs_tenant_created", table_name="audit_logs")
     op.drop_index("ix_boletos_tenant_status_due", table_name="boletos")
-    op.drop_index("ix_tickets_due_date", table_name="tickets")
     op.drop_index("ix_tickets_tenant_status_priority", table_name="tickets")
     op.drop_index("ix_students_name", table_name="students")
     op.drop_index("ix_students_tenant_enrollment", table_name="students")
