@@ -3,14 +3,14 @@
 # Execute como root ou com sudo logo após criar a VM:
 #
 #   ssh ubuntu@137.131.151.205
-#   curl -fsSL https://raw.githubusercontent.com/SEU_USUARIO/intelligent-general-service/master/scripts/setup-vm.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/gabrielhenriqueroveribueno-wq/intelligent-general-service/master/scripts/setup-vm.sh | bash
 #
 # Ou copie e execute diretamente:
 #   bash setup-vm.sh
 
 set -euo pipefail
 
-REPO_URL="${REPO_URL:-https://github.com/SEU_USUARIO/intelligent-general-service.git}"
+REPO_URL="${REPO_URL:-https://github.com/gabrielhenriqueroveribueno-wq/intelligent-general-service.git}"
 APP_DIR="/opt/igs"
 SWAP_SIZE="2G"
 
