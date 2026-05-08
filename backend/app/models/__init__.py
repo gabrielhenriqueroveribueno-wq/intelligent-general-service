@@ -1,4 +1,5 @@
 from app.models.academic_integration import AcademicIntegration
+from app.models.sync_log import SyncLog
 from app.models.appointment import Appointment
 from app.models.audit import AuditLog, FailedTask, SLAConfig
 from app.models.base import Base
@@ -64,5 +65,6 @@ __all__ = [
     "Appointment",
     "ReportSubscription",
     "AcademicIntegration",
+    "SyncLog",
     "PushSubscription",
 ]

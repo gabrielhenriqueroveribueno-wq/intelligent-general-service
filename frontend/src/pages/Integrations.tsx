@@ -11,13 +11,31 @@ import {
   X,
   Pause,
   Play,
+  History,
+  ChevronDown,
+  ChevronUp,
+  Database,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
 import { api } from '../api/client'
 
-type ProviderType = 'sophia' | 'totvs' | 'generic_rest'
+type ProviderType = 'sophia' | 'totvs' | 'generic_rest' | 'generic_sql'
 type StatusType = 'pending' | 'active' | 'paused' | 'error'
+
+interface SyncLog {
+  id: string
+  started_at: string
+  finished_at: string | null
+  status: 'success' | 'error' | 'partial' | 'running'
+  records_synced: number
+  students_created: number
+  students_updated: number
+  employees_created: number
+  employees_updated: number
+  duration_ms: number | null
+  error_summary: string | null
+}
 
 interface Integration {
   id: string
@@ -62,6 +80,7 @@ const STATUS_BADGE: Record<StatusType, { label: string; cls: string }> = {
 export default function Integrations() {
   const qc = useQueryClient()
   const [showWizard, setShowWizard] = useState(false)
+  const [expandedLogs, setExpandedLogs] = useState<string | null>(null)
 
   const { data: integrations, isLoading } = useQuery({
     queryKey: ['integrations'],
@@ -122,7 +141,7 @@ export default function Integrations() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Integrações</h1>
           <p className="text-sm text-gray-500">
-            Conecte o IGS ao Sophia, TOTVS ou qualquer sistema com API REST
+            Conecte o IGS ao Sophia, TOTVS, SQL direto ou qualquer sistema com API REST
           </p>
         </div>
         <button
@@ -229,6 +248,19 @@ export default function Integrations() {
                       {integ.status === 'active' ? <Pause size={16} /> : <Play size={16} />}
                     </button>
                     <button
+                      onClick={() =>
+                        setExpandedLogs(expandedLogs === integ.id ? null : integ.id)
+                      }
+                      title="Ver histórico de syncs"
+                      className="text-gray-500 hover:bg-gray-100 p-1.5 rounded ml-1"
+                    >
+                      {expandedLogs === integ.id ? (
+                        <ChevronUp size={16} />
+                      ) : (
+                        <History size={16} />
+                      )}
+                    </button>
+                    <button
                       onClick={() => {
                         if (confirm(`Remover integração "${integ.name}"?`))
                           deleteMutation.mutate(integ.id)
@@ -240,6 +272,13 @@ export default function Integrations() {
                     </button>
                   </td>
                 </tr>
+                {expandedLogs === integ.id && (
+                  <tr>
+                    <td colSpan={6} className="bg-gray-50 px-4 pb-3">
+                      <SyncLogPanel integrationId={integ.id} />
+                    </td>
+                  </tr>
+                )}
               ))}
               {!integrations?.length && (
                 <tr>
@@ -486,6 +525,79 @@ function Wizard({
             </div>
           </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sync Log Panel
+// ─────────────────────────────────────────────────────────────────────────────
+
+const LOG_STATUS: Record<string, { label: string; cls: string }> = {
+  success: { label: 'OK', cls: 'text-green-700 bg-green-100' },
+  partial: { label: 'Parcial', cls: 'text-yellow-700 bg-yellow-100' },
+  error: { label: 'Erro', cls: 'text-red-700 bg-red-100' },
+  running: { label: 'Rodando', cls: 'text-blue-700 bg-blue-100' },
+}
+
+function SyncLogPanel({ integrationId }: { integrationId: string }) {
+  const { data: logs, isLoading } = useQuery({
+    queryKey: ['sync-logs', integrationId],
+    queryFn: () =>
+      api
+        .get(`/api/v1/integrations/${integrationId}/logs?limit=10`)
+        .then((r) => r.data as SyncLog[]),
+    refetchInterval: 10_000,
+  })
+
+  if (isLoading)
+    return (
+      <div className="flex items-center gap-2 py-3 text-sm text-gray-400">
+        <Loader2 className="animate-spin" size={14} /> Carregando histórico...
+      </div>
+    )
+
+  if (!logs?.length)
+    return (
+      <p className="py-3 text-sm text-gray-400">Nenhuma sync realizada ainda.</p>
+    )
+
+  return (
+    <div className="mt-2">
+      <p className="text-xs font-semibold text-gray-500 mb-2 flex items-center gap-1">
+        <History size={12} /> Histórico das últimas syncs
+      </p>
+      <div className="space-y-1.5">
+        {logs.map((log) => {
+          const st = LOG_STATUS[log.status] || LOG_STATUS.error
+          const dur = log.duration_ms ? `${(log.duration_ms / 1000).toFixed(1)}s` : '—'
+          return (
+            <div
+              key={log.id}
+              className="flex items-start gap-3 text-xs bg-white rounded border border-gray-100 px-3 py-2"
+            >
+              <span className={clsx('px-1.5 py-0.5 rounded font-semibold shrink-0', st.cls)}>
+                {st.label}
+              </span>
+              <span className="text-gray-500 shrink-0">
+                {new Date(log.started_at).toLocaleString('pt-BR')}
+              </span>
+              <span className="text-gray-400 shrink-0">{dur}</span>
+              <span className="text-gray-700">
+                {log.records_synced} registros
+                {log.students_created > 0 && ` · ${log.students_created} alunos criados`}
+                {log.students_updated > 0 && ` · ${log.students_updated} atualizados`}
+                {log.employees_created > 0 && ` · ${log.employees_created} funcs criados`}
+              </span>
+              {log.error_summary && (
+                <span className="text-red-600 truncate max-w-xs" title={log.error_summary}>
+                  {log.error_summary}
+                </span>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )

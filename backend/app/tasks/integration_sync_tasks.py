@@ -120,6 +120,7 @@ def run_integration_sync_task(self, integration_id: str):
 async def _run_sync_async(integration_id: str) -> None:
     from app.dependencies import WorkerSessionLocal as AsyncSessionLocal
     from app.models.academic_integration import AcademicIntegration
+    from app.models.sync_log import SyncLog
     from app.services.integrations.registry import decrypt_credentials, get_integrator
 
     async with AsyncSessionLocal() as db:
@@ -136,12 +137,26 @@ async def _run_sync_async(integration_id: str) -> None:
             return
 
         creds = decrypt_credentials(integ.credentials_encrypted)
+        started_at = datetime.now(timezone.utc)
+
+        log = SyncLog(
+            id=uuid.uuid4(),
+            tenant_id=integ.tenant_id,
+            integration_id=integ.id,
+            started_at=started_at,
+            status="running",
+        )
+        db.add(log)
+        await db.flush()
 
         try:
             integrator = get_integrator(integ.provider_type, integ.config, creds)
         except ValueError as exc:
             integ.status = "error"
             integ.last_sync_error = str(exc)
+            log.status = "error"
+            log.finished_at = datetime.now(timezone.utc)
+            log.error_summary = str(exc)[:500]
             await db.commit()
             return
 
@@ -151,24 +166,43 @@ async def _run_sync_async(integration_id: str) -> None:
             await db.commit()
         except Exception as exc:
             await db.rollback()
+            now = datetime.now(timezone.utc)
             integ.status = "error"
             integ.last_sync_error = str(exc)[:500]
-            integ.last_sync_at = datetime.now(timezone.utc)
+            integ.last_sync_at = now
+            log.status = "error"
+            log.finished_at = now
+            log.duration_ms = int((time.perf_counter() - start) * 1000)
+            log.error_summary = str(exc)[:500]
             await db.commit()
             logger.exception("Sync falhou: integration=%s", integration_id)
             return
 
         elapsed_ms = int((time.perf_counter() - start) * 1000)
+        now = datetime.now(timezone.utc)
 
-        integ.last_sync_at = datetime.now(timezone.utc)
+        integ.last_sync_at = now
         integ.last_sync_duration_ms = elapsed_ms
         integ.last_sync_records_synced = result.records_synced
         if result.success and not result.errors:
             integ.status = "active"
             integ.last_sync_error = None
+            log.status = "success"
         elif result.errors:
             integ.status = "error"
             integ.last_sync_error = "; ".join(result.errors[:3])[:500]
+            log.status = "partial" if result.records_synced > 0 else "error"
+
+        log.finished_at = now
+        log.duration_ms = elapsed_ms
+        log.records_synced = result.records_synced
+        log.students_created = result.students_created
+        log.students_updated = result.students_updated
+        log.employees_created = result.employees_created
+        log.employees_updated = result.employees_updated
+        log.errors = result.errors[:20] if result.errors else None
+        log.warnings = result.warnings[:20] if result.warnings else None
+        log.error_summary = "; ".join(result.errors[:3])[:500] if result.errors else None
         await db.commit()
 
         logger.info(

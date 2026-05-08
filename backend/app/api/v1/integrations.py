@@ -39,7 +39,7 @@ router = APIRouter()
 # ══════════════════════════════════════════════════════════════════════════════
 
 
-ProviderType = Literal["sophia", "totvs", "generic_rest"]
+ProviderType = Literal["sophia", "totvs", "generic_rest", "generic_sql"]
 StatusType = Literal["pending", "active", "paused", "error"]
 
 
@@ -232,6 +232,63 @@ async def sync_now(
         "success": True,
         "message": "Sincronizacao agendada — acompanhe o progresso pelo status",
     }
+
+
+class SyncLogResponse(BaseModel):
+    id: uuid.UUID
+    started_at: datetime
+    finished_at: Optional[datetime]
+    status: str
+    records_synced: int
+    students_created: int
+    students_updated: int
+    employees_created: int
+    employees_updated: int
+    duration_ms: Optional[int]
+    error_summary: Optional[str]
+
+
+@router.get("/{integration_id}/logs", response_model=list[SyncLogResponse])
+async def list_sync_logs(
+    integration_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
+    _=Depends(require_roles("super_admin", "admin")),
+    limit: int = 20,
+) -> list[SyncLogResponse]:
+    """Historico das ultimas sincronizacoes da integracao."""
+    from sqlalchemy import desc
+
+    from app.models.sync_log import SyncLog
+
+    await _load(db, integration_id, tenant_id)
+
+    result = await db.execute(
+        select(SyncLog)
+        .where(
+            SyncLog.integration_id == integration_id,
+            SyncLog.tenant_id == tenant_id,
+        )
+        .order_by(desc(SyncLog.started_at))
+        .limit(limit)
+    )
+    logs = result.scalars().all()
+    return [
+        SyncLogResponse(
+            id=log.id,
+            started_at=log.started_at,
+            finished_at=log.finished_at,
+            status=log.status,
+            records_synced=log.records_synced,
+            students_created=log.students_created,
+            students_updated=log.students_updated,
+            employees_created=log.employees_created,
+            employees_updated=log.employees_updated,
+            duration_ms=log.duration_ms,
+            error_summary=log.error_summary,
+        )
+        for log in logs
+    ]
 
 
 # ══════════════════════════════════════════════════════════════════════════════

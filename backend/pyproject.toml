@@ -51,6 +51,10 @@ dependencies = [
     "sentry-sdk[fastapi]>=2.19.0",
     # S3-compatible backup upload
     "boto3>=1.35.0",
+    # SQL connectors para generic_sql integrator
+    "pymssql>=2.3.0",
+    "pymysql>=1.1.0",
+    "psycopg2-binary>=2.9.9",
 ]
 
 [project.optional-dependencies]

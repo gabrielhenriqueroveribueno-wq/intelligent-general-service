@@ -12,6 +12,7 @@ import logging
 
 from app.services.integrations.base import AcademicSystemIntegrator
 from app.services.integrations.generic_rest import GenericRestIntegrator
+from app.services.integrations.generic_sql import GenericSqlIntegrator
 from app.services.integrations.sophia import SophiaIntegrator
 from app.services.integrations.totvs import TotvsIntegrator
 from app.utils.encryption import decrypt
@@ -71,6 +72,71 @@ PROVIDER_CATALOG: list[dict] = [
         "credential_fields": [
             {"name": "username", "label": "Usuario RM", "type": "text", "required": True},
             {"name": "password", "label": "Senha RM", "type": "password", "required": True},
+        ],
+    },
+    {
+        "type": "generic_sql",
+        "label": "SQL Direto (TOTVS RM, MySQL, PostgreSQL, Oracle)",
+        "description": "Conexao direta ao banco de dados do cliente — ideal para TOTVS RM (SQL Server), "
+        "sistemas legados e qualquer banco relacional com acesso de leitura",
+        "config_fields": [
+            {
+                "name": "db_type",
+                "label": "Tipo do banco",
+                "type": "select",
+                "options": ["mssql", "mysql", "postgresql", "oracle"],
+                "default": "mssql",
+                "required": True,
+            },
+            {"name": "host", "label": "Host / IP", "type": "text", "required": True, "placeholder": "192.168.1.10"},
+            {"name": "port", "label": "Porta", "type": "text", "required": False, "placeholder": "1433"},
+            {"name": "database", "label": "Nome do banco", "type": "text", "required": True, "placeholder": "RM"},
+            {
+                "name": "table_mappings.students.table",
+                "label": "Tabela de alunos",
+                "type": "text",
+                "required": False,
+                "placeholder": "SALUNO",
+            },
+            {
+                "name": "table_mappings.students.registration_number",
+                "label": "Campo: matrícula do aluno",
+                "type": "text",
+                "required": False,
+                "placeholder": "RA",
+            },
+            {
+                "name": "table_mappings.students.full_name",
+                "label": "Campo: nome do aluno",
+                "type": "text",
+                "required": False,
+                "placeholder": "NOME",
+            },
+            {
+                "name": "table_mappings.employees.table",
+                "label": "Tabela de funcionários",
+                "type": "text",
+                "required": False,
+                "placeholder": "PFUNC",
+            },
+            {
+                "name": "table_mappings.employees.employee_number",
+                "label": "Campo: chapa/matrícula do funcionário",
+                "type": "text",
+                "required": False,
+                "placeholder": "CHAPA",
+            },
+            {
+                "name": "table_mappings.employees.full_name",
+                "label": "Campo: nome do funcionário",
+                "type": "text",
+                "required": False,
+                "placeholder": "NOME",
+            },
+        ],
+        "credential_fields": [
+            {"name": "username", "label": "Usuário do banco", "type": "text", "required": True, "placeholder": "sa"},
+            {"name": "password", "label": "Senha do banco", "type": "password", "required": True},
         ],
     },
     {
@@ -148,6 +214,7 @@ _INTEGRATOR_CLASSES: dict[str, type] = {
     "sophia": SophiaIntegrator,
     "totvs": TotvsIntegrator,
     "generic_rest": GenericRestIntegrator,
+    "generic_sql": GenericSqlIntegrator,
 }
 
 
@@ -160,7 +227,7 @@ def get_integrator(
     Instancia o integrador correto pelo tipo.
 
     Args:
-        provider_type: 'sophia' | 'totvs' | 'generic_rest'
+        provider_type: 'sophia' | 'totvs' | 'generic_rest' | 'generic_sql'
         config: dict com configuracao publica (URLs, IDs)
         credentials: dict com credenciais (ja descriptografadas)
 
