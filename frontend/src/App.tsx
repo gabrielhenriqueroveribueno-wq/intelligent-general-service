@@ -12,6 +12,8 @@ import CookieBanner from './components/common/CookieBanner'
 
 // Eager: páginas críticas / first paint
 import Login from './pages/Login'
+import ChangePassword from './pages/ChangePassword'
+import Onboarding from './pages/Onboarding'
 import Landing from './pages/Landing'
 import Dashboard from './pages/Dashboard'
 import Conversations from './pages/Conversations'
@@ -37,7 +39,8 @@ const EmployeeDetail = lazy(() => import('./pages/EmployeeDetail'))
 const Reports = lazy(() => import('./pages/Reports'))
 const MetricsDashboard = lazy(() => import('./pages/MetricsDashboard'))
 const LearningInsights = lazy(() => import('./pages/LearningInsights'))
-const Slides = lazy(() => import('./pages/Slides'))
+const Templates = lazy(() => import('./pages/Templates'))
+const Billing = lazy(() => import('./pages/Billing'))
 const Tenants = lazy(() => import('./pages/Tenants'))
 const ImportData = lazy(() => import('./pages/ImportData'))
 const WhatsAppSetup = lazy(() => import('./pages/WhatsAppSetup'))
@@ -77,9 +80,11 @@ export default function App() {
           <Route path="/status" element={<Lazy><PublicStatus /></Lazy>} />
           <Route path="/tour" element={<Lazy><Tour /></Lazy>} />
 
-          {/* Login / Signup (sem layout) */}
+          {/* Login / Signup / Onboarding / Change Password (sem layout) */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/change-password" element={<ChangePassword />} />
 
           {/* Painel admin (protegido) */}
           <Route
@@ -103,11 +108,12 @@ export default function App() {
             <Route path="reports" element={<Lazy><Reports /></Lazy>} />
             <Route path="metrics" element={<Lazy><MetricsDashboard /></Lazy>} />
             <Route path="learning" element={<Lazy><LearningInsights /></Lazy>} />
-            <Route path="slides" element={<Lazy><Slides /></Lazy>} />
             <Route path="users" element={<Lazy><UserManagement /></Lazy>} />
             <Route path="tenants" element={<Lazy><Tenants /></Lazy>} />
             <Route path="import-data" element={<Lazy><ImportData /></Lazy>} />
             <Route path="whatsapp-setup" element={<Lazy><WhatsAppSetup /></Lazy>} />
+            <Route path="templates" element={<Lazy><Templates /></Lazy>} />
+            <Route path="billing" element={<Lazy><Billing /></Lazy>} />
             <Route path="report-subscriptions" element={<Lazy><ReportSubscriptions /></Lazy>} />
             <Route path="integrations" element={<Lazy><Integrations /></Lazy>} />
             <Route path="settings" element={<Settings />} />
@@ -127,7 +133,6 @@ export default function App() {
           <Route path="/reports" element={<Navigate to="/app/reports" replace />} />
           <Route path="/metrics" element={<Navigate to="/app/metrics" replace />} />
           <Route path="/learning" element={<Navigate to="/app/learning" replace />} />
-          <Route path="/slides" element={<Navigate to="/app/slides" replace />} />
           <Route path="/users" element={<Navigate to="/app/users" replace />} />
           <Route path="/tenants" element={<Navigate to="/app/tenants" replace />} />
           <Route path="/import-data" element={<Navigate to="/app/import-data" replace />} />

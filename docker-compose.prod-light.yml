@@ -1,6 +1,6 @@
 # Docker Compose LEVE para servidor com 1GB RAM (Oracle Free Tier E2.1.Micro)
-# Stack: Caddy (SSL auto) + API + Celery + PostgreSQL + Redis
-# Sem: Frontend, Prometheus, Grafana, Loki, Promtail, AlertManager, Redis Exporter
+# Stack: Caddy (SSL auto) + Frontend (nginx) + API + Celery + PostgreSQL + Redis
+# Sem: Prometheus, Grafana, Loki, Promtail, AlertManager, Redis Exporter
 # Uso: docker compose -f docker-compose.prod-light.yml up -d
 
 services:
@@ -19,10 +19,23 @@ services:
       - caddy_config:/config
     depends_on:
       - api
+      - frontend
     deploy:
       resources:
         limits:
           memory: 64M
+
+  # ── Frontend (React SPA, nginx estático) ──────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    container_name: igs_frontend
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 32M
 
   # ── API Backend ──────────────────────────────────────────
   api:

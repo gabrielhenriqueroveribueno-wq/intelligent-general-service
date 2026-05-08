@@ -22,6 +22,7 @@ import {
   HelpCircle,
   X,
   Crown,
+  CreditCard,
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuth } from '../../context/AuthContext'
@@ -50,7 +51,9 @@ const navItems: NavItem[] = [
   { to: '/app/learning', icon: Brain, label: 'Aprendizado IA' },
   { to: '/app/import-data', icon: FileSpreadsheet, label: 'Importar Dados', adminOnly: true },
   { to: '/app/whatsapp-setup', icon: Smartphone, label: 'Configurar WhatsApp', adminOnly: true },
+  { to: '/app/templates', icon: MessageSquare, label: 'Templates WhatsApp', adminOnly: true },
   { to: '/app/users', icon: UserCog, label: 'Usuários' },
+  { to: '/app/billing', icon: CreditCard, label: 'Plano e Cobrança', adminOnly: true },
   { to: '/app/tenants', icon: Building2, label: 'Instituições', superAdminOnly: true },
   { to: '/app/super-admin', icon: Crown, label: 'Super Admin', superAdminOnly: true },
   { to: '/app/audit', icon: Shield, label: 'Auditoria', adminOnly: true },

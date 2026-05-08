@@ -11,6 +11,12 @@ from app.dependencies import get_db
 router = APIRouter()
 
 
+@router.get("/ping")
+async def ping():
+    """Endpoint mínimo para monitoramento externo (UptimeRobot, etc)."""
+    return {"ok": True}
+
+
 @router.get("/health")
 async def health_check():
     return {"status": "ok", "service": "IGS API"}

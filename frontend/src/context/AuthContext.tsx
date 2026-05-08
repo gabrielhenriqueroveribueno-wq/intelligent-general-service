@@ -7,12 +7,13 @@ interface User {
   full_name: string
   role: string
   tenant_id: string | null
+  must_change_password?: boolean
 }
 
 interface AuthContextType {
   user: User | null
   token: string | null
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<{ must_change_password: boolean }>
   logout: () => void
   isLoading: boolean
 }
@@ -60,12 +61,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const res = await api.post('/api/v1/auth/login', { email, password })
-    const { access_token, refresh_token } = res.data
+    const { access_token, refresh_token, must_change_password } = res.data
     localStorage.setItem('access_token', access_token)
     localStorage.setItem('refresh_token', refresh_token)
     api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`
     setToken(access_token)
     await fetchMe()
+    return { must_change_password: must_change_password ?? false }
   }
 
   const logout = () => {

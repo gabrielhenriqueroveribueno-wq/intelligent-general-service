@@ -61,6 +61,11 @@ echo ""
 echo "▶ Status dos containers:"
 $COMPOSE ps
 
+# Configura cron de backup automático
+echo ""
+echo "▶ Configurando backup automático do banco..."
+bash "$APP_DIR/scripts/setup-cron.sh"
+
 DOMAIN=$(grep -E "^DOMAIN=" .env | cut -d= -f2- | tr -d '"' || echo "")
 IP=$(curl -s ifconfig.me 2>/dev/null || echo "seu-ip")
 
@@ -69,16 +74,17 @@ echo "════════════════════════�
 echo "  IGS rodando!"
 echo ""
 if [ -n "$DOMAIN" ] && [ "$DOMAIN" != "localhost" ]; then
-  echo "  API:     https://$DOMAIN"
-  echo "  Docs:    https://$DOMAIN/docs"
-  echo "  Webhook: https://$DOMAIN/api/v1/webhook/whatsapp"
+  echo "  Frontend: https://$DOMAIN"
+  echo "  API Docs: https://$DOMAIN/api/docs"
+  echo "  Webhook:  https://$DOMAIN/api/v1/webhook/whatsapp"
 else
-  echo "  API:     http://$IP:8000  (configure DOMAIN= para HTTPS)"
-  echo "  Docs:    http://$IP:8000/docs"
+  echo "  App:  http://$IP  (configure DOMAIN= para HTTPS)"
+  echo "  Docs: http://$IP/api/docs"
 fi
 echo ""
 echo "  Credenciais padrão:"
 echo "    Super Admin: admin@igs.com / Admin@123456"
 echo ""
-echo "  Para ver logs: docker compose -f docker-compose.prod-light.yml logs -f"
+echo "  Backups:  $APP_DIR/backups  (diário 02:30)"
+echo "  Logs:     docker compose -f docker-compose.prod-light.yml logs -f"
 echo "════════════════════════════════════════"

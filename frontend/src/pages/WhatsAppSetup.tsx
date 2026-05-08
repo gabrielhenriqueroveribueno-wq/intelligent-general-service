@@ -9,6 +9,8 @@ import {
   Send,
   Loader2,
   AlertCircle,
+  Rocket,
+  Circle,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { api } from '../api/client'
@@ -297,6 +299,89 @@ export default function WhatsAppSetup() {
           </button>
         </div>
       </div>
+
+      {/* Meta App Publication Checklist */}
+      <MetaPublicationChecklist
+        hasWhatsApp={settings?.has_whatsapp_config ?? false}
+        webhookUrl={`${window.location.origin}/api/v1/webhook/whatsapp`}
+      />
+    </div>
+  )
+}
+
+function MetaPublicationChecklist({
+  hasWhatsApp,
+  webhookUrl,
+}: {
+  hasWhatsApp: boolean
+  webhookUrl: string
+}) {
+  const items = [
+    {
+      done: hasWhatsApp,
+      label: 'Número WhatsApp verificado e token configurado',
+    },
+    {
+      done: true,
+      label: 'Webhook URL configurada no Meta Business Suite',
+    },
+    {
+      done: false,
+      label: 'Política de Privacidade publicada e configurada no app Meta',
+    },
+    {
+      done: false,
+      label: 'App revisado e aprovado pelo Meta (Live Mode)',
+    },
+    {
+      done: false,
+      label: 'Número de telefone adicionado ao "Allowed Recipients" (prod)',
+    },
+  ]
+
+  const doneCount = items.filter((i) => i.done).length
+
+  return (
+    <div className="card border-orange-100 bg-orange-50/20">
+      <div className="flex items-center gap-3 mb-4">
+        <Rocket size={20} className="text-orange-600" />
+        <div>
+          <h3 className="font-semibold text-gray-900">Publicar App no Meta</h3>
+          <p className="text-xs text-gray-500">
+            {doneCount}/{items.length} itens concluídos — necessário para atender além dos testadores
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-3 mb-4">
+        {items.map((item, i) => (
+          <div key={i} className="flex items-start gap-2.5">
+            {item.done ? (
+              <CheckCircle2 size={16} className="text-green-600 shrink-0 mt-0.5" />
+            ) : (
+              <Circle size={16} className="text-gray-300 shrink-0 mt-0.5" />
+            )}
+            <span className={`text-sm ${item.done ? 'text-gray-500 line-through' : 'text-gray-800'}`}>
+              {item.label}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-white border border-orange-100 rounded-xl p-3 text-xs text-gray-600 space-y-1">
+        <p className="font-medium text-gray-800 mb-1">URL do Webhook para copiar no Meta:</p>
+        <code className="block bg-gray-50 px-2 py-1 rounded font-mono break-all">{webhookUrl}</code>
+      </div>
+
+      <a
+        href="https://developers.facebook.com/apps"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-3 flex items-center gap-1.5 text-sm text-orange-700 hover:text-orange-800 font-medium"
+      >
+        <ExternalLink size={14} />
+        Abrir Meta for Developers
+      </a>
     </div>
   )
 }

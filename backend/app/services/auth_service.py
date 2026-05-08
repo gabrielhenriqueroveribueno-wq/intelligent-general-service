@@ -16,15 +16,16 @@ from app.utils.security import (
 )
 
 
-async def authenticate_user(db: AsyncSession, email: str, password: str) -> tuple[str, str]:
-    """Autentica o usuário e retorna access + refresh tokens."""
+async def authenticate_user(
+    db: AsyncSession, email: str, password: str
+) -> tuple[str, str, bool]:
+    """Autentica o usuário e retorna (access_token, refresh_token, must_change_password)."""
     result = await db.execute(select(User).where(User.email == email, User.is_active))
     user = result.scalar_one_or_none()
 
     if not user or not verify_password(password, user.password_hash):
         raise UnauthorizedError("Email ou senha incorretos")
 
-    # Atualiza last_login_at
     await db.execute(
         update(User).where(User.id == user.id).values(last_login_at=datetime.now(timezone.utc))
     )
@@ -37,7 +38,7 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> tupl
     }
     access_token = create_access_token(token_data)
     refresh_token = create_refresh_token(token_data)
-    return access_token, refresh_token
+    return access_token, refresh_token, user.must_change_password
 
 
 async def refresh_tokens(db: AsyncSession, refresh_token: str) -> tuple[str, str]:

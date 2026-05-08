@@ -10,6 +10,7 @@ class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+    must_change_password: bool = False
 
 
 class RefreshRequest(BaseModel):
@@ -22,6 +23,7 @@ class UserMe(BaseModel):
     full_name: str
     role: str
     tenant_id: str | None = None
+    must_change_password: bool = False
 
     class Config:
         from_attributes = True

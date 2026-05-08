@@ -26,6 +26,7 @@ class User(Base, TimestampMixin):
         String(50), nullable=False, default="agent"
     )  # super_admin, admin, manager, agent
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    must_change_password: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
     # Relationships

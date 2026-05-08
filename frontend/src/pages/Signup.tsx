@@ -70,8 +70,8 @@ export default function Signup() {
         admin_password: form.admin_password,
         phone: form.phone,
       })
-      toast.success('Conta criada! Redirecionando...')
-      navigate('/login?welcome=1')
+      toast.success('Conta criada! Faça login para continuar.')
+      navigate('/login?next=/onboarding')
     } catch (err: any) {
       const msg = err.response?.data?.detail || 'Erro ao criar conta. Tente novamente.'
       toast.error(msg)

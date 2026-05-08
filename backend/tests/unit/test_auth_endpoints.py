@@ -22,7 +22,7 @@ class TestLogin:
     @pytest.mark.asyncio
     async def test_login_success(self, client):
         with patch("app.api.v1.auth.authenticate_user", new_callable=AsyncMock) as mock_auth:
-            mock_auth.return_value = ("access_token_xyz", "refresh_token_xyz")
+            mock_auth.return_value = ("access_token_xyz", "refresh_token_xyz", False)
             resp = await client.post("/api/v1/auth/login", json={
                 "email": "admin@test.com",
                 "password": "senha123",
@@ -31,6 +31,7 @@ class TestLogin:
         data = resp.json()
         assert data["access_token"] == "access_token_xyz"
         assert data["refresh_token"] == "refresh_token_xyz"
+        assert data["must_change_password"] is False
 
     @pytest.mark.asyncio
     async def test_login_invalid_credentials(self, client):
@@ -97,6 +98,7 @@ class TestMe:
         fake_user.full_name = "Test User"
         fake_user.role = "admin"
         fake_user.tenant_id = uuid.uuid4()
+        fake_user.must_change_password = False
 
         app.dependency_overrides[get_current_user] = lambda: fake_user
         try:

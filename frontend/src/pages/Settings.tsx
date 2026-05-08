@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { api } from '../api/client'
-import { Bell, Bot, Clock, Copy, ExternalLink, Key, MessageSquare, Loader2, Check, Send, Webhook } from 'lucide-react'
+import { Bell, Bot, Clock, Copy, ExternalLink, Key, MessageSquare, Loader2, Check, Send, Webhook, Shield, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { usePushNotifications } from '../hooks/usePushNotifications'
 
@@ -416,6 +417,39 @@ export default function Settings() {
         {saving ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
         {saving ? 'Salvando...' : 'Salvar Configurações'}
       </button>
+
+      {/* LGPD */}
+      <div className="card border-red-100 bg-red-50/30">
+        <div className="flex items-center gap-2 mb-3">
+          <Shield size={18} className="text-red-600" />
+          <h3 className="font-semibold text-gray-900">Privacidade e LGPD</h3>
+        </div>
+        <p className="text-sm text-gray-600 mb-4">
+          Conforme a Lei Geral de Proteção de Dados (Lei 13.709/2018), você tem o direito de
+          solicitar a exclusão dos seus dados pessoais.{' '}
+          <Link to="/legal" className="text-blue-600 hover:underline">
+            Leia nossa Política de Privacidade
+          </Link>
+          .
+        </p>
+        <button
+          onClick={async () => {
+            if (!confirm('Tem certeza? Esta ação é irreversível e sua conta será removida.')) return
+            try {
+              await api.delete('/api/v1/auth/me')
+              toast.success('Conta removida.')
+              localStorage.clear()
+              window.location.href = '/login'
+            } catch {
+              toast.error('Erro ao remover conta')
+            }
+          }}
+          className="flex items-center gap-2 text-sm text-red-600 hover:text-red-700 font-medium"
+        >
+          <Trash2 size={14} />
+          Solicitar exclusão da minha conta
+        </button>
+      </div>
     </div>
   )
 }

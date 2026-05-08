@@ -14,8 +14,12 @@ router = APIRouter()
 
 @router.post("/login", response_model=TokenResponse)
 async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
-    access_token, refresh_token = await authenticate_user(db, body.email, body.password)
-    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+    access_token, refresh_token, must_change = await authenticate_user(db, body.email, body.password)
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        must_change_password=must_change,
+    )
 
 
 @router.post("/refresh", response_model=TokenResponse)
@@ -32,7 +36,69 @@ async def me(current_user=Depends(get_current_user)):
         full_name=current_user.full_name,
         role=current_user.role,
         tenant_id=str(current_user.tenant_id) if current_user.tenant_id else None,
+        must_change_password=current_user.must_change_password,
     )
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+@router.post("/change-password", status_code=200)
+async def change_password(
+    body: ChangePasswordRequest,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Troca a senha do usuário autenticado. Limpa must_change_password se aplicável."""
+    from app.utils.security import hash_password, verify_password
+
+    if not verify_password(body.current_password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Senha atual incorreta")
+
+    if len(body.new_password) < 8:
+        raise HTTPException(status_code=422, detail="Nova senha deve ter pelo menos 8 caracteres")
+
+    from sqlalchemy import update as sql_update
+
+    await db.execute(
+        sql_update(type(current_user))
+        .where(type(current_user).id == current_user.id)
+        .values(
+            password_hash=hash_password(body.new_password),
+            must_change_password=False,
+        )
+    )
+    await db.commit()
+    return {"message": "Senha alterada com sucesso"}
+
+
+@router.delete("/me", status_code=200)
+async def delete_me(
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Anonimiza e desativa a conta do usuário autenticado (LGPD Art. 18).
+    Não remove o registro para preservar integridade referencial — apenas anonimiza os dados pessoais.
+    """
+    import uuid as _uuid
+    from sqlalchemy import update as sql_update
+
+    anon_suffix = str(_uuid.uuid4())[:8]
+    await db.execute(
+        sql_update(type(current_user))
+        .where(type(current_user).id == current_user.id)
+        .values(
+            email=f"deleted_{anon_suffix}@removed.invalid",
+            full_name="[Conta removida]",
+            password_hash="",
+            is_active=False,
+        )
+    )
+    await db.commit()
+    return {"message": "Conta removida conforme solicitado (LGPD Art. 18)"}
 
 
 # ── Self-service Signup ───────────────────────────────────────────────────────

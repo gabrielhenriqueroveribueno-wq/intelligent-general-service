@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { Bot, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -13,6 +13,8 @@ interface LoginForm {
 export default function Login() {
   const { login } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const nextPath = searchParams.get('next') || '/app/dashboard'
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
@@ -21,8 +23,12 @@ export default function Login() {
   const onSubmit = async (data: LoginForm) => {
     setIsLoading(true)
     try {
-      await login(data.email, data.password)
-      navigate('/app/dashboard')
+      const { must_change_password } = await login(data.email, data.password)
+      if (must_change_password) {
+        navigate('/change-password')
+      } else {
+        navigate(nextPath)
+      }
     } catch {
       toast.error('Email ou senha incorretos')
     } finally {

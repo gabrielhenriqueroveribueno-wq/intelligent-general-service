@@ -16,7 +16,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.billing import Boleto
 from app.models.service_request import ServiceRequest
-from app.models.slide import SlidePresentation
 from app.models.student import Student
 
 logger = logging.getLogger(__name__)
@@ -35,8 +34,6 @@ ACTION_INTENTS = {
     "library_query",
     "financial_negotiation",
     "certificate_request",
-    "slide_generate",
-    "slide_update",
     "generate_pix",
     "open_ticket",
     "facility_ticket",
@@ -186,128 +183,6 @@ async def _handle_class_enrollment(
         ),
         "protocol": protocol,
     }
-
-
-async def _handle_slide_generate(
-    db: AsyncSession,
-    tenant_id: UUID,
-    contact_id: UUID,
-    entities: dict,
-    student_id: UUID | None,
-) -> dict[str, Any]:
-    """Gera slides via IA para o professor."""
-    from app.models.conversation import Contact
-    from app.services.slide_service import generate_slides
-
-    # Buscar o user (teacher) vinculado ao contato
-    contact_result = await db.execute(select(Contact).where(Contact.id == contact_id))
-    contact = contact_result.scalar_one_or_none()
-
-    if not contact or not contact.employee_id:
-        return {"success": False, "message": "Usuário não identificado como professor."}
-
-    from app.models.user import User
-
-    teacher_result = await db.execute(
-        select(User).where(User.tenant_id == tenant_id, User.role == "teacher").limit(1)
-    )
-    teacher = teacher_result.scalar_one_or_none()
-    if not teacher:
-        return {"success": False, "message": "Professor não encontrado no sistema."}
-
-    subject = entities.get("subject", "Aula")
-    prompt = entities.get("prompt", "Crie uma apresentação sobre o tema da aula")
-    num_slides = entities.get("num_slides")
-
-    try:
-        presentation = await generate_slides(
-            db=db,
-            tenant_id=tenant_id,
-            teacher_id=teacher.id,
-            prompt=prompt,
-            subject=subject,
-            num_slides=int(num_slides) if num_slides else None,
-        )
-        await db.flush()
-
-        return {
-            "success": True,
-            "message": (
-                f"Apresentação '{presentation.title}' criada com sucesso! "
-                f"Total de {presentation.total_slides} slides. "
-                f"Acesse o painel web para visualizar e baixar."
-            ),
-            "presentation_id": str(presentation.id),
-            "title": presentation.title,
-            "total_slides": presentation.total_slides,
-        }
-    except Exception as e:
-        logger.error("Erro ao gerar slides: %s", e)
-        return {"success": False, "message": f"Erro ao gerar slides: {str(e)}"}
-
-
-async def _handle_slide_update(
-    db: AsyncSession,
-    tenant_id: UUID,
-    contact_id: UUID,
-    entities: dict,
-    student_id: UUID | None,
-) -> dict[str, Any]:
-    """Atualiza slides existentes via IA."""
-    from app.services.slide_service import update_slides
-
-    presentation_id = entities.get("presentation_id")
-    prompt = entities.get("prompt", "Atualize a apresentação conforme solicitado")
-
-    if not presentation_id:
-        # Busca a apresentação mais recente do tenant
-        result = await db.execute(
-            select(SlidePresentation)
-            .where(SlidePresentation.tenant_id == tenant_id)
-            .order_by(SlidePresentation.updated_at.desc())
-            .limit(1)
-        )
-        presentation = result.scalar_one_or_none()
-    else:
-        result = await db.execute(
-            select(SlidePresentation).where(
-                SlidePresentation.id == uuid.UUID(presentation_id),
-                SlidePresentation.tenant_id == tenant_id,
-            )
-        )
-        presentation = result.scalar_one_or_none()
-
-    if not presentation:
-        return {"success": False, "message": "Nenhuma apresentação encontrada para atualizar."}
-
-    from app.models.user import User
-
-    teacher_result = await db.execute(select(User).where(User.id == presentation.teacher_id))
-    teacher = teacher_result.scalar_one_or_none()
-
-    try:
-        updated = await update_slides(
-            db=db,
-            presentation=presentation,
-            prompt=prompt,
-            tenant_id=tenant_id,
-            teacher_id=teacher.id if teacher else presentation.teacher_id,
-        )
-        await db.flush()
-
-        return {
-            "success": True,
-            "message": (
-                f"Apresentação '{updated.title}' atualizada (v{updated.version})! "
-                f"Total de {updated.total_slides} slides. "
-                f"Acesse o painel para visualizar."
-            ),
-            "presentation_id": str(updated.id),
-            "version": updated.version,
-        }
-    except Exception as e:
-        logger.error("Erro ao atualizar slides: %s", e)
-        return {"success": False, "message": f"Erro ao atualizar slides: {str(e)}"}
 
 
 async def _handle_generate_pix(
@@ -681,8 +556,6 @@ _HANDLERS = {
     "library_query": _handle_generic_request,
     "financial_negotiation": _handle_financial_negotiation,
     "certificate_request": _handle_generic_request,
-    "slide_generate": _handle_slide_generate,
-    "slide_update": _handle_slide_update,
     "generate_pix": _handle_generate_pix,
     "open_ticket": _handle_open_ticket,
     "facility_ticket": _handle_facility_ticket,
