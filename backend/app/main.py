@@ -61,12 +61,24 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
+    # Em producao, Swagger fica em /api/docs (atras do reverse proxy /api/*)
+    # Em dev, fica direto em /docs
+    if settings.is_production:
+        docs_url = "/api/docs"
+        redoc_url = "/api/redoc"
+        openapi_url = "/api/openapi.json"
+    else:
+        docs_url = "/docs"
+        redoc_url = "/redoc"
+        openapi_url = "/openapi.json"
+
     app = FastAPI(
         title=settings.APP_TITLE,
         description=settings.APP_DESCRIPTION,
         version=settings.APP_VERSION,
-        docs_url="/docs" if not settings.is_production else None,
-        redoc_url="/redoc" if not settings.is_production else None,
+        docs_url=docs_url,
+        redoc_url=redoc_url,
+        openapi_url=openapi_url,
         lifespan=lifespan,
     )
 
