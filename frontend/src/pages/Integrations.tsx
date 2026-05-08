@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Plug,
@@ -182,7 +182,8 @@ export default function Integrations() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {integrations?.map((integ) => (
-                <tr key={integ.id} className="hover:bg-gray-50">
+                <Fragment key={integ.id}>
+                <tr className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm font-medium">{integ.name}</td>
                   <td className="px-4 py-3 text-sm text-gray-600 capitalize">
                     {providers?.find((p) => p.type === integ.provider_type)?.label ||
@@ -279,6 +280,7 @@ export default function Integrations() {
                     </td>
                   </tr>
                 )}
+                </Fragment>
               ))}
               {!integrations?.length && (
                 <tr>

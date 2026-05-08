@@ -23,6 +23,7 @@ import {
   X,
   Crown,
   CreditCard,
+  Presentation as PresentationIcon,
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuth } from '../../context/AuthContext'
@@ -39,6 +40,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { to: '/app/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/app/presentation', icon: PresentationIcon, label: 'Apresentação', adminOnly: true },
   { to: '/app/conversations', icon: MessageSquare, label: 'Conversas' },
   { to: '/app/tickets', icon: Ticket, label: 'Tickets' },
   { to: '/app/students', icon: GraduationCap, label: 'Alunos' },

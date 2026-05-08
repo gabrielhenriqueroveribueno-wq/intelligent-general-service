@@ -50,6 +50,7 @@ const UserManagement = lazy(() => import('./pages/UserManagement'))
 const Status = lazy(() => import('./pages/Status'))
 const AuditLog = lazy(() => import('./pages/AuditLog'))
 const SuperAdmin = lazy(() => import('./pages/SuperAdmin'))
+const Presentation = lazy(() => import('./pages/Presentation'))
 
 function Lazy({ children }: { children: React.ReactNode }) {
   return (
@@ -122,6 +123,18 @@ export default function App() {
             <Route path="super-admin" element={<Lazy><SuperAdmin /></Lazy>} />
             <Route path="help" element={<Lazy><Help /></Lazy>} />
           </Route>
+
+          {/* Apresentação fullscreen — fora do Layout pra ocupar tela toda */}
+          <Route
+            path="/app/presentation"
+            element={
+              <ProtectedRoute>
+                <Lazy>
+                  <Presentation />
+                </Lazy>
+              </ProtectedRoute>
+            }
+          />
 
           {/* Aliases compat */}
           <Route path="/dashboard" element={<Navigate to="/app/dashboard" replace />} />

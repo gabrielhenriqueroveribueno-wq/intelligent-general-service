@@ -15,6 +15,9 @@ export default {
       animation: {
         'slide-up': 'slide-up 250ms ease-out',
         'fade-in': 'fade-in 200ms ease-out',
+        typing: 'typing 1.2s ease-in-out infinite',
+        'flash-green': 'flash-green 4s ease-out',
+        'slide-in-right': 'slide-in-right 300ms cubic-bezier(0.16, 1, 0.3, 1)',
       },
       keyframes: {
         'slide-up': {
@@ -24,6 +27,19 @@ export default {
         'fade-in': {
           from: { opacity: '0' },
           to: { opacity: '1' },
+        },
+        typing: {
+          '0%, 60%, 100%': { opacity: '0.3', transform: 'translateY(0)' },
+          '30%': { opacity: '1', transform: 'translateY(-3px)' },
+        },
+        'flash-green': {
+          '0%': { backgroundColor: 'rgb(220 252 231)' },
+          '60%': { backgroundColor: 'rgb(220 252 231)' },
+          '100%': { backgroundColor: 'transparent' },
+        },
+        'slide-in-right': {
+          from: { opacity: '0', transform: 'translateX(20px)' },
+          to: { opacity: '1', transform: 'translateX(0)' },
         },
       },
     },
