@@ -60,27 +60,58 @@ async def lifespan(app: FastAPI):
     logger.info("IGS API encerrando...")
 
 
+def _register_docs_endpoints(app: FastAPI, openapi_url: str) -> None:
+    """
+    Serve Swagger UI e ReDoc com assets de unpkg.com (mais confiavel
+    que jsdelivr em redes corporativas/operadoras BR que bloqueiam CDN).
+    """
+    from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
+
+    docs_path = "/api/docs" if settings.is_production else "/docs"
+    redoc_path = "/api/redoc" if settings.is_production else "/redoc"
+
+    @app.get(docs_path, include_in_schema=False)
+    async def custom_swagger_ui_html():
+        return get_swagger_ui_html(
+            openapi_url=openapi_url,
+            title=f"{settings.APP_TITLE} - Swagger UI",
+            swagger_js_url="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui-bundle.js",
+            swagger_css_url="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui.css",
+            swagger_favicon_url="/favicon.ico",
+        )
+
+    @app.get(redoc_path, include_in_schema=False)
+    async def custom_redoc_html():
+        return get_redoc_html(
+            openapi_url=openapi_url,
+            title=f"{settings.APP_TITLE} - ReDoc",
+            redoc_js_url="https://unpkg.com/redoc@2.1.5/bundles/redoc.standalone.js",
+            redoc_favicon_url="/favicon.ico",
+            with_google_fonts=False,
+        )
+
+
 def create_app() -> FastAPI:
     # Em producao, Swagger fica em /api/docs (atras do reverse proxy /api/*)
     # Em dev, fica direto em /docs
     if settings.is_production:
-        docs_url = "/api/docs"
-        redoc_url = "/api/redoc"
         openapi_url = "/api/openapi.json"
     else:
-        docs_url = "/docs"
-        redoc_url = "/redoc"
         openapi_url = "/openapi.json"
 
+    # docs_url/redoc_url=None: registramos endpoints customizados abaixo
+    # usando CDN unpkg.com (mais confiavel que jsdelivr em redes restritas BR)
     app = FastAPI(
         title=settings.APP_TITLE,
         description=settings.APP_DESCRIPTION,
         version=settings.APP_VERSION,
-        docs_url=docs_url,
-        redoc_url=redoc_url,
+        docs_url=None,
+        redoc_url=None,
         openapi_url=openapi_url,
         lifespan=lifespan,
     )
+
+    _register_docs_endpoints(app, openapi_url)
 
     # ── Middleware ────────────────────────────────────────────
     app.add_middleware(
