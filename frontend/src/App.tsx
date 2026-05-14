@@ -12,6 +12,8 @@ import CookieBanner from './components/common/CookieBanner'
 
 // Eager: páginas críticas / first paint
 import Login from './pages/Login'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 import ChangePassword from './pages/ChangePassword'
 import Onboarding from './pages/Onboarding'
 import Landing from './pages/Landing'
@@ -51,6 +53,7 @@ const Status = lazy(() => import('./pages/Status'))
 const AuditLog = lazy(() => import('./pages/AuditLog'))
 const SuperAdmin = lazy(() => import('./pages/SuperAdmin'))
 const Presentation = lazy(() => import('./pages/Presentation'))
+const PitchDeck = lazy(() => import('./pages/PitchDeck'))
 
 function Lazy({ children }: { children: React.ReactNode }) {
   return (
@@ -84,6 +87,8 @@ export default function App() {
           {/* Login / Signup / Onboarding / Change Password (sem layout) */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/change-password" element={<ChangePassword />} />
 
@@ -133,6 +138,16 @@ export default function App() {
                   <Presentation />
                 </Lazy>
               </ProtectedRoute>
+            }
+          />
+
+          {/* Pitch deck comercial — público (acessível sem login para envio a investidores) */}
+          <Route
+            path="/pitch"
+            element={
+              <Lazy>
+                <PitchDeck />
+              </Lazy>
             }
           />
 

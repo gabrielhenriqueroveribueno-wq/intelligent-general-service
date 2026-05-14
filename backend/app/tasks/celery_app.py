@@ -20,6 +20,7 @@ celery_app = Celery(
         "app.tasks.evasion_tasks",
         "app.tasks.push_tasks",
         "app.tasks.anonymization_tasks",
+        "app.tasks.ai_budget_tasks",
     ],
 )
 
@@ -103,6 +104,11 @@ celery_app.conf.update(
         "auto-anonymize-lgpd": {
             "task": "app.tasks.anonymization_tasks.auto_anonymize_task",
             "schedule": crontab(hour=2, minute=0, day_of_month=1),
+        },
+        # Alerta de budget mensal de IA — todo dia às 8h
+        "ai-budget-check": {
+            "task": "app.tasks.ai_budget_tasks.check_ai_budget_task",
+            "schedule": crontab(hour=8, minute=0),
         },
     },
 )

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { Bot, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -98,6 +98,12 @@ export default function Login() {
               'Entrar'
             )}
           </button>
+
+          <p className="text-center text-sm text-gray-500">
+            <Link to="/forgot-password" className="text-blue-600 hover:underline">
+              Esqueceu sua senha?
+            </Link>
+          </p>
         </form>
       </div>
     </div>

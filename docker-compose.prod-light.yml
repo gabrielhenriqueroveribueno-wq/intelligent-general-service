@@ -8,7 +8,7 @@ services:
   caddy:
     image: caddy:2-alpine
     container_name: igs_caddy
-    restart: unless-stopped
+    restart: always
     ports:
       - "80:80"
       - "443:443"
@@ -17,9 +17,18 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+      - caddy_logs:/var/log/caddy
     depends_on:
-      - api
-      - frontend
+      api:
+        condition: service_started
+      frontend:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "caddy", "version"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     deploy:
       resources:
         limits:
@@ -31,7 +40,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.prod
     container_name: igs_frontend
-    restart: unless-stopped
+    restart: always
     deploy:
       resources:
         limits:
@@ -43,7 +52,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: igs_api
-    restart: unless-stopped
+    restart: always
     env_file: .env
     environment:
       - POSTGRES_HOST=postgres
@@ -67,7 +76,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: igs_celery_worker
-    restart: unless-stopped
+    restart: always
     env_file: .env
     environment:
       - POSTGRES_HOST=postgres
@@ -86,7 +95,7 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: igs_postgres
-    restart: unless-stopped
+    restart: always
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-igs_db}
       POSTGRES_USER: ${POSTGRES_USER:-igs_user}
@@ -114,7 +123,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: igs_redis
-    restart: unless-stopped
+    restart: always
     volumes:
       - redis_data:/data
     healthcheck:
@@ -133,3 +142,4 @@ volumes:
   redis_data:
   caddy_data:
   caddy_config:
+  caddy_logs:

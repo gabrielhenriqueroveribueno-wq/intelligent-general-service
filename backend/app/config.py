@@ -85,6 +85,13 @@ class Settings(BaseSettings):
     RLS_APP_PASSWORD: str = "igs_app_secure_2026"
     RLS_WORKER_PASSWORD: str = "igs_worker_secure_2026"
 
+    # Frontend base URL (used for password reset links)
+    FRONTEND_URL: str = "http://localhost:3000"
+
+    # AI budget alerting
+    AI_MONTHLY_BUDGET_USD: float = 50.0
+    AI_BUDGET_ALERT_THRESHOLD: float = 0.8
+
     # CORS
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
 

@@ -1,9 +1,46 @@
+import hashlib
+import json
 import logging
 from typing import Any, Dict, Optional
 
 from app.services.ai_client import ai_complete
 
 logger = logging.getLogger(__name__)
+
+_AI_CACHE_TTL = 300  # 5 minutes — short enough to stay fresh, long enough to absorb spikes
+_CACHEABLE_INTENTS = {"greeting", "general_query", "kb_query", "faq"}
+
+
+async def _cache_get(key: str) -> Optional[tuple[str, int]]:
+    try:
+        import redis.asyncio as aioredis
+        from app.config import settings
+
+        client = aioredis.from_url(settings.REDIS_URL.replace("/0", "/5"))
+        try:
+            raw = await client.get(key)
+            if raw:
+                data = json.loads(raw)
+                return data["text"], data["tokens"]
+        finally:
+            await client.aclose()
+    except Exception:
+        pass
+    return None
+
+
+async def _cache_set(key: str, text: str, tokens: int) -> None:
+    try:
+        import redis.asyncio as aioredis
+        from app.config import settings
+
+        client = aioredis.from_url(settings.REDIS_URL.replace("/0", "/5"))
+        try:
+            await client.setex(key, _AI_CACHE_TTL, json.dumps({"text": text, "tokens": tokens}))
+        finally:
+            await client.aclose()
+    except Exception:
+        pass
 
 BOT_SYSTEM_PROMPT = """Você é um assistente virtual universitário chamado {bot_name}.
 Você atende alunos e funcionários da instituição via WhatsApp.
@@ -65,6 +102,15 @@ async def generate_response(
         conversation_history=history_str or "Início da conversa.",
     )
 
+    cache_key: Optional[str] = None
+    if intent in _CACHEABLE_INTENTS:
+        fingerprint = hashlib.sha256(f"{system}|{message}".encode()).hexdigest()
+        cache_key = f"ai_resp:{fingerprint}"
+        cached = await _cache_get(cache_key)
+        if cached:
+            logger.debug("AI cache hit for intent=%s key=%s", intent, cache_key[:12])
+            return cached
+
     try:
         from app.config import settings
 
@@ -74,6 +120,8 @@ async def generate_response(
             max_tokens=settings.CLAUDE_MAX_TOKENS,
             api_key=api_key,
         )
+        if cache_key:
+            await _cache_set(cache_key, result.text, result.tokens_used)
         return result.text, result.tokens_used
 
     except Exception as e:

@@ -18,6 +18,11 @@ ENV/
 .env
 .env.local
 .env.*.local
+
+# SSH keys (Oracle Cloud VM access)
+keys/
+*.key
+*.pem
 !.env.example
 
 # IDE

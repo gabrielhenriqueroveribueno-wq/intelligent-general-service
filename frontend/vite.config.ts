@@ -8,14 +8,15 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
-      manifest: false, // usamos /public/manifest.json customizado
+      manifest: false,
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.ts',
       injectManifest: {
-        globPatterns: ['**/*.{js,css,html,svg,png,jpg,woff2}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,jpg,ico,woff2}'],
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
       },
-      includeAssets: ['favicon.svg', 'icons/*.svg'],
+      includeAssets: ['favicon.svg', 'manifest.json'],
       devOptions: {
         enabled: false,
         type: 'module',

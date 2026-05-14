@@ -34,6 +34,7 @@ export default function Signup() {
     phone: '',
   })
   const [loading, setLoading] = useState(false)
+  const [termsAccepted, setTermsAccepted] = useState(false)
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = e.target
@@ -52,6 +53,10 @@ export default function Signup() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (!termsAccepted) {
+      toast.error('Você precisa aceitar os Termos de Uso e a Política de Privacidade')
+      return
+    }
     if (form.admin_password !== form.admin_password_confirm) {
       toast.error('As senhas não coincidem')
       return
@@ -212,22 +217,35 @@ export default function Signup() {
               </div>
             </div>
 
+            <label className="flex items-start gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={termsAccepted}
+                onChange={e => setTermsAccepted(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 flex-shrink-0"
+              />
+              <span className="text-xs text-gray-600 leading-relaxed">
+                Li e aceito os{' '}
+                <a href="/legal" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                  Termos de Uso
+                </a>
+                {' '}e a{' '}
+                <a href="/legal#privacidade" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                  Política de Privacidade
+                </a>
+                , incluindo o tratamento dos meus dados conforme a LGPD.
+              </span>
+            </label>
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !termsAccepted}
               className="w-full btn-primary py-3 flex items-center justify-center gap-2 disabled:opacity-60"
             >
               {loading ? <Loader2 size={18} className="animate-spin" /> : null}
               {loading ? 'Criando conta...' : 'Criar conta grátis'}
             </button>
           </form>
-
-          <p className="text-xs text-gray-500 mt-4 text-center">
-            Ao criar, você concorda com os{' '}
-            <a href="/legal" className="text-blue-600 hover:underline">Termos de Uso</a>
-            {' '}e{' '}
-            <a href="/legal#privacidade" className="text-blue-600 hover:underline">Política de Privacidade</a>.
-          </p>
           <p className="text-sm text-gray-600 mt-3 text-center">
             Já tem conta?{' '}
             <Link to="/login" className="text-blue-600 hover:underline font-medium">Entrar</Link>

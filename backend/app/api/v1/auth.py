@@ -74,6 +74,66 @@ async def change_password(
     return {"message": "Senha alterada com sucesso"}
 
 
+@router.get("/me/export")
+async def export_me(
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    LGPD Art. 18 — Portabilidade: exporta todos os dados pessoais do usuário autenticado
+    em formato JSON legível por máquina.
+    """
+    from datetime import datetime, timezone
+
+    from sqlalchemy import select
+
+    from app.models.conversation import Conversation
+    from app.models.ticket import Ticket
+
+    # Tickets do usuário (se for agente atribuído)
+    tickets_q = await db.execute(
+        select(Ticket).where(Ticket.tenant_id == current_user.tenant_id)
+        .where(Ticket.assigned_to == current_user.id)
+        .limit(500)
+    )
+    tickets = [
+        {
+            "id": str(t.id),
+            "subject": t.subject,
+            "status": t.status,
+            "created_at": t.created_at.isoformat() if t.created_at else None,
+        }
+        for t in tickets_q.scalars().all()
+    ]
+
+    export = {
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "data_controller": "IGS — Intelligent General Service",
+        "legal_basis": "LGPD Art. 18, inciso V — Portabilidade dos dados",
+        "user": {
+            "id": str(current_user.id),
+            "email": current_user.email,
+            "full_name": current_user.full_name,
+            "role": current_user.role,
+            "tenant_id": str(current_user.tenant_id) if current_user.tenant_id else None,
+            "is_active": current_user.is_active,
+            "last_login_at": current_user.last_login_at.isoformat() if current_user.last_login_at else None,
+            "created_at": current_user.created_at.isoformat() if hasattr(current_user, "created_at") and current_user.created_at else None,
+        },
+        "tickets_assigned": tickets,
+    }
+
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(
+        content=export,
+        headers={
+            "Content-Disposition": f'attachment; filename="igs-dados-{current_user.id}.json"',
+            "Content-Type": "application/json; charset=utf-8",
+        },
+    )
+
+
 @router.delete("/me", status_code=200)
 async def delete_me(
     current_user=Depends(get_current_user),
@@ -99,6 +159,94 @@ async def delete_me(
     )
     await db.commit()
     return {"message": "Conta removida conforme solicitado (LGPD Art. 18)"}
+
+
+# ── Password Recovery ────────────────────────────────────────────────────────
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+@router.post("/forgot-password", status_code=202)
+async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Envia email com link de reset de senha.
+    Retorna 202 sempre (não revela se o email existe).
+    """
+    import secrets
+
+    import redis.asyncio as aioredis
+
+    from app.models.user import User
+
+    result = await db.execute(select(User).where(User.email == body.email, User.is_active.is_(True)))
+    user = result.scalar_one_or_none()
+
+    if user:
+        token = secrets.token_urlsafe(32)
+        redis_client = aioredis.from_url(settings.REDIS_URL.replace("/0", "/4"))
+        try:
+            await redis_client.setex(f"pwd_reset:{token}", 1800, str(user.id))
+        finally:
+            await redis_client.aclose()
+
+        reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
+        try:
+            from app.services.email_service import send_email_async
+            from app.services.email_templates import password_reset as reset_tpl
+
+            await send_email_async(
+                to=user.email,
+                subject="Redefinição de senha — IGS",
+                body=reset_tpl(user.full_name, reset_url),
+            )
+        except Exception:
+            pass
+
+    return {"message": "Se o email existir, você receberá as instruções em breve."}
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+@router.post("/reset-password", status_code=200)
+async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+    """Redefine a senha usando o token recebido por email."""
+    import redis.asyncio as aioredis
+
+    from app.models.user import User
+    from app.utils.security import hash_password
+
+    if len(body.new_password) < 8:
+        raise HTTPException(status_code=422, detail="Senha deve ter pelo menos 8 caracteres.")
+
+    redis_client = aioredis.from_url(settings.REDIS_URL.replace("/0", "/4"))
+    try:
+        user_id = await redis_client.get(f"pwd_reset:{body.token}")
+        if not user_id:
+            raise HTTPException(status_code=400, detail="Token inválido ou expirado.")
+        await redis_client.delete(f"pwd_reset:{body.token}")
+    finally:
+        await redis_client.aclose()
+
+    from sqlalchemy import update as sql_update
+    import uuid
+
+    result = await db.execute(select(User).where(User.id == uuid.UUID(user_id.decode())))
+    user = result.scalar_one_or_none()
+    if not user or not user.is_active:
+        raise HTTPException(status_code=400, detail="Usuário não encontrado.")
+
+    await db.execute(
+        sql_update(User)
+        .where(User.id == user.id)
+        .values(password_hash=hash_password(body.new_password), must_change_password=False)
+    )
+    await db.commit()
+    return {"message": "Senha redefinida com sucesso. Você já pode fazer login."}
 
 
 # ── Self-service Signup ───────────────────────────────────────────────────────

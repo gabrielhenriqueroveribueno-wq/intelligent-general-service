@@ -3,6 +3,21 @@
 # DOMAIN deve ser definido no .env (ex: igs-anchieta.duckdns.org)
 # Sem domínio: use o IP com DOMAIN= vazio → escuta em :80
 
+{
+    # Configurações globais
+    admin off
+    # Log global — rotação automática (10MB max, 5 arquivos mantidos)
+    log {
+        output file /var/log/caddy/caddy.log {
+            roll_size 10MiB
+            roll_keep 5
+            roll_keep_for 720h
+        }
+        format json
+        level INFO
+    }
+}
+
 {$DOMAIN::80} {
 
     # ── API Backend ───────────────────────────────────────────
@@ -18,12 +33,6 @@
     # ── Frontend estático (React SPA) ─────────────────────────
     handle {
         reverse_proxy frontend:80
-    }
-
-    # ── Logs ──────────────────────────────────────────────────
-    log {
-        output stdout
-        format console
     }
 
     # ── Headers de segurança ──────────────────────────────────
