@@ -54,6 +54,7 @@ const AuditLog = lazy(() => import('./pages/AuditLog'))
 const SuperAdmin = lazy(() => import('./pages/SuperAdmin'))
 const Presentation = lazy(() => import('./pages/Presentation'))
 const PitchDeck = lazy(() => import('./pages/PitchDeck'))
+const Changelog = lazy(() => import('./pages/Changelog'))
 
 function Lazy({ children }: { children: React.ReactNode }) {
   return (
@@ -83,6 +84,7 @@ export default function App() {
           {/* Páginas públicas sem layout de navegação */}
           <Route path="/status" element={<Lazy><PublicStatus /></Lazy>} />
           <Route path="/tour" element={<Lazy><Tour /></Lazy>} />
+          <Route path="/changelog" element={<Lazy><Changelog /></Lazy>} />
 
           {/* Login / Signup / Onboarding / Change Password (sem layout) */}
           <Route path="/login" element={<Login />} />

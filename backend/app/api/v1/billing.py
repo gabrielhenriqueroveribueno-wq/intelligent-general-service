@@ -2,7 +2,8 @@
 Rotas de cobranca SaaS.
 
 GET  /billing/status         — status do plano do tenant atual
-POST /billing/checkout       — gera link de pagamento MP para mensalidade
+POST /billing/checkout       — gera link de pagamento avulso (one-shot)
+POST /billing/subscribe      — cria assinatura recorrente via pre_approval MP
 POST /billing/webhook        — recebe notificacoes do Mercado Pago
 """
 
@@ -47,6 +48,24 @@ async def create_checkout(
     return result
 
 
+@router.post("/subscribe")
+async def create_subscription(
+    plan: str = "starter",
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Cria assinatura recorrente via Mercado Pago pre_approval."""
+    if plan not in ("starter", "pro"):
+        raise HTTPException(status_code=400, detail="Plano inválido. Use 'starter' ou 'pro'.")
+
+    result = await saas_billing_service.create_recurring_subscription(
+        db, current_user.tenant_id, plan
+    )
+    if not result["success"]:
+        raise HTTPException(status_code=422, detail=result.get("message", "Erro ao criar assinatura"))
+    return result
+
+
 @router.post("/webhook")
 async def billing_webhook(
     request: Request,
@@ -72,5 +91,9 @@ async def billing_webhook(
     if topic in ("payment", "merchant_order") and data_id:
         result = await saas_billing_service.process_saas_webhook(db, data_id)
         logger.info("SaaS webhook processado: topic=%s id=%s result=%s", topic, data_id, result)
+
+    elif topic in ("preapproval", "subscription_preapproval") and data_id:
+        result = await saas_billing_service.process_preapproval_webhook(db, data_id)
+        logger.info("Pre_approval webhook: id=%s result=%s", data_id, result)
 
     return {"received": True}

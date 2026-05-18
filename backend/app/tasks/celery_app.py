@@ -21,6 +21,7 @@ celery_app = Celery(
         "app.tasks.push_tasks",
         "app.tasks.anonymization_tasks",
         "app.tasks.ai_budget_tasks",
+        "app.tasks.trial_tasks",
     ],
 )
 
@@ -109,6 +110,11 @@ celery_app.conf.update(
         "ai-budget-check": {
             "task": "app.tasks.ai_budget_tasks.check_ai_budget_task",
             "schedule": crontab(hour=8, minute=0),
+        },
+        # Verificação de trial expirado — todo dia às 6h
+        "check-trial-expiry": {
+            "task": "app.tasks.trial_tasks.check_trial_expiry_task",
+            "schedule": crontab(hour=6, minute=0),
         },
     },
 )

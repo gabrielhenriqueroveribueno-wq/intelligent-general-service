@@ -12,6 +12,7 @@ from app.api.v1 import (
     health,
     integrations,
     knowledge_base,
+    leads,
     metrics,
     onboarding,
     push_subscriptions,
@@ -63,3 +64,4 @@ api_router.include_router(student_portal.router, prefix="/portal/student", tags=
 api_router.include_router(push_subscriptions.router, tags=["Push Notifications"])
 api_router.include_router(evasion.router, tags=["Evasion"])
 api_router.include_router(billing.router, prefix="/billing", tags=["SaaS Billing"])
+api_router.include_router(leads.router, prefix="/leads", tags=["Leads"])

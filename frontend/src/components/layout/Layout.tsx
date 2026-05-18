@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Header from './Header'
+import TrialBanner from '../common/TrialBanner'
+import PaywallModal from '../common/PaywallModal'
 import { useNotifications } from '../../hooks/useNotifications'
 
 export default function Layout() {
@@ -10,6 +12,8 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen bg-gray-50">
+      <PaywallModal />
+
       {/* Overlay mobile */}
       {sidebarOpen && (
         <div
@@ -21,6 +25,7 @@ export default function Layout() {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col overflow-hidden">
+        <TrialBanner />
         <Header
           onMenuToggle={() => setSidebarOpen((v) => !v)}
           unreadCount={unreadCount}

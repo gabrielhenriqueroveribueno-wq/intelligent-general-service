@@ -37,8 +37,18 @@ api.interceptors.response.use(
       }
     }
 
+    const status = error.response?.status
+    if (status === 402 || status === 403) {
+      const detail = error.response?.data?.detail || ''
+      if (detail.includes('trial') || detail.includes('plano') || detail.includes('plan') || status === 402) {
+        // Redirect to billing instead of showing a toast for plan limit errors
+        window.location.href = '/app/billing'
+        return Promise.reject(error)
+      }
+    }
+
     const message = error.response?.data?.detail || 'Ocorreu um erro. Tente novamente.'
-    if (error.response?.status !== 401) {
+    if (status !== 401) {
       toast.error(message)
     }
 

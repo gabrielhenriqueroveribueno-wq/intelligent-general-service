@@ -14,6 +14,7 @@ import {
   Briefcase,
   HelpCircle,
 } from 'lucide-react'
+import LeadForm from '../components/common/LeadForm'
 
 export default function Landing() {
   return (
@@ -41,12 +42,20 @@ export default function Landing() {
               >
                 Ver demonstração ao vivo <ArrowRight size={18} />
               </Link>
-              <a
-                href="mailto:contato@igs.com.br?subject=Quero conhecer o IGS"
+              <button
+                onClick={() => document.getElementById('lead-form-section')?.scrollIntoView({ behavior: 'smooth' })}
                 className="border-2 border-white/40 px-6 py-3 rounded-lg font-semibold hover:bg-white/10 inline-flex items-center justify-center gap-2"
               >
                 Falar com vendas
-              </a>
+              </button>
+            </div>
+            <div className="mt-3">
+              <Link
+                to="/login"
+                className="text-blue-200 text-sm underline hover:text-white"
+              >
+                Acessar conta demo →
+              </Link>
             </div>
             <div className="flex items-center gap-6 mt-8 text-sm text-blue-100">
               <div className="flex items-center gap-1.5">
@@ -413,30 +422,21 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ─── CTA FINAL ─────────────────────────────────── */}
-      <section className="py-16 px-6 bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
-        <div className="max-w-3xl mx-auto text-center">
-          <Zap className="mx-auto mb-4 text-yellow-300" size={48} />
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Pronto pra liberar sua equipe?
-          </h2>
-          <p className="text-blue-100 mb-8 text-lg">
-            Agende uma demonstração gratuita de 30 minutos. Te mostramos a Billie
-            atendendo ao vivo no seu próprio WhatsApp.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <a
-              href="mailto:contato@igs.com.br?subject=Quero agendar uma demo"
-              className="bg-white text-blue-700 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 inline-flex items-center justify-center gap-2"
-            >
-              Agendar demonstração <ArrowRight size={18} />
-            </a>
-            <Link
-              to="/login"
-              className="border-2 border-white/40 px-6 py-3 rounded-lg font-semibold hover:bg-white/10 inline-flex items-center justify-center gap-2"
-            >
-              Ver demo agora
-            </Link>
+      {/* ─── LEAD FORM ─────────────────────────────────── */}
+      <section id="lead-form-section" className="py-16 px-6 bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
+        <div className="max-w-3xl mx-auto">
+          <div className="text-center mb-10">
+            <Zap className="mx-auto mb-4 text-yellow-300" size={48} />
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              Pronto pra liberar sua equipe?
+            </h2>
+            <p className="text-blue-100 text-lg">
+              Agende uma demonstração gratuita de 30 minutos. Te mostramos a Billie
+              atendendo ao vivo no seu próprio WhatsApp.
+            </p>
+          </div>
+          <div className="bg-white rounded-2xl p-8 max-w-lg mx-auto">
+            <LeadForm source="landing_cta" />
           </div>
         </div>
       </section>

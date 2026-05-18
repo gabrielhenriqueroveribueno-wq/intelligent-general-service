@@ -105,6 +105,28 @@ export default function Login() {
             </Link>
           </p>
         </form>
+
+        <div className="mt-6 pt-6 border-t border-gray-100">
+          <p className="text-xs text-center text-gray-400 mb-3">Ou acesse com conta demo</p>
+          <button
+            type="button"
+            onClick={async () => {
+              setIsLoading(true)
+              try {
+                await login('gestor@anchieta.edu.br', 'Gestor@2026')
+                navigate('/app/dashboard')
+              } catch {
+                toast.error('Conta demo não disponível')
+              } finally {
+                setIsLoading(false)
+              }
+            }}
+            disabled={isLoading}
+            className="w-full py-2.5 border-2 border-dashed border-blue-200 rounded-lg text-sm text-blue-600 font-medium hover:bg-blue-50 transition-colors"
+          >
+            Acessar demo — gestor@anchieta.edu.br
+          </button>
+        </div>
       </div>
     </div>
   )

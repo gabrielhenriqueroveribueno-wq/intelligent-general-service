@@ -79,15 +79,28 @@ export default function PublicLayout() {
                 <Link to="/status" className="hover:text-gray-900">Status</Link>
               </li>
               <li>
+                <Link to="/changelog" className="hover:text-gray-900">Changelog</Link>
+              </li>
+              <li>
                 <Link to="/legal" className="hover:text-gray-900">Termos & Privacidade</Link>
               </li>
             </ul>
           </div>
           <div>
-            <h4 className="font-semibold text-gray-900 mb-2">Contato</h4>
+            <h4 className="font-semibold text-gray-900 mb-2">Contato & Recursos</h4>
             <ul className="space-y-1">
               <li>contato@igs.com.br</li>
               <li>WhatsApp: (11) 99999-9999</li>
+              <li className="mt-2">
+                <a
+                  href="/api/docs"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-gray-900"
+                >
+                  Documentação da API →
+                </a>
+              </li>
             </ul>
           </div>
         </div>

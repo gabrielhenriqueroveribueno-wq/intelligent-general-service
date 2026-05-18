@@ -179,6 +179,26 @@ async def get_billing_status(db: AsyncSession, tenant_id: uuid.UUID) -> dict:
         return {"found": False}
 
     plan = tenant.plan or "starter"
+    now = datetime.now(timezone.utc)
+
+    trial_ends_at = None
+    trial_days_left = None
+    trial_expired = False
+
+    if plan in ("trial", "trial_expired") and tenant.settings:
+        raw = tenant.settings.get("trial_ends_at")
+        if raw:
+            try:
+                dt = datetime.fromisoformat(raw)
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                trial_ends_at = dt.isoformat()
+                diff = (dt - now).days
+                trial_days_left = max(diff, 0)
+                trial_expired = dt <= now
+            except (ValueError, TypeError):
+                pass
+
     return {
         "found": True,
         "tenant_id": str(tenant_id),
@@ -187,7 +207,133 @@ async def get_billing_status(db: AsyncSession, tenant_id: uuid.UUID) -> dict:
         "is_active": tenant.is_active,
         "monthly_price": PLAN_PRICES.get(plan, PLAN_PRICES["starter"]),
         "plan_label": PLAN_LABELS.get(plan, plan.title()),
+        "trial_ends_at": trial_ends_at,
+        "trial_days_left": trial_days_left,
+        "trial_expired": trial_expired,
     }
+
+
+async def create_recurring_subscription(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    plan: str = "starter",
+) -> dict:
+    """Cria pre_approval (assinatura recorrente) no Mercado Pago."""
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = result.scalar_one_or_none()
+    if not tenant:
+        return {"success": False, "message": "Tenant não encontrado."}
+
+    access_token = settings.MP_ACCESS_TOKEN
+    if not access_token:
+        return {"success": False, "message": "Mercado Pago não configurado."}
+
+    price = PLAN_PRICES.get(plan, PLAN_PRICES["starter"])
+    if price == 0:
+        return {"success": False, "message": "Plano Enterprise é negociado manualmente."}
+
+    label = PLAN_LABELS.get(plan, "IGS")
+    back_url = f"{settings.FRONTEND_URL}/app/billing?subscription=success"
+    notification_url = settings.SAAS_BILLING_NOTIFICATION_URL or ""
+
+    payload: dict = {
+        "reason": f"Assinatura {label} — IGS",
+        "external_reference": f"sub_{tenant_id.hex}_{plan}",
+        "auto_recurring": {
+            "frequency": 1,
+            "frequency_type": "months",
+            "transaction_amount": price,
+            "currency_id": "BRL",
+        },
+        "back_url": back_url,
+        "status": "pending",
+    }
+
+    if notification_url:
+        payload["notification_url"] = notification_url
+
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(
+                f"{MP_API_URL}/preapproval",
+                json=payload,
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+
+        if resp.status_code not in (200, 201):
+            logger.error("MP pre_approval error %d: %s", resp.status_code, resp.text[:200])
+            logger.info("Fallback para checkout avulso (tenant=%s)", tenant_id)
+            return await create_saas_checkout(db, tenant_id, plan)
+
+        data = resp.json()
+        return {
+            "success": True,
+            "subscription_url": data.get("init_point", ""),
+            "preapproval_id": data.get("id", ""),
+            "plan": plan,
+            "amount": str(price),
+            "billing_type": "recurring",
+            "tenant_name": tenant.name,
+        }
+
+    except Exception as exc:
+        logger.error("Erro ao criar pre_approval: %s", exc)
+        return await create_saas_checkout(db, tenant_id, plan)
+
+
+async def process_preapproval_webhook(db: AsyncSession, preapproval_id: str) -> dict:
+    """Processa evento de pre_approval (assinatura recorrente)."""
+    access_token = settings.MP_ACCESS_TOKEN
+    if not access_token:
+        return {"success": False}
+
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                f"{MP_API_URL}/preapproval/{preapproval_id}",
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+
+        if resp.status_code != 200:
+            return {"success": False, "message": "Erro ao consultar pre_approval."}
+
+        data = resp.json()
+        status = data.get("status", "")
+        external_ref = data.get("external_reference", "")
+
+        if not external_ref or not external_ref.startswith("sub_"):
+            return {"success": False, "message": "Referência não é assinatura SaaS."}
+
+        parts = external_ref.split("_", 2)
+        if len(parts) < 3:
+            return {"success": False, "message": "Referência inválida."}
+
+        try:
+            tenant_id = uuid.UUID(parts[1])
+        except ValueError:
+            return {"success": False, "message": "tenant_id inválido."}
+
+        plan = parts[2]
+
+        if status == "authorized":
+            await db.execute(
+                update(Tenant).where(Tenant.id == tenant_id).values(is_active=True, plan=plan)
+            )
+            await db.commit()
+            logger.info("Assinatura ativada: tenant=%s plan=%s", tenant_id, plan)
+            return {"success": True, "tenant_id": str(tenant_id), "plan": plan, "status": "active"}
+
+        elif status in ("cancelled", "paused"):
+            await db.execute(update(Tenant).where(Tenant.id == tenant_id).values(is_active=False))
+            await db.commit()
+            logger.warning("Assinatura cancelada/pausada: tenant=%s", tenant_id)
+            return {"success": True, "tenant_id": str(tenant_id), "status": "suspended"}
+
+        return {"success": True, "status": status}
+
+    except Exception as exc:
+        logger.error("Erro ao processar pre_approval webhook: %s", exc)
+        return {"success": False, "message": str(exc)}
 
 
 def verify_saas_webhook_signature(

@@ -132,15 +132,34 @@ async def _handle_enrollment_request(
     entities: dict,
     student_id: UUID | None,
 ) -> dict[str, Any]:
-    """Registra pedido de matrícula/rematrícula."""
-    protocol = f"MAT-{uuid.uuid4().hex[:8].upper()}"
+    """Registra pedido de matrícula/rematrícula como ticket."""
+    from app.services.ticket_service import create_ticket
+
+    period = entities.get("period", entities.get("periodo", ""))
+    course = entities.get("course", entities.get("curso", ""))
+    description = "Solicitação de matrícula via WhatsApp."
+    if course:
+        description += f"\nCurso: {course}"
+    if period:
+        description += f"\nPeríodo: {period}"
+
+    ticket = await create_ticket(
+        db=db,
+        tenant_id=tenant_id,
+        subject="Solicitação de Matrícula/Rematrícula",
+        priority="medium",
+        category="enrollment",
+        description=description,
+        contact_id=contact_id,
+    )
     return {
         "success": True,
+        "ticket_id": str(ticket.id),
+        "protocol": ticket.protocol_number,
         "message": (
-            f"Solicitação de matrícula registrada com protocolo {protocol}. "
-            "A secretaria entrará em contato em até 48h."
+            f"Solicitação de matrícula registrada com protocolo *{ticket.protocol_number}*. "
+            "A secretaria entrará em contato em até 48h úteis."
         ),
-        "protocol": protocol,
     }
 
 
@@ -151,17 +170,30 @@ async def _handle_document_request(
     entities: dict,
     student_id: UUID | None,
 ) -> dict[str, Any]:
-    """Registra solicitação de documento."""
-    doc_type = entities.get("type", "declaração")
-    protocol = f"DOC-{uuid.uuid4().hex[:8].upper()}"
+    """Registra solicitação de documento como ticket."""
+    from app.services.ticket_service import create_ticket
+
+    doc_type = entities.get("type", entities.get("tipo", "declaração"))
+    description = f"Tipo de documento: {doc_type}\nSolicitado via WhatsApp."
+
+    ticket = await create_ticket(
+        db=db,
+        tenant_id=tenant_id,
+        subject=f"Solicitação de Documento: {doc_type.title()}",
+        priority="low",
+        category="document",
+        description=description,
+        contact_id=contact_id,
+    )
     return {
         "success": True,
+        "ticket_id": str(ticket.id),
+        "protocol": ticket.protocol_number,
+        "document_type": doc_type,
         "message": (
-            f"Solicitação de {doc_type} registrada com protocolo {protocol}. "
+            f"Solicitação de *{doc_type}* registrada com protocolo *{ticket.protocol_number}*. "
             "Prazo de emissão: 3 a 5 dias úteis."
         ),
-        "protocol": protocol,
-        "document_type": doc_type,
     }
 
 
@@ -172,16 +204,29 @@ async def _handle_class_enrollment(
     entities: dict,
     student_id: UUID | None,
 ) -> dict[str, Any]:
-    """Registra inscrição em disciplina."""
-    subject = entities.get("subject", "disciplina solicitada")
-    protocol = f"DISC-{uuid.uuid4().hex[:8].upper()}"
+    """Registra inscrição em disciplina como ticket."""
+    from app.services.ticket_service import create_ticket
+
+    subject_name = entities.get("subject", entities.get("disciplina", "disciplina solicitada"))
+    description = f"Disciplina: {subject_name}\nSolicitado via WhatsApp."
+
+    ticket = await create_ticket(
+        db=db,
+        tenant_id=tenant_id,
+        subject=f"Inscrição em Disciplina: {subject_name}",
+        priority="medium",
+        category="academic",
+        description=description,
+        contact_id=contact_id,
+    )
     return {
         "success": True,
+        "ticket_id": str(ticket.id),
+        "protocol": ticket.protocol_number,
         "message": (
-            f"Inscrição na disciplina '{subject}' registrada com protocolo {protocol}. "
+            f"Inscrição na disciplina *{subject_name}* registrada com protocolo *{ticket.protocol_number}*. "
             "Confirmação será enviada após validação de pré-requisitos."
         ),
-        "protocol": protocol,
     }
 
 
@@ -524,6 +569,272 @@ async def _handle_document_ocr(
     }
 
 
+async def _handle_grade_appeal(
+    db: AsyncSession,
+    tenant_id: UUID,
+    contact_id: UUID,
+    entities: dict,
+    student_id: UUID | None,
+) -> dict[str, Any]:
+    """Abre ticket de recurso de nota."""
+    from app.services.ticket_service import create_ticket
+
+    discipline = entities.get("discipline", entities.get("disciplina", ""))
+    grade = entities.get("grade", entities.get("nota", ""))
+    reason = entities.get("reason", entities.get("motivo", "Recurso solicitado via WhatsApp"))
+
+    description = reason
+    if discipline:
+        description = f"Disciplina: {discipline}\n" + description
+    if grade:
+        description += f"\nNota contestada: {grade}"
+
+    ticket = await create_ticket(
+        db=db,
+        tenant_id=tenant_id,
+        subject=f"Recurso de Nota{f' – {discipline}' if discipline else ''}",
+        priority="medium",
+        category="academic",
+        description=description,
+        contact_id=contact_id,
+    )
+    return {
+        "success": True,
+        "ticket_id": str(ticket.id),
+        "protocol": ticket.protocol_number,
+        "message": (
+            f"Recurso de nota registrado com protocolo *{ticket.protocol_number}*. "
+            "A coordenação acadêmica analisará em até 5 dias úteis."
+        ),
+    }
+
+
+async def _handle_transfer_request(
+    db: AsyncSession,
+    tenant_id: UUID,
+    contact_id: UUID,
+    entities: dict,
+    student_id: UUID | None,
+) -> dict[str, Any]:
+    """Abre ticket de pedido de transferência."""
+    from app.services.ticket_service import create_ticket
+
+    destination = entities.get("destination", entities.get("destino", ""))
+    reason = entities.get("reason", entities.get("motivo", "Transferência solicitada via WhatsApp"))
+    description = reason
+    if destination:
+        description = f"Destino: {destination}\n" + description
+
+    ticket = await create_ticket(
+        db=db,
+        tenant_id=tenant_id,
+        subject="Solicitação de Transferência",
+        priority="medium",
+        category="enrollment",
+        description=description,
+        contact_id=contact_id,
+    )
+    return {
+        "success": True,
+        "ticket_id": str(ticket.id),
+        "protocol": ticket.protocol_number,
+        "message": (
+            f"Pedido de transferência registrado com protocolo *{ticket.protocol_number}*. "
+            "A secretaria entrará em contato com os próximos passos em até 3 dias úteis."
+        ),
+    }
+
+
+async def _handle_scholarship_query(
+    db: AsyncSession,
+    tenant_id: UUID,
+    contact_id: UUID,
+    entities: dict,
+    student_id: UUID | None,
+) -> dict[str, Any]:
+    """Abre ticket sobre bolsas de estudo."""
+    from app.services.ticket_service import create_ticket
+
+    scholarship_type = entities.get("type", entities.get("tipo", "bolsa"))
+    description = (
+        f"Tipo de bolsa: {scholarship_type}\n"
+        "Consulta sobre bolsa solicitada via WhatsApp."
+    )
+
+    ticket = await create_ticket(
+        db=db,
+        tenant_id=tenant_id,
+        subject=f"Consulta de Bolsa: {scholarship_type.title()}",
+        priority="medium",
+        category="financial",
+        description=description,
+        contact_id=contact_id,
+    )
+    return {
+        "success": True,
+        "ticket_id": str(ticket.id),
+        "protocol": ticket.protocol_number,
+        "message": (
+            f"Sua consulta sobre *{scholarship_type}* foi registrada com protocolo *{ticket.protocol_number}*. "
+            "O setor financeiro entrará em contato com as opções disponíveis."
+        ),
+    }
+
+
+async def _handle_internship_query(
+    db: AsyncSession,
+    tenant_id: UUID,
+    contact_id: UUID,
+    entities: dict,
+    student_id: UUID | None,
+) -> dict[str, Any]:
+    """Abre ticket sobre estágio."""
+    from app.services.ticket_service import create_ticket
+
+    area = entities.get("area", "")
+    description = "Consulta sobre estágio via WhatsApp."
+    if area:
+        description = f"Área de interesse: {area}\n" + description
+
+    ticket = await create_ticket(
+        db=db,
+        tenant_id=tenant_id,
+        subject=f"Consulta de Estágio{f' – {area}' if area else ''}",
+        priority="low",
+        category="academic",
+        description=description,
+        contact_id=contact_id,
+    )
+    return {
+        "success": True,
+        "ticket_id": str(ticket.id),
+        "protocol": ticket.protocol_number,
+        "message": (
+            f"Consulta de estágio registrada com protocolo *{ticket.protocol_number}*. "
+            "O setor de estágios entrará em contato com as oportunidades disponíveis."
+        ),
+    }
+
+
+async def _handle_event_registration(
+    db: AsyncSession,
+    tenant_id: UUID,
+    contact_id: UUID,
+    entities: dict,
+    student_id: UUID | None,
+) -> dict[str, Any]:
+    """Registra inscrição em evento."""
+    from app.services.ticket_service import create_ticket
+
+    event_name = entities.get("event", entities.get("evento", "evento solicitado"))
+    date = entities.get("date", entities.get("data", ""))
+    description = f"Evento: {event_name}"
+    if date:
+        description += f"\nData: {date}"
+
+    ticket = await create_ticket(
+        db=db,
+        tenant_id=tenant_id,
+        subject=f"Inscrição em Evento: {event_name}",
+        priority="low",
+        category="event",
+        description=description,
+        contact_id=contact_id,
+    )
+    return {
+        "success": True,
+        "ticket_id": str(ticket.id),
+        "protocol": ticket.protocol_number,
+        "message": (
+            f"Inscrição no evento *{event_name}* registrada com protocolo *{ticket.protocol_number}*. "
+            "Você receberá a confirmação e mais detalhes em breve."
+        ),
+    }
+
+
+async def _handle_library_query(
+    db: AsyncSession,
+    tenant_id: UUID,
+    contact_id: UUID,
+    entities: dict,
+    student_id: UUID | None,
+) -> dict[str, Any]:
+    """Consulta disponibilidade de livro na biblioteca."""
+    from app.services.library_service import search_books
+
+    title = entities.get("title", entities.get("titulo", entities.get("book", "")))
+    author = entities.get("author", entities.get("autor", ""))
+    query = title or author
+
+    if query:
+        books = await search_books(db, tenant_id, query=query)
+        if books:
+            lines = []
+            for b in books[:5]:
+                status = "Disponível" if b.available_copies > 0 else "Emprestado"
+                lines.append(f"• *{b.title}* — {b.author} [{status}]")
+            return {
+                "success": True,
+                "message": (
+                    f"Encontrei {len(books)} resultado(s) na biblioteca:\n\n"
+                    + "\n".join(lines)
+                    + ("\n\n_Mostrando os 5 primeiros._" if len(books) > 5 else "")
+                    + "\n\nPara reservar ou renovar, fale com a biblioteca."
+                ),
+                "count": len(books),
+            }
+        return {
+            "success": True,
+            "message": (
+                f"Não encontrei *{query}* no acervo. "
+                "Tente outro título ou autor, ou fale com a biblioteca."
+            ),
+        }
+
+    return {
+        "success": True,
+        "message": "Qual livro você está procurando? Me diga o título ou o nome do autor.",
+        "needs_input": True,
+    }
+
+
+async def _handle_certificate_request(
+    db: AsyncSession,
+    tenant_id: UUID,
+    contact_id: UUID,
+    entities: dict,
+    student_id: UUID | None,
+) -> dict[str, Any]:
+    """Solicita certificado ou diploma."""
+    from app.services.ticket_service import create_ticket
+
+    cert_type = entities.get("type", entities.get("tipo", "certificado"))
+    purpose = entities.get("purpose", entities.get("finalidade", ""))
+    description = f"Tipo: {cert_type}"
+    if purpose:
+        description += f"\nFinalidade: {purpose}"
+
+    ticket = await create_ticket(
+        db=db,
+        tenant_id=tenant_id,
+        subject=f"Solicitação de {cert_type.title()}",
+        priority="medium",
+        category="document",
+        description=description,
+        contact_id=contact_id,
+    )
+    return {
+        "success": True,
+        "ticket_id": str(ticket.id),
+        "protocol": ticket.protocol_number,
+        "message": (
+            f"Solicitação de *{cert_type}* registrada com protocolo *{ticket.protocol_number}*. "
+            "Prazo de emissão: 5 a 10 dias úteis. "
+            "Você será notificado quando estiver disponível para retirada."
+        ),
+    }
+
+
 async def _handle_generic_request(
     db: AsyncSession,
     tenant_id: UUID,
@@ -532,14 +843,25 @@ async def _handle_generic_request(
     student_id: UUID | None,
 ) -> dict[str, Any]:
     """Handler genérico para demais intents de ação."""
-    protocol = f"SOL-{uuid.uuid4().hex[:8].upper()}"
+    from app.services.ticket_service import create_ticket
+
+    ticket = await create_ticket(
+        db=db,
+        tenant_id=tenant_id,
+        subject="Solicitação via WhatsApp",
+        priority="medium",
+        category="support",
+        description="Solicitação genérica registrada via WhatsApp.",
+        contact_id=contact_id,
+    )
     return {
         "success": True,
+        "ticket_id": str(ticket.id),
+        "protocol": ticket.protocol_number,
         "message": (
-            f"Sua solicitação foi registrada com protocolo {protocol}. "
+            f"Sua solicitação foi registrada com protocolo *{ticket.protocol_number}*. "
             "Nossa equipe analisará e retornará em breve."
         ),
-        "protocol": protocol,
     }
 
 
@@ -548,14 +870,14 @@ _HANDLERS = {
     "enrollment_request": _handle_enrollment_request,
     "document_request": _handle_document_request,
     "class_enrollment": _handle_class_enrollment,
-    "grade_appeal": _handle_generic_request,
-    "transfer_request": _handle_generic_request,
-    "scholarship_query": _handle_generic_request,
-    "internship_query": _handle_generic_request,
-    "event_registration": _handle_generic_request,
-    "library_query": _handle_generic_request,
+    "grade_appeal": _handle_grade_appeal,
+    "transfer_request": _handle_transfer_request,
+    "scholarship_query": _handle_scholarship_query,
+    "internship_query": _handle_internship_query,
+    "event_registration": _handle_event_registration,
+    "library_query": _handle_library_query,
     "financial_negotiation": _handle_financial_negotiation,
-    "certificate_request": _handle_generic_request,
+    "certificate_request": _handle_certificate_request,
     "generate_pix": _handle_generate_pix,
     "open_ticket": _handle_open_ticket,
     "facility_ticket": _handle_facility_ticket,

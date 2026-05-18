@@ -51,7 +51,7 @@ const PLANS = [
   {
     id: 'pro',
     name: 'Pro',
-    price: 'R$ 597',
+    price: 'R$ 497',
     period: '/mês',
     color: 'purple',
     features: [
@@ -72,18 +72,20 @@ export default function Billing() {
     retry: false,
   })
 
-  const checkoutMutation = useMutation({
+  const subscribeMutation = useMutation({
     mutationFn: (plan: string) =>
-      api.post(`/api/v1/billing/checkout?plan=${plan}`).then((r) => r.data),
+      api.post(`/api/v1/billing/subscribe?plan=${plan}`).then((r) => r.data),
     onSuccess: (data) => {
-      if (data.checkout_url) {
-        window.open(data.checkout_url, '_blank')
+      const url = data.subscription_url || data.checkout_url || data.sandbox_url
+      if (url) {
+        window.open(url, '_blank')
+        toast.success('Redirecionando para o pagamento...')
       } else {
         toast.error('Link de pagamento não disponível')
       }
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.detail || 'Erro ao gerar link de pagamento')
+      toast.error(err?.response?.data?.detail || 'Erro ao gerar assinatura')
     },
   })
 
@@ -198,8 +200,8 @@ export default function Billing() {
 
               {plan.checkoutPlan && !isCurrent && (
                 <button
-                  onClick={() => checkoutMutation.mutate(plan.checkoutPlan!)}
-                  disabled={checkoutMutation.isPending}
+                  onClick={() => subscribeMutation.mutate(plan.checkoutPlan!)}
+                  disabled={subscribeMutation.isPending}
                   className={clsx(
                     'w-full py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2',
                     plan.id === 'pro'
@@ -208,7 +210,7 @@ export default function Billing() {
                     'disabled:opacity-50',
                   )}
                 >
-                  {checkoutMutation.isPending ? (
+                  {subscribeMutation.isPending ? (
                     <Loader2 className="animate-spin" size={14} />
                   ) : (
                     <ExternalLink size={14} />
