@@ -3,18 +3,21 @@
 > Este arquivo serve como referencia para o Claude Code retomar o trabalho
 > caso o historico de conversas seja perdido. Leia este documento inteiro
 > antes de iniciar qualquer tarefa.
+>
+> **Ultima atualizacao:** 2026-05-22 (apos commits ate `c47f38e — feat(wizard): visual step-by-step WhatsApp setup`)
 
 ---
 
 ## 1. O que e o IGS
 
-**Intelligent General Service** — SaaS de atendimento inteligente via WhatsApp
-para instituicoes de ensino. Atende alunos e funcionarios com respostas
-automaticas via IA (Groq/Gemini/Anthropic).
+**Intelligent General Service** — SaaS multi-tenant de atendimento inteligente via WhatsApp
+para instituicoes de ensino. Atende alunos, funcionarios e professores com respostas
+automaticas via IA (Groq/Gemini/Anthropic) + agente conversacional "Billie IGS".
 
 **Repositorio:** `gabrielhenriqueroveribueno-wq/intelligent-general-service`
 **Branch principal:** `master`
-**CI:** GitHub Actions (`.github/workflows/ci.yml`) — 3 jobs: Backend Lint, Backend Tests, Frontend Build
+**CI:** GitHub Actions (`.github/workflows/ci.yml`) — 3 jobs: backend lint, backend tests, frontend build
+**Deploy:** `.github/workflows/deploy.yml` (trigger por tag `v*`, com rollback automatico)
 
 ---
 
@@ -23,432 +26,557 @@ automaticas via IA (Groq/Gemini/Anthropic).
 | Camada | Tecnologia |
 |---|---|
 | Backend | FastAPI (Python 3.12), SQLAlchemy 2.0 async, Alembic |
-| Database | PostgreSQL 16 (asyncpg) |
+| Database | PostgreSQL 16 (asyncpg) com Row-Level Security |
 | Cache/Queue | Redis 7 + Celery |
-| Frontend | React 18 + TypeScript + TailwindCSS + Vite |
+| Frontend | React 18 + TypeScript 5.6 + TailwindCSS 3.4 + Vite 5.4 |
+| PWA | vite-plugin-pwa + Workbox + Web Push (VAPID) |
 | WhatsApp | Meta Business Cloud API |
-| AI | Multi-provider: Groq (llama-3.3-70b), Gemini (2.0-flash), Anthropic (claude-opus-4-6) |
-| Monitoring | Prometheus + Grafana + Loki + Promtail |
-| Infra | Docker + Docker Compose (13 containers) |
-| Auth | JWT (access 15min + refresh 7d) |
-| Proxy | Nginx |
+| IA | Multi-provider: Groq (llama-3.3-70b) **default**, Gemini (2.0-flash), Anthropic (claude-opus-4-6) |
+| Pagamentos | Mercado Pago Checkout Pro (PIX + cartao + boleto) |
+| Email | Resend API (preferido) com SMTP fallback |
+| Monitoring | Prometheus + Grafana + Loki + Promtail + AlertManager + Sentry |
+| Infra | Docker + Docker Compose (3 stacks: dev, prod, prod-light) |
+| Auth | JWT (access 15min + refresh 7d), bcrypt, must_change_password flow |
+| Proxy | Nginx (dev/prod), Caddy (prod-light, SSL automatico) |
 
-**AI Provider ativo:** Anthropic/Claude (configuravel via `AI_PROVIDER` no .env)
-**Deploy:** Oracle Cloud Free Tier — igs-anchieta.duckdns.org (docker-compose.prod-light.yml, 4 containers)
-
----
-
-## 3. Estrutura dos Arquivos Principais
-
-### Backend Models (20 tabelas)
-```
-backend/app/models/
-  base.py            — Base, TimestampMixin, TenantMixin
-  tenant.py          — Tenant, TenantSettings
-  user.py            — User (roles: super_admin, admin, manager, agent, teacher)
-  student.py         — Student, Grade, AttendanceRecord
-  employee.py        — Employee, Payslip, VacationBalance, TimeRecord, HRRequest
-  billing.py         — Boleto
-  conversation.py    — Contact, Conversation, Message
-  ticket.py          — Ticket, TicketComment
-  knowledge_base.py  — KBCategory, KBArticle
-  slide.py           — SlideTemplate, SlidePresentation, SlideGenerationLog
-  schedule.py        — ClassSchedule
-  notification.py    — MessageTemplate, ScheduledNotification
-  satisfaction.py    — SatisfactionSurvey, OnboardingSession
-  service_request.py — ServiceRequest
-  metrics.py         — ResponseTimeMetric, WhatsAppMonitoredAccount
-  audit.py           — AuditLog, FailedTask, SLAConfig
-  ticket_learning.py — TicketResolution
-  webhook.py         — WebhookEndpoint, WebhookDelivery
-  appointment.py     — Appointment (agendamento presencial)
-```
-
-### Backend Utils
-```
-backend/app/utils/
-  security.py         — Hash, JWT helpers, HMAC validation
-  exceptions.py       — Custom exception classes
-  pagination.py       — Paginated response helper
-  data_masking.py     — LGPD: mascaramento de PII (CPF, email, telefone, cartao)
-```
-
-### Claude Code Commands & Skills
-```
-.claude/
-  commands/
-    add-intent.md       — Slash command para adicionar novo intent ao IGS
-    review-intent.md    — Slash command para revisar implementacao de um intent
-    debug-celery.md     — Slash command para debugar problemas no worker Celery
-  skills/
-    igs-context/SKILL.md — Skill com contexto arquitetural completo do IGS
-```
-
-### Backend Services (26 servicos)
-```
-backend/app/services/
-  ai_client.py           — Cliente unificado IA (Groq/Gemini/Anthropic)
-  ai_service.py          — Gera resposta RAG com dados reais + KB + historico
-  intent_classifier.py   — Classifica intent da mensagem (35 intents)
-  slide_service.py       — Gera/atualiza slides via IA com template institucional
-  task_executor.py       — Executa acoes (boleto, matricula, docs, slides, agendamento, OCR)
-  student_service.py     — CRUD + queries de aluno
-  employee_service.py    — CRUD + queries de funcionario
-  ticket_service.py      — CRUD tickets, protocolos, SLA
-  knowledge_service.py   — Busca artigos KB
-  whatsapp_service.py    — Envia mensagens via Meta API
-  learning_service.py    — Busca resolucoes similares (aprendizado IA)
-  transcription_service.py — Transcricao de audio
-  media_service.py       — Download de midia do WhatsApp
-  auth_service.py        — JWT tokens
-  metrics_service.py     — Metricas de tempo de resposta
-  sla_service.py         — Verificacao de SLA
-  report_service.py      — Relatorios e analytics
-  student_onboarding.py  — Autocadastro de aluno via WhatsApp
-  webhook_delivery_service.py — Despacho de eventos com HMAC
-  ws_manager.py          — WebSocket via Redis pub/sub
-  pptx_service.py        — Export de slides JSON para .pptx (python-pptx)
-  boleto_pdf_service.py  — Geracao de boleto em PDF (ReportLab)
-  anonymization_service.py — LGPD: anonimizacao de alunos/funcionarios (direito ao esquecimento)
-  mercadopago_service.py — Checkout Pro (PIX + cartao + boleto) via Mercado Pago
-  email_service.py       — Envio de email via SMTP com anexos
-  document_ocr_service.py — OCR de documentos via IA Vision (RG, CPF, comprovante, etc.)
-  appointment_service.py — Agendamento de atendimento presencial via WhatsApp
-  payment_service.py     — PIX BR Code + negociacao de debitos
-  library_service.py     — Emprestimos, renovacao, multas da biblioteca
-  tutor_service.py       — Tutor IA (materias da prova)
-  hr_vision_service.py   — Processamento de atestado medico via Vision
-```
-
-### Backend API Routes (20 modulos)
-```
-backend/app/api/v1/
-  auth.py           — POST /login, /refresh; GET /me
-  students.py       — CRUD alunos, notas, frequencia, boletos, horarios
-  employees.py      — CRUD funcionarios, holerites, ferias, ponto, RH
-  conversations.py  — Listar, detalhar, atribuir agente, fechar
-  tickets.py        — CRUD tickets, comentarios, SLA
-  slides.py         — Templates CRUD, gerar/atualizar apresentacoes, historico
-  knowledge_base.py — Categorias e artigos CRUD
-  webhook.py        — Webhook WhatsApp (verify + incoming)
-  dashboard.py      — Metricas overview
-  reports.py        — Analytics
-  users.py          — Gestao de usuarios
-  tenants.py        — Gestao de tenants
-  templates.py      — Templates de mensagem
-  webhooks_config.py — Configuracao de webhooks outbound
-  metrics.py        — Metricas da aplicacao
-  health.py         — Health check
-  admin.py          — Operacoes administrativas
-  ws.py             — WebSocket real-time
-```
-
-### Frontend Pages (15 paginas)
-```
-frontend/src/pages/
-  Login.tsx, Dashboard.tsx, Conversations.tsx, ConversationDetail.tsx,
-  Tickets.tsx, Students.tsx, StudentDetail.tsx, Employees.tsx,
-  EmployeeDetail.tsx, KnowledgeBase.tsx, Reports.tsx,
-  MetricsDashboard.tsx, LearningInsights.tsx, UserManagement.tsx, Settings.tsx
-```
-
-### Celery Tasks
-```
-backend/app/tasks/
-  celery_app.py        — Config + Beat schedule (SLA 5min, boletos 9h, evasao 7h, relatorio seg 8h, rematricula 9:30, backup seg 3h)
-  message_tasks.py     — Processamento principal de mensagens WhatsApp (agente Billie)
-  notification_tasks.py — Notificacoes agendadas, checagem SLA, relatorio semanal, alerta evasao, campanha rematricula, geracao de documentos
-  webhook_tasks.py     — Entrega de webhooks com retries
-  dlq_tasks.py         — Dead Letter Queue
-  backup_tasks.py      — Backup do banco
-  report_tasks.py      — Geracao de relatorios
-```
+**AI Provider ativo:** `AI_PROVIDER=groq` (default no config.py — mudou de anthropic em fases recentes para reduzir custo). Ainda configuravel via .env.
+**Deploy ativo:** Oracle Cloud Free Tier — igs-anchieta.duckdns.org (`docker-compose.prod-light.yml`, 6 containers leves).
 
 ---
 
-## 4. Intents Classificados (35)
+## 3. Estrutura de Arquivos
 
-**Alunos:** grade_query, attendance_query, schedule_query, boleto_query, enrollment_query,
-generate_boleto, enrollment_request, document_request, class_enrollment, grade_appeal,
-transfer_request, scholarship_query, internship_query, event_registration, library_query,
-financial_negotiation, certificate_request
+### 3.1 Backend Models (26 arquivos — `backend/app/models/`)
 
-**Funcionarios:** payslip_query, vacation_query, time_record_query, hr_request
+```
+base.py                — Base, TimestampMixin, TenantMixin
+tenant.py              — Tenant, TenantSettings
+user.py                — User (super_admin, admin, manager, agent, teacher) + must_change_password
+student.py             — Student (com evasion_risk_score/level/factors), Grade, AttendanceRecord
+employee.py            — Employee, Payslip, VacationBalance, TimeRecord, HRRequest
+billing.py             — Boleto (com pix_code/pix_txid), InstallmentPlan (parcelamento)
+conversation.py        — Contact, Conversation, Message (com sentiment + sentiment_score)
+ticket.py              — Ticket (protocol, SLA, category), TicketComment
+ticket_learning.py     — TicketResolution (ML para sugerir respostas)
+knowledge_base.py      — KBCategory, KBArticle, ClassMaterial (materiais do professor)
+schedule.py            — ClassSchedule
+notification.py        — MessageTemplate (HSM Meta), ScheduledNotification
+satisfaction.py        — SatisfactionSurvey, OnboardingSession
+service_request.py     — ServiceRequest
+metrics.py             — ResponseTimeMetric, WhatsAppMonitoredAccount
+audit.py               — AuditLog, FailedTask, SLAConfig
+webhook.py             — WebhookEndpoint, WebhookDelivery
+appointment.py         — Appointment (agendamento presencial)
+library.py             — Book, Loan (biblioteca)
+academic_integration.py — AcademicIntegration (Sophia/TOTVS/REST/SQL)
+sync_log.py            — SyncLog (historico de syncs)
+push_subscription.py   — PushSubscription (Web Push)
+report_subscription.py — ReportSubscription (assinatura de relatorios)
+lead.py                — Lead (CRM comercial)
+slide.py               — SlideTemplate, SlidePresentation (DEPRECATED — tabelas dropadas, modelo mantido por compat)
+```
 
-**Professores:** slide_generate, slide_update
+### 3.2 Backend Services (47 arquivos — `backend/app/services/`)
 
-**Servicos:** schedule_appointment, cancel_appointment, document_ocr
+**Core IA:**
+- `ai_client.py` — Cliente unificado com Circuit Breaker (3 falhas / 60s recovery) + failover automatico entre providers + Tenacity retry
+- `ai_fallback.py` — Resposta offline (keyword matching + KB) quando todos os providers falham
+- `ai_service.py` — Orquestracao RAG (contexto + historico + dados)
+- `intent_classifier.py` — Classificacao de 41 intents (ver secao 4)
+- `provider_health.py` — Estados: healthy / rate_limited / no_credits / auth_error / unreachable
 
-**Geral:** faq, greeting, verification, human_handoff, farewell, feedback_response,
-enable_reminders, disable_reminders, unknown
+**Mensageria & WhatsApp:**
+- `whatsapp_service.py` — Envio (text, document, image) via Meta API
+- `media_service.py` — Download de midia
+- `transcription_service.py` — Audio → texto
+- `task_executor.py` — Executor de acoes por intent
+- `sentiment_service.py` — Analise de sentimento (positive/neutral/negative)
+
+**Dados academicos:**
+- `student_service.py`, `student_onboarding.py`, `employee_service.py`
+
+**Integracoes externas (`services/integrations/`):**
+- `base.py` — Protocol `AcademicSystemIntegrator`
+- `registry.py` — Factory + `PROVIDER_CATALOG` (metadados para form dinamico)
+- `sophia.py` — Prima Tecnologia (REST, token auth)
+- `totvs.py` — TOTVS RM Educacional (REST/OData, basic auth)
+- `generic_rest.py` — REST generico (bearer/basic/header)
+- `generic_sql.py` — SQL direto (MSSQL/MySQL/PostgreSQL/Oracle)
+
+**Atendimento:**
+- `ticket_service.py`, `appointment_service.py`, `sla_service.py`, `learning_service.py`
+
+**Conteudo:**
+- `knowledge_service.py`, `tutor_service.py`, `document_ocr_service.py`, `hr_vision_service.py`
+- `library_service.py` — emprestimos/renovacao/multas
+- `boleto_pdf_service.py`, `report_service.py` (PDF + Excel via ReportLab/openpyxl)
+
+**Comercial/SaaS:**
+- `saas_billing_service.py` — Planos Starter (R$ 297) / Pro (R$ 497) / Enterprise via Mercado Pago
+- `mercadopago_service.py` — Checkout Pro + webhook
+- `payment_service.py` — PIX BR Code + negociacao de debitos
+- `onboarding_service.py` — Onboarding step-by-step de novo tenant
+
+**Notificacoes:**
+- `email_service.py` (Resend + SMTP fallback), `email_templates.py`
+- `push_notification_service.py` (Web Push VAPID)
+- `executive_report_service.py` (relatorios PDF para gestores)
+
+**Analytics:**
+- `evasion_service.py` — Cruza faltas + notas + boletos vencidos → score de evasao
+- `metrics_service.py` — Prometheus metrics
+
+**Outros:** `auth_service.py`, `anonymization_service.py` (LGPD), `cache_service.py`, `ws_manager.py`, `webhook_delivery_service.py`
+
+### 3.3 Backend API Routes (28 modulos — `backend/app/api/v1/`)
+
+```
+auth.py              — /login, /refresh, /logout, /forgot-password, /me
+tenants.py           — CRUD tenants, settings, whatsapp/test
+users.py             — Gestao de usuarios + must_change_password
+students.py          — CRUD + import CSV + notas/freq/boletos/horarios
+employees.py         — CRUD + holerites/ferias/ponto/RH
+student_portal.py    — Portal publico do aluno (sem login painel)
+conversations.py     — Listar, detalhar, atribuir agente, fechar
+tickets.py           — CRUD tickets + comentarios + SLA
+knowledge_base.py    — Categorias + artigos
+templates.py         — Templates WhatsApp HSM
+dashboard.py         — KPIs principais
+reports.py           — Geracao PDF/Excel
+report_subscriptions.py — Assinatura de relatorios por email
+metrics.py           — Prometheus + custom stats
+health.py            — /ping, /health, /health/ready, /health/detailed
+ai_health.py         — Saude dos providers + circuit state
+webhook.py           — Inbound WhatsApp + Mercado Pago
+webhooks_config.py   — Webhooks outbound (HMAC)
+ws.py                — WebSocket real-time
+admin.py             — Operacoes administrativas
+integrations.py      — Configurar Sophia/TOTVS/REST/SQL + test + sync now + logs
+onboarding.py        — Progresso do onboarding por tenant
+push_subscriptions.py — Web Push subscribe/unsubscribe + VAPID public key
+evasion.py           — Riscos + fatores por aluno
+billing.py           — Checkout SaaS + status + invoices
+leads.py             — Captura de leads (landing page)
+router.py            — Agregador
+```
+
+### 3.4 Celery Tasks (16 modulos — `backend/app/tasks/`)
+
+```
+celery_app.py             — Config + Beat schedule (15 jobs)
+message_tasks.py          — Pipeline principal (Billie)
+notification_tasks.py     — SLA, boletos, frequencia, notas, relatorio semanal, evasao, rematricula
+report_tasks.py           — Geracao assincrona de relatorios
+executive_report_tasks.py — Despacho de relatorios executivos
+integration_sync_tasks.py — Sync com Sophia/TOTVS/REST/SQL (horaria)
+evasion_tasks.py          — Compute evasion risks
+anonymization_tasks.py    — Anonimizacao LGPD automatica
+health_check_tasks.py     — Probe dos 3 providers IA (15min)
+ai_budget_tasks.py        — Alerta de orcamento mensal IA (USD)
+trial_tasks.py            — Verifica expiracao de trial
+push_tasks.py             — Envio Web Push
+backup_tasks.py           — Backup PostgreSQL diario
+webhook_tasks.py          — Entrega de webhooks com retry exponencial
+dlq_tasks.py              — Dead Letter Queue
+```
+
+**Beat Schedule (timezone: America/Sao_Paulo):**
+
+| Job | Cron | Funcao |
+|---|---|---|
+| check-sla-breaches | `*/5 * * * *` | Alerta de SLA |
+| send-boleto-reminders | `0 9 * * *` | Lembrete boletos vencendo |
+| send-attendance-alerts | `0 10 * * *` | Alerta frequencia baixa |
+| send-grade-notifications | `30 */6 * * *` | Notificacao de notas |
+| daily-db-backup | `0 3 * * *` | Backup PostgreSQL |
+| weekly-manager-report | `0 8 * * 1` | Relatorio semanal WhatsApp |
+| weekly-pdf-report | `30 8 * * 1` | Relatorio PDF por email |
+| check-evasion-risk | `0 7 * * *` | Alerta de evasao |
+| reenrollment-campaign | `30 9 * * *` | Campanha rematricula (jun/jul/nov/dez) |
+| ai-providers-health-check | `*/15 * * * *` | Probe IA |
+| dispatch-scheduled-reports | `5 * * * *` | Relatorios executivos |
+| dispatch-integration-syncs | `15 * * * *` | Sync sistemas academicos |
+| compute-evasion-risks | `45 * * * *` | Calcula score por aluno |
+| anonymization-auto | `0 2 1 * *` | LGPD mensal |
+| ai-budget-check | `0 8 * * *` | Alerta de orcamento IA |
+| trial-expiry-check | `0 6 * * *` | Trials expirando |
+
+### 3.5 Frontend Pages (45 paginas — `frontend/src/pages/`)
+
+**Publicas (sem login):**
+`Landing`, `Pricing`, `PitchDeck`, `CaseStudy`, `Demo`, `Tour`, `Changelog`, `PublicStatus`, `Legal`
+
+**Autenticacao:**
+`Login`, `Signup`, `ForgotPassword`, `ResetPassword`, `ChangePassword`, `Onboarding`
+
+**Dashboard (protegidas, prefixo /app):**
+`Dashboard`, `Conversations`, `ConversationDetail`, `Tickets`, `Students`, `StudentDetail`, `Employees`, `EmployeeDetail`, `KnowledgeBase`
+
+**Configuracao & Operacao:**
+`Settings`, `WhatsAppSetup` (wizard visual passo-a-passo), `Templates`, `ImportData`, `Integrations`, `Slides` (UI mantida, backend dropado), `ReportSubscriptions`
+
+**Analytics:**
+`Reports`, `MetricsDashboard`, `LearningInsights`, `Billing`
+
+**Admin:**
+`UserManagement`, `Tenants`, `SuperAdmin`, `AuditLog`, `Status`, `Help`
+
+**Erro:**
+`NotFound`, `ServerError`, `Maintenance`, `Presentation` (slide deck fullscreen)
+
+### 3.6 Frontend Components (`frontend/src/components/`)
+
+**Layout:** `Layout`, `Sidebar`, `Header`, `PublicLayout`
+**Common:** `ProtectedRoute`, `ErrorBoundary`, `PageLoader`, `OnboardingWizard`, `TrialBanner`, `PaywallModal`, `InstallBanner`, `OfflineBanner`, `CookieBanner` (LGPD), `LeadForm`, `AnimatedCounter`
+
+### 3.7 Frontend Hooks (`frontend/src/hooks/`)
+
+- `useWebSocket` — Reconexao automatica com backoff
+- `useNotifications` — Eventos real-time (new_message, conversation_waiting, conversation_closed)
+- `usePWA` — Instalacao + standalone detection
+- `usePushNotifications` — Inscricao Web Push (VAPID)
+- `useTrial` — Status do trial via `/billing/status`
+
+### 3.8 Migracoes Alembic (15 — `backend/alembic/versions/`)
+
+```
+85cef5d6b524 — initial_schema
+84781b46eefb — add_webhook_endpoints_and_webhook_deliveries
+a3f1b2c4d5e6 — add_slide_tables (depois dropado)
+b7e2a9f3c1d8 — enable_rls_all_tenant_tables (Row-Level Security)
+c8d3e5f7a9b1 — add_modules_pix_library_materials
+d9e4f6a7b2c3 — add_appointments_table
+e1a2b3c4d5e6 — add_report_subscriptions
+f2b3c4d5e6f7 — add_academic_integrations
+g3c4d5e6f7a8 — add_push_subscriptions
+h4d5e6f7a8b9 — add_sentiment_evasion
+i5e6f7a8b9c0 — add_performance_indexes
+j6f7a8b9c0d1 — add_must_change_password
+k7g8h9i0j1k2 — add_integration_sync_logs
+l8h9i0j1k2l3 — drop_slide_tables
+m9i0j1k2l3m4 — add_leads_table
+```
 
 ---
 
-## 5. Fluxo de Mensagem WhatsApp (message_tasks.py)
+## 4. Intents Classificados (41 — `intent_classifier.py`)
 
-**Arquitetura: Agente Conversacional "Billie IGS"**
+**Alunos:** `grade_query`, `attendance_query`, `schedule_query`, `boleto_query`, `enrollment_query`, `generate_boleto`, `generate_pix`, `enrollment_request`, `document_request`, `class_enrollment`, `grade_appeal`, `transfer_request`, `scholarship_query`, `internship_query`, `event_registration`, `library_query`, `library_renewal`, `financial_negotiation`, `certificate_request`, `tutor_question`
 
-Todas as mensagens passam pela IA — nao ha respostas hardcoded. A IA (Billie) conduz a conversa naturalmente, incluindo verificacao de identidade.
+**Funcionarios:** `payslip_query`, `vacation_query`, `time_record_query`, `hr_request`, `medical_certificate`
+
+**Professores:** `slide_generate`, `slide_update` *(funcionalidade deprecated mas intent mantido)*
+
+**Servicos gerais:** `schedule_appointment`, `cancel_appointment`, `document_ocr`, `facility_ticket`, `open_ticket`
+
+**Conversacionais:** `faq`, `greeting`, `verification`, `human_handoff`, `farewell`, `feedback_response`, `enable_reminders`, `disable_reminders`, `unknown`
+
+---
+
+## 5. Fluxo de Mensagem WhatsApp (Agente "Billie IGS")
+
+**Arquitetura:** Todas as mensagens passam pela IA. Nao ha respostas hardcoded. A Billie conduz a conversa e inclui comandos embutidos que sao extraidos via regex.
 
 ```
-1. Recebe message_id do Celery
-2. Se audio → transcreve via transcription_service
-3. Cria engine async dedicada (evita conflito de event loop)
+1. Webhook Meta → /api/v1/webhook/whatsapp → valida HMAC → persiste msg
+2. Enqueue Celery: process_incoming_message
+3. Worker: cria async engine dedicada (evita conflito de event loop)
 4. Determina estado do contato:
-   a) NAO VERIFICADO → system prompt BEHAVIOR_NEW_CONTACT (Billie pede RA naturalmente)
-   b) AGUARDANDO SENHA → system prompt BEHAVIOR_AWAITING_PASSWORD
-   c) VERIFICADO → system prompt BEHAVIOR_VERIFIED (acesso total aos dados)
-5. Se verificado: busca dados (grades, boletos, schedules, payslips, etc.)
-6. Envia mensagem + historico + dados para IA (agente Billie)
-7. IA responde naturalmente E inclui comandos embutidos:
-   - [IDENTIFY:student:NUMERO] → busca aluno/funcionario no banco
-   - [PASSWORD:valor] → verifica senha
-   - [HANDOFF] → transfere para humano
-   - [CANCEL] → cancela operacao
-   - [FEEDBACK_REQUEST] → marca conversa como aguardando avaliacao
-   - [FEEDBACK:N] → salva nota de satisfacao (1-5) na tabela satisfaction_surveys
-   - [REMINDERS_ON] / [REMINDERS_OFF] → ativa/desativa lembretes proativos no metadata do contato
-   - [GENERATE_DOC:tipo] → dispara task Celery para gerar documento digital (declaracao, historico)
-8. Extrai e processa comandos (regex), remove da resposta
-9. Envia resposta limpa via WhatsApp API
-10. Registra metricas (tokens, tempo)
-11. Descarta engine async
+   a) NAO VERIFICADO     → system prompt BEHAVIOR_NEW_CONTACT
+   b) AGUARDANDO SENHA   → system prompt BEHAVIOR_AWAITING_PASSWORD
+   c) VERIFICADO         → system prompt BEHAVIOR_VERIFIED
+5. Se audio → transcricao | se imagem → media_service + (OCR ou hr_vision)
+6. Se verificado: busca dados (grades, boletos, schedules, payslips, books, etc.)
+7. Envia mensagem + historico + dados para IA (com sentiment analysis em paralelo)
+8. IA retorna resposta com comandos embutidos:
+   [IDENTIFY:student:NUMERO] / [IDENTIFY:employee:CODIGO]
+   [PASSWORD:valor]
+   [HANDOFF]
+   [CANCEL]
+   [FEEDBACK_REQUEST] / [FEEDBACK:N]      (satisfacao 1-5)
+   [REMINDERS_ON] / [REMINDERS_OFF]       (opt-in proativo)
+   [GENERATE_DOC:tipo]                    (enrollment_declaration, academic_history)
+9. Regex extrai comandos, executa acoes, remove da resposta
+10. Envia resposta limpa via WhatsApp API
+11. Registra metricas (tokens, tempo, intent, sentiment) → DB + Prometheus
+12. Descarta engine async
 ```
 
 ---
 
-## 6. Sistema de Slides via IA
+## 6. Provedores de IA & Circuit Breaker
 
-**Modelos:** SlideTemplate (padrao visual) → SlidePresentation (aula gerada) → SlideGenerationLog
+**Padrao (config.py):** `AI_PROVIDER=groq`
 
-**Fluxo via API:**
-- POST `/api/v1/slides/generate` — gera apresentacao com prompt + disciplina
-- PATCH `/api/v1/slides/presentations/{id}` — atualiza com novo prompt
-- GET `/api/v1/slides/presentations` — lista apresentacoes do professor
+| Provider | Modelo | Vision | Notas |
+|---|---|---|---|
+| Groq | `llama-3.3-70b-versatile` | nao | rapido/barato, default |
+| Gemini | `gemini-2.0-flash` | sim | fallback de vision |
+| Anthropic | `claude-opus-4-6` | sim | melhor qualidade, mais caro |
 
-**Fluxo via WhatsApp:**
-- Professor envia mensagem pedindo slides → intent `slide_generate`
-- task_executor chama slide_service.generate_slides()
-- IA gera JSON com slides seguindo template institucional (cores, fontes, layout)
-- Resposta confirma criacao e orienta a ver no painel
+**Circuit Breaker:** 3 falhas consecutivas → OPEN por 60s → HALF_OPEN para teste.
+**Retry:** Tenacity, 2 tentativas por provider, backoff exponencial 1-4s, retryavel em timeout/429/5xx.
+**Fallback chain:**
+- `groq → gemini → anthropic`
+- `gemini → anthropic → groq`
+- `anthropic → groq → gemini`
+- Vision (foto): `gemini → anthropic` (groq nao suporta)
 
-**Templates configurados:**
-- "Padrao Anchieta" — cores #1B3A5C/#E8B931, Montserrat/Open Sans
-- "Minimalista" — cores #2C3E50/#3498DB, Roboto
+**Quando tudo falha:** `ai_fallback.py` faz keyword matching + busca KB + mensagem generica.
 
 ---
 
-## 7. Dados de Demo (seed_demo.py)
+## 7. Integracoes Academicas (4 providers)
 
-Script: `scripts/seed_demo.py` | Comando: `make seed-demo`
+**Localizacao:** `backend/app/services/integrations/`
 
-Cria dados completos para demonstracao/pitch deck:
-- 1 super admin + 1 tenant (Faculdade Anchieta)
-- 1 admin, 2 agentes, 3 professores (com credenciais)
-- 8 alunos com notas, frequencia, boletos, horarios
-- 5 funcionarios com holerites, ferias, ponto, solicitacoes RH
-- 14 contatos WhatsApp (alunos + funcionarios + visitante)
-- 6 conversas com mensagens realistas
-- 5 tickets com comentarios (diferentes status/prioridades)
-- 2 templates de slides + 3 apresentacoes completas
-- 14 artigos KB em 5 categorias
-- 4 templates de mensagem WhatsApp
-- 4 pesquisas de satisfacao (media 4.5/5)
-- 2 resolucoes de aprendizado IA
-- Metricas de resposta e logs de auditoria
+| Provider | Tipo | Auth | Uso |
+|---|---|---|---|
+| Sophia | REST | Token | Prima Tecnologia |
+| TOTVS RM | REST/OData | Basic Auth | TOTVS Educacional |
+| Generic REST | REST | bearer/basic/header | Qualquer JSON |
+| Generic SQL | SQL direto | username/password | MSSQL/MySQL/PostgreSQL/Oracle |
 
-**Credenciais de demo:**
+**Configuracao:**
+- UI: `/app/integrations` → form dinamico baseado em `PROVIDER_CATALOG` do `registry.py`
+- Credenciais armazenadas encrypted (Fernet) em `AcademicIntegration.credentials_encrypted`
+- Sync periodico via `integration_sync_tasks` (cron por integration)
+- Historico em `SyncLog`: records_synced, students/employees created/updated, errors, duration_ms
+
+**Interface comum:** `test_connection`, `sync_students`, `sync_employees`, `sync_grades`, `sync_boletos`, `sync_all`
+
+---
+
+## 8. Funcionalidades SaaS / Comercial
+
+- **Trial Period:** controlado por `trial_tasks.check_trial_expiry_task` (06:00 diario)
+- **Billing:** `saas_billing_service` cria checkout MP com planos Starter/Pro/Enterprise
+- **Leads:** captura via `LeadForm` (landing page) → `/api/v1/leads` com UTM tracking
+- **Pitch Deck:** `/pitch` (fullscreen) + `Presentation.tsx`
+- **Onboarding:** wizard visual em `WhatsAppSetup.tsx` (passo-a-passo para admin de TI)
+- **Cookie Banner:** consentimento LGPD em todas paginas publicas
+- **PWA:** instalavel em mobile, offline cache, push notifications
+
+---
+
+## 9. Estado do WhatsApp (atualizado)
+
+- **Bot em producao:** Billie IGS respondendo mensagens reais
+- **Servidor:** Oracle Cloud Free Tier (137.131.151.205), Oracle Linux, regiao Sao Paulo
+- **Stack producao:** `docker-compose.prod-light.yml` (6 containers: caddy, frontend, api, celery-worker, postgres, redis)
+- **Memoria total:** 1GB RAM + 2GB swap → limites por container (api 256MB, celery 256MB, postgres 192MB, redis 96MB)
+- **Dominio:** `igs-anchieta.duckdns.org` (DuckDNS gratuito)
+- **HTTPS:** Caddy com Let's Encrypt automatico (sem certbot separado)
+- **Webhook:** `https://igs-anchieta.duckdns.org/api/v1/webhook/whatsapp`
+- **Verify Token:** `igs-verify-token-2026`
+- **Phone Number ID:** 1142668418921479
+- **Numero do bot:** 92679-8094
+- **Access Token:** ainda usando token temporario (System User Token pendente)
+
+---
+
+## 10. CI/CD
+
+### Workflow `ci.yml` (push em master/main/develop, PR para master/main)
+
+1. **test-backend** — PostgreSQL 16 + Redis 7, `ruff check`, `pytest --cov` (unit + integration), coverage upload artifact + Codecov
+2. **lint-backend** — `ruff check app/` + `ruff format --check app/`
+3. **test-frontend** — Node 20, `tsc --noEmit`, `npm run build` (Vite)
+
+**Ruff config:** line-length=100, py312, select=["E","F","I","N","W"], ignore=["E501","N818"]
+
+### Workflow `deploy.yml` (trigger: tag `v*`)
+
+1. **build** — Login GHCR, build & push imagem API com semver tags
+2. **deploy** — SSH para `/opt/igs`, git pull, pull imagem, **salva imagem anterior**, `alembic upgrade head`, rolling restart (api + celery-worker + celery-beat), `curl /api/v1/health` para validar, **rollback automatico** se falhar
+3. **notify** — Markdown summary com status, tag, commit, build, deploy
+
+---
+
+## 11. Monitoring
+
+### Prometheus alerts (`monitoring/prometheus/rules/igs-alerts.yml`)
+
+- **igs_bot_performance:** BotResponseTimeHigh (P95 > 8s warn), BotResponseTimeCritical (P95 > 15s)
+- **igs_sla:** SLABreachRateHigh (>5% em 10m), SLABreachSpike (>5 em 5m)
+- **igs_ai_costs:** HighTokenConsumption (>100k/h), ExcessiveTokenConsumption (>500k/h)
+- **igs_infrastructure:** APIDown, RedisDown, HighHTTPErrorRate (>5% 5xx), NoMessagesProcessed (zero em 15m)
+
+### AlertManager
+- Receiver: `http://api:8000/api/v1/internal/alerts`
+- Critical: 0s group_wait, repeat 1h
+- Inhibit: suprime warnings se ha critical para mesmo tenant
+
+### Sentry
+- DSN configuravel, traces 10%, profiles 5%
+- Habilitado em backend (Python SDK) e frontend (@sentry/react)
+
+### Health endpoints
+- `/api/v1/ping` (uptime checks)
+- `/api/v1/health` (basico)
+- `/api/v1/health/ready` (db ok)
+- `/api/v1/health/detailed` (postgres + redis + celery + AI providers) → 200/207/503
+- `/api/v1/ai-health` (cacheado 60s)
+
+---
+
+## 12. Seguranca
+
+- **Row-Level Security (RLS):** 32 tabelas tenant-scoped, dual roles (`igs_app` RLS-enforced + `igs_worker` BYPASSRLS para tarefas cross-tenant). Toggle via `RLS_ENABLED`.
+- **Data Masking (LGPD):** `utils/data_masking.py` mascara CPF/email/telefone/cartao em mensagens salvas
+- **Direito ao Esquecimento:** `anonymization_service.py` substitui PII por hashes irreversiveis
+- **HMAC-SHA256:** verificacao em webhook WhatsApp + assinatura de webhooks outbound
+- **Encryption:** Fernet (CPF, tokens, credenciais de integracao)
+- **JWT:** access 15min + refresh 7d, must_change_password flow
+- **Cloudflare WAF:** 3 regras (SQLi/XSS, rate limit login, whitelist Meta no webhook)
+- **Cookie Banner:** consentimento LGPD ativo
+
+---
+
+## 13. Variaveis de Ambiente Criticas (.env.example)
+
+```
+DATABASE_URL              # PostgreSQL asyncpg
+REDIS_URL                 # Cache
+CELERY_BROKER_URL         # Redis db1
+CELERY_RESULT_BACKEND     # Redis db2
+JWT_SECRET_KEY            # JWT signing
+ANTHROPIC_API_KEY         # Claude
+GROQ_API_KEY              # Groq (default)
+GOOGLE_API_KEY            # Gemini
+AI_PROVIDER=groq          # Provider default
+WHATSAPP_APP_SECRET       # HMAC verification
+WHATSAPP_VERIFY_TOKEN     # Meta webhook challenge
+MP_ACCESS_TOKEN           # Mercado Pago
+MP_WEBHOOK_SECRET         # MP webhook signature
+ENCRYPTION_KEY            # Fernet (CPF, tokens)
+VAPID_PUBLIC_KEY          # Web Push
+VAPID_PRIVATE_KEY         # Web Push
+RESEND_API_KEY            # Email (preferido)
+SMTP_*                    # Email fallback
+SENTRY_DSN                # Error tracking
+RLS_ENABLED               # false em dev, true em prod
+RLS_APP_PASSWORD          # Senha role igs_app
+RLS_WORKER_PASSWORD       # Senha role igs_worker
+FRONTEND_URL              # Para links de reset
+AI_MONTHLY_BUDGET_USD=50  # Alerta de orcamento
+SAAS_BILLING_NOTIFICATION_URL  # Webhook MP do plano SaaS
+VITE_GA_MEASUREMENT_ID    # Google Analytics frontend
+```
+
+---
+
+## 14. Comandos Uteis (Makefile)
+
+```bash
+make up              # docker compose up -d (stack completa dev)
+make down            # docker compose down
+make logs            # logs de todos os servicos
+make migrate         # alembic upgrade head
+make seed            # seed_db.py (basico)
+make seed-demo       # seed_demo.py (8 alunos, 5 funcs, 6 conversas, etc.)
+make seed-pitch      # seed_pitch.py (dados de pitch deck)
+make test            # pytest
+make lint            # ruff check
+make format          # ruff format
+make shell           # bash no container api
+make create-tenant   # scripts/create_tenant.py interativo
+make import-students file=alunos.csv
+make import-employees file=funcionarios.csv
+```
+
+---
+
+## 15. URLs de Acesso (desenvolvimento local)
+
+| Servico | URL |
+|---|---|
+| API (Swagger) | http://localhost:8000/docs (tambem `/api/docs` em prod) |
+| API (ReDoc) | http://localhost:8000/redoc |
+| Frontend | http://localhost:3000 |
+| Grafana | http://localhost:3001 (admin/admin123) |
+| Prometheus | http://localhost:9090 |
+| Alertmanager | http://localhost:9093 |
+| Loki | http://localhost:3100 |
+| Health | http://localhost:8000/api/v1/health |
+| AI Health | http://localhost:8000/api/v1/ai-health |
+| Metrics | http://localhost:8000/api/v1/metrics/prometheus |
+
+---
+
+## 16. Credenciais Demo (apos `make seed-demo`)
+
 | Role | Email | Senha |
 |---|---|---|
 | Super Admin | admin@igs.com | Admin@123456 |
-| Admin | gestor@anchieta.edu.br | Gestor@2026 |
+| Admin Tenant | gestor@anchieta.edu.br | Gestor@2026 |
 | Agente | suporte1@anchieta.edu.br | Suporte@2026 |
 | Professor | prof.andre@anchieta.edu.br | Prof@2026 |
 
 ---
 
-## 8. Estado do WhatsApp (abril 2026)
+## 17. Documentacao Adicional (`docs/`)
 
-- **Bot em producao:** Billie IGS respondendo mensagens reais via WhatsApp
-- **Servidor:** Oracle Cloud Free Tier (137.131.151.205) com HTTPS via Caddy + Let's Encrypt
-- **Dominio:** igs-anchieta.duckdns.org (DuckDNS gratuito)
-- **Webhook:** `https://igs-anchieta.duckdns.org/api/v1/webhook/whatsapp` (verificado e ativo na Meta)
-- **Verify Token:** `igs-verify-token-2026`
-- **Phone Number ID:** 1142668418921479
-- **Access Token:** temporario (expira a cada ~1-2h) — System User Token pendente
-- **Numero do bot:** 92679-8094
-- **Endpoint de teste:** POST `/api/v1/tenants/whatsapp/test`
-- **Frontend:** botao "Testar Conexao" na pagina Settings
-- **Detalhes completos:** docs/WEBHOOK_CONFIG.md
-
----
-
-## 9. CI/CD
-
-### GitHub Actions (ci.yml)
-3 jobs paralelos em push para master/main/develop:
-
-1. **Backend Tests** — PostgreSQL 16 + Redis 7, `pip install -e ".[dev]"`, `ruff check`, `pytest`
-2. **Backend Lint** — `ruff check app/` + `ruff format --check app/`
-3. **Frontend Build** — `npm ci`, `tsc --noEmit`, `npm run build`
-
-**Ruff config:** line-length=100, py312, select=["E","F","I","N","W"], ignore=["E501","N818"]
-
-### Deploy (deploy.yml)
-Trigger: push de tag `v*` → SSH para servidor → `docker compose pull` + `alembic upgrade head` + rolling restart
+| Arquivo | Conteudo |
+|---|---|
+| `CONTEXT.md` | **Este arquivo** — contexto completo |
+| `IGS_Project_Overview.md` | Visao geral, target, problema, USPs |
+| `ADMIN_MANUAL.md` | Manual do administrador do painel |
+| `RUNBOOK.md` | Runbook de incidentes (API 5xx, Celery hung, DB full, Redis OOM) |
+| `SETUP_GUIDE.md` | Instalacao do zero (Oracle Free Tier) |
+| `WEBHOOK_CONFIG.md` | Configuracao Meta webhook + tokens |
+| `RESUMO_APRESENTACAO.md` | Resumo executivo (pitch) |
+| `CONTRATO_SAAS.md` | Contrato SaaS modelo |
+| `sales/one-pager.md` | One-pager comercial |
+| `site/` | Site de apresentacao Vite/Vercel |
 
 ---
 
-## 10. Historico de Evolucao
+## 18. Claude Code Customizations (`.claude/`)
 
-### Fase 1 — Estrutura Base
-- Setup Docker (12 containers), PostgreSQL, Redis, Celery
-- Models base com multi-tenancy (TenantMixin)
-- Auth JWT, RBAC com roles
-- API REST completa (auth, students, employees, tickets, KB, dashboard)
-- Frontend React com todas as paginas
-- Webhook WhatsApp com verificacao HMAC
-- CI/CD com GitHub Actions
+**Skills:** `igs-context/SKILL.md` (carrega contexto arquitetural automaticamente)
 
-### Fase 2 — IA e Automacao
-- Cliente IA unificado (Groq/Gemini/Anthropic)
-- Classificador de intents (26 intents iniciais)
-- Servico de resposta RAG (dados reais + KB + historico)
-- Processamento assincrono de mensagens (Celery)
-- Task executor para acoes automatizadas
-- Transcricao de audio
-- Sistema de aprendizado IA (TicketResolution)
-- Metricas IA vs Humano
+**Commands (slash):**
+- `/add-intent <nome>` — Adicionar novo intent (classifier + handler + task_executor + tests)
+- `/review-intent <nome>` — Revisar implementacao completa de um intent
+- `/debug-celery <problema>` — Debugar pipeline Celery
 
-### Fase 3 — Slides + Demo
-- Sistema de slides via IA (models, schemas, routes, service)
-- 2 intents novos: slide_generate, slide_update
-- Handlers de slides no task_executor (gerar/atualizar via WhatsApp)
-- Handlers de schedule_query, time_record_query, hr_request no fluxo de mensagens
-- Formatacao de dados para schedule, time_record, hr_request no ai_service
-- Seed completo para demo/pitch deck (seed_demo.py)
-- CI verde em todos os 3 jobs
-
-### Fase 4 — Completude para Pitch Deck (atual)
-- **PPTX Export:** python-pptx para gerar .pptx a partir do JSON de slides (pptx_service.py)
-- **Endpoint download:** GET /api/v1/slides/presentations/{id}/download retorna .pptx
-- **Pagina de Slides no Frontend:** Slides.tsx com listagem, preview, geracao via IA, download PPTX
-- **Dashboard KPIs expandidos:** satisfacao media, total alunos/funcionarios, mensagens/mes, tokens IA, economia estimada
-- **Boleto PDF:** boleto_pdf_service.py gera PDF via ReportLab; endpoint GET /students/{id}/boletos/{id}/pdf
-- **send_document_message:** nova funcao no whatsapp_service para envio de documentos via WhatsApp
-- **Notificacoes Proativas:** tasks de alerta de frequencia (diario 10h), notificacao de notas (a cada 6h), alem do lembrete de boleto ja existente
-- **Onboarding via WhatsApp:** integracao do student_onboarding.py no message_tasks.py; contatos nao verificados que pedem inscricao/cadastro entram no fluxo step-by-step
-- **Settings funcional:** API GET/PUT /tenants/settings/current; Settings.tsx com state management e chamadas API reais; salva bot_name, horarios, mensagens, chaves de integracao
-- **Relatorios PDF/Excel:** rows_to_pdf (ReportLab) e rows_to_excel (openpyxl) no report_service; endpoints /reports/{conversations,tickets}/{pdf,excel}
-- **Webhook Outbound funcional:** dispatch_event chamado ao criar ticket (ticket.created) e ao processar mensagem (message.processed); entrega via Celery com HMAC-SHA256
-
-### Fase 5 — Security Hardening (Enterprise)
-- **Row-Level Security (RLS):** migration Alembic (b7e2a9f3c1d8) habilita RLS em 32 tabelas tenant-scoped; 4 policies por tabela (SELECT/INSERT/UPDATE/DELETE) usando current_setting('app.current_tenant', true)
-- **Dual Database Roles:** igs_app (RLS-enforced, usado pela API FastAPI) e igs_worker (BYPASSRLS, usado pelo Celery para tarefas cross-tenant como SLA e notificacoes)
-- **dependencies.py reescrito:** dois engines (engine + worker_engine), dois session factories (AsyncSessionLocal + WorkerSessionLocal); _set_tenant_context() injeta tenant_id via set_config no PostgreSQL antes de cada query
-- **Celery tasks migrados:** dlq_tasks, message_tasks, notification_tasks, report_tasks, webhook_tasks usam WorkerSessionLocal (BYPASSRLS) em vez de AsyncSessionLocal
-- **config.py:** adicionados RLS_ENABLED (bool), RLS_APP_PASSWORD, RLS_WORKER_PASSWORD
-- **Docker hardening (docker-compose.prod.yml):** PostgreSQL e Redis com ZERO portas publicadas (expose only); Redis com --requirepass, comandos perigosos renomeados/desabilitados (FLUSHDB, FLUSHALL, DEBUG); Tailscale sidecar para acesso admin remoto via VPN; Nginx como unico servico public-facing (80/443); Certbot para renovacao SSL automatica; resource limits em todos os containers
-- **PostgreSQL hardening:** pg_hba.conf com SCRAM-SHA-256, acesso restrito a redes Docker internas (172.16.0.0/12, 10.0.0.0/8), reject total para IPs externos; postgresql.conf com row_security=on, logging de DDL e queries lentas >1s
-- **Cloudflare WAF (3 regras free tier):** Regra 1 bloqueia SQLi/XSS em /api/ (exceto webhook para evitar falso-positivo da Meta); Regra 2 rate-limit + challenge no POST /auth/login (10 req/min/IP); Regra 3 whitelist de IPs Meta (AS32934) no webhook WhatsApp
-- **Novos arquivos:** infra/pg_hba.conf, infra/postgresql.conf, infra/cloudflare-waf-rules.md, .env.prod.example
-
-### Fase 6 — LGPD + Resiliencia IA
-- **Data Masking (LGPD):** utils/data_masking.py com funcoes mask_cpf, mask_email, mask_phone, mask_credit_card, mask_pii; integrado no webhook (salvamento de mensagens do usuario) e em _save_bot_message (respostas do bot); todas as mensagens salvas no banco ja tem PII mascarado
-- **Direito ao Esquecimento (LGPD Art. 18):** services/anonymization_service.py com anonymize_student() e anonymize_employee(); substitui PII por hashes irreversiveis mantendo integridade referencial; anonimiza student/employee, contacts, messages (sender_type=user), boletos, hr_requests, payslips; registra audit log com detalhes da operacao
-- **Endpoints de anonimizacao:** POST /api/v1/admin/lgpd/anonymize/student/{id} e /employee/{id}; requer role super_admin ou admin; recebe motivo da solicitacao
-- **Circuit Breaker (ai_client.py):** tenacity retry (2 tentativas com backoff exponencial) em cada provider; CircuitState por provider (threshold=3 falhas, recovery=60s); fallback automatico entre providers (groq→gemini→anthropic); detecta timeout, 429, 500/502/503; AIResponse agora inclui provider_used para rastreabilidade
-- **Novos arquivos:** utils/data_masking.py, services/anonymization_service.py
-- **Dependencia adicionada:** tenacity==9.0.0
-
-### Fase 7 — DevEx, WhatsApp Test & Tooling
-- **WhatsApp Test Endpoint:** POST /api/v1/tenants/whatsapp/test envia mensagem de teste para numero fornecido; formata automaticamente numeros BR (prefixo 55, remove caracteres); valida config do tenant antes do envio
-- **Settings UI — Testar Conexao:** botao na pagina Settings.tsx permite testar conexao WhatsApp informando numero de telefone; feedback visual de sucesso/erro
-- **Docker no segundo computador:** .dockerignore criados para backend e frontend (resolve erros de permissao .pytest_cache no Windows); 13 containers rodando (api, celery, postgres, redis, frontend, nginx, prometheus, grafana, loki, promtail, flower, beat, redis-exporter)
-- **Claude Code Skills & Commands:** skill igs-context (contexto arquitetural completo carregado automaticamente); commands add-intent, review-intent, debug-celery para workflows comuns do IGS
-- **CI fix:** corrigidos erros ruff (I001 imports nao ordenados, F401 imports nao usados) em admin.py e ai_client.py; 3 jobs verdes (Backend Lint, Backend Tests, Frontend Build)
-- **.gitignore cleanup:** adicionados backend/backups/, SETUP_PROMPT.md, PROMPT_EVOLUCAO_IGS.md, monitoring/grafana/data/, monitoring/prometheus/data/, monitoring/loki/data/
-- **Fixes menores:** RLS migration removeu ticket_comments e tenant_settings (nao tem tenant_id); seed_demo.py corrigido resolved_by → problem_category/resolution_type
-
-### Fase 8 — Agente Conversacional "Billie" + Deploy Oracle Cloud
-- **Reescrita completa do message_tasks.py:** sistema mudou de chatbot baseado em comandos/menus para agente conversacional IA. TODAS as mensagens (inclusive de contatos nao verificados) passam pela IA. Nao ha mais respostas hardcoded.
-- **Agente "Billie IGS":** assistente virtual com personalidade definida — carismatica, acolhedora, conversa naturalmente pelo WhatsApp como uma atendente humana da Faculdade Anchieta. Se apresenta no inicio da conversa, chama pelo nome, continua proativamente o atendimento.
-- **Tres estados comportamentais:** BEHAVIOR_NEW_CONTACT (contato nao identificado — Billie pede RA/matricula de forma natural), BEHAVIOR_AWAITING_PASSWORD (aguardando senha apos identificacao), BEHAVIOR_VERIFIED (acesso completo aos dados).
-- **Comandos embutidos na resposta da IA:** a IA inclui comandos especiais na resposta que sao extraidos via regex: `[IDENTIFY:student:NUMERO]`, `[PASSWORD:valor]`, `[HANDOFF]`, `[CANCEL]`. Os comandos sao removidos antes de enviar ao usuario.
-- **Verificacao de identidade conversacional:** em vez de menus e prompts fixos, a IA conduz a verificacao de identidade naturalmente na conversa, pedindo RA e senha de forma amigavel.
-- **Fix async engine no Celery:** criacao de engine por request (`create_async_engine` dentro da task) para evitar erro "Future attached to different loop". Engine descartada (`dispose()`) apos cada task.
-- **webhook.py simplificado:** removida funcao `_try_verify_contact()` — toda logica de verificacao agora e feita pelo agente no message_tasks.py.
-- **Deploy Oracle Cloud Free Tier:**
-  - VM: VM.Standard.E2.1.Micro (1 OCPU, 1GB RAM), Oracle Linux, regiao Sao Paulo
-  - IP publico: 137.131.151.205
-  - Docker + Docker Compose instalados no servidor
-  - Swap de 2GB configurado (servidor tem apenas 1GB RAM)
-  - docker-compose.prod-light.yml: stack leve com 4 containers (api, celery-worker, postgres, redis) com limites de memoria otimizados
-  - Caddy como reverse proxy com HTTPS automatico (Let's Encrypt)
-  - DuckDNS: dominio gratuito igs-anchieta.duckdns.org apontando para o IP do servidor
-  - Webhook WhatsApp reconfigurado: `https://igs-anchieta.duckdns.org/api/v1/webhook/whatsapp`
-  - Bot funcionando em producao — respondendo mensagens reais pelo WhatsApp
-- **Token permanente (pendente):** tentativa de criar System User Token na Meta foi bloqueada por falta de permissoes visiveis. Usando token temporario por enquanto (expira a cada ~1-2h).
-- **Novos arquivos:** docker-compose.prod-light.yml, docs/WEBHOOK_CONFIG.md, backend/app/api/v1/student_portal.py, backend/app/models/library.py, backend/app/services/hr_vision_service.py, backend/app/services/library_service.py, backend/app/services/payment_service.py, backend/app/services/tutor_service.py, backend/alembic/versions/c8d3e5f7a9b1_add_modules_pix_library_materials.py
-
-### Fase 9 — Features Inteligentes + Feedback + Documentos Digitais
-- **Pesquisa de satisfacao pos-atendimento:** Billie pede nota de 1 a 5 quando usuario encerra conversa ("obrigado", "era so isso"). Nota salva na tabela satisfaction_surveys via comando [FEEDBACK_REQUEST] + [FEEDBACK:N]. Conversa marcada como "closed" apos feedback.
-- **Lembretes opt-in via WhatsApp:** usuario pode dizer "ativar lembretes" para receber notificacoes proativas. Preferencia salva em contact.metadata (reminders_enabled: true/false). Todas as tasks de notificacao (boletos, frequencia, notas, rematricula) verificam opt-in antes de enviar.
-- **Relatorio semanal para gestores:** Celery beat (segunda 8h) agrega metricas da semana (total mensagens, conversas, satisfacao media, top 5 assuntos) e envia via WhatsApp para admins/managers do tenant.
-- **Alerta inteligente de evasao:** Celery beat (diario 7h) cruza faltas >30% + notas <4.0 + boletos vencidos. Se 2+ sinais detectados, envia alerta para coordenacao com nome, RA, curso e sinais identificados.
-- **Campanha de rematricula:** Celery beat (diario 9:30, so em jun/jul/nov/dez) envia mensagem personalizada para alunos ativos com lembretes habilitados, convidando a rematricular.
-- **Documentos digitais via WhatsApp:** aluno pede "declaracao de matricula" ou "historico" → Billie gera documento formatado e envia como mensagem. Comando [GENERATE_DOC:tipo] dispara task Celery dedicada (enrollment_declaration, academic_history).
-- **Tutor IA — materias da prova:** quando aluno pergunta sobre provas, Billie lista disciplinas do semestre e sugere focar nas com nota mais baixa. Nao explica conteudo, apenas orienta.
-- **Novos intents:** feedback_response, enable_reminders, disable_reminders, farewell (total: 32 intents)
-- **Novos comandos embutidos:** [FEEDBACK_REQUEST], [FEEDBACK:N], [REMINDERS_ON], [REMINDERS_OFF], [GENERATE_DOC:tipo]
-
-### Fase 10 — Pagamentos, OCR, Agendamento + Mercado Pago
-- **Mercado Pago Checkout Pro:** mercadopago_service.py integra PIX + cartao de credito/debito + boleto via Checkout Pro. Sandbox configurado para testes. Webhook POST /webhook/mercadopago recebe notificacoes de pagamento e atualiza status do boleto automaticamente.
-- **Reconhecimento de documentos via foto (OCR):** document_ocr_service.py usa IA Vision para extrair dados de RG, CPF, comprovante de residencia, boleto, historico escolar, diplomas. Integrado no message_tasks.py — quando usuario verificado envia foto (que nao seja facility_ticket ou medical_certificate), OCR e executado e dados extraidos sao apresentados pela Billie.
-- **Agendamento presencial via WhatsApp:** appointment_service.py + model Appointment. Usuario pede para agendar atendimento → sistema mostra horarios disponiveis (seg-sex, 8h-16:30, 3 vagas/slot) → usuario escolhe data/hora → confirmacao com protocolo. Suporta cancelamento. Setores: secretaria, coordenacao, financeiro, biblioteca, TI.
-- **Relatorio PDF semanal por email:** email_service.py envia emails via SMTP com anexos. Celery beat (segunda 8:30) gera PDF com metricas da semana e envia para admins.
-- **Fluxo de primeiro contato atualizado:** Billie pergunta se e aluno, funcionario ou externo. Externos recebem link do vestibular (anchieta.br/vestibular) ou vagas (anchieta.br/trabalhe-conosco).
-- **Novos intents:** schedule_appointment, cancel_appointment, document_ocr (total: 35 intents)
-- **Novo model:** Appointment (tabela appointments, migration d9e4f6a7b2c3)
-- **Novos arquivos:** appointment_service.py, document_ocr_service.py, email_service.py, mercadopago_service.py, payment_service.py, library_service.py, tutor_service.py, hr_vision_service.py, models/appointment.py, models/library.py, alembic d9e4f6a7b2c3
+**Agents globais usados:** planner, code-reviewer, security-reviewer, tdd-guide, python-reviewer, database-reviewer, build-error-resolver
 
 ---
 
-## 11. Proximos Passos Sugeridos
+## 19. Pendencias / Proximos Passos
 
-1. **Token permanente Meta:** resolver permissoes do System User para gerar token que nao expira
-2. **Evolution API:** migrar de Meta Cloud API para Evolution API (auto-hospedada, sem custos de mensagem)
-3. **Pitch Deck:** preparar demonstracao end-to-end com dados do seed_pitch + bot Billie funcionando
-4. **Integracao com sistema academico real:** quando vender o projeto, integrar API do sistema que a instituicao ja usa (TOTVS RM, Lyceum, etc.) para consultar dados reais em vez de manter banco proprio
-5. **Templates HSM Meta:** criar templates aprovados na Meta para boleto_lembrete, frequencia_alerta, rematricula
-6. **Monitoring no servidor:** adicionar metricas basicas de health/uptime sem stack completo (Prometheus/Grafana pesado demais para 1GB)
-7. **Backup automatizado:** script de backup do PostgreSQL no servidor Oracle Cloud
+### Tecnicas
+1. **Token permanente Meta WhatsApp** — System User Token pendente (atual expira em 1-2h)
+2. **Evolution API** — avaliar migracao para reduzir custo de mensagens
+3. **Slides feature** — UI ainda existe mas backend foi dropado (migration `l8h9i0j1k2l3`). Decidir: remover UI ou reativar backend?
+4. **Templates HSM Meta** — criar templates aprovados para boleto_lembrete, frequencia_alerta, rematricula (necessario para outbound proativo)
+5. **Monitoring no servidor prod-light** — Oracle 1GB nao roda stack completo, falta solucao leve (uptime kuma?)
+6. **Integration com sistema academico real** — testar em cliente piloto (TOTVS RM via generic_sql)
 
----
+### Comerciais
+7. **Pitch deck final** — preparar demo end-to-end com Billie funcionando + dados de `seed_pitch`
+8. **Site de apresentacao** — `docs/site/` (Vite + Vercel) — divulgar
+9. **Leads pipeline** — definir follow-up automatico (email sequence?)
 
-## 12. Comandos Uteis
-
-```bash
-make up              # Subir todos os servicos
-make migrate         # Rodar migracoes Alembic
-make seed            # Seed basico
-make seed-demo       # Seed completo para demo/pitch
-make test            # Rodar testes
-make lint            # Ruff check
-make format          # Ruff format
-make logs            # Ver logs de todos os servicos
-make shell           # Shell no container da API
-```
+### Producto
+10. **Visual demo improvements** — concluido em commit `a9ece69` (hero stats, typing, before/after)
+11. **WhatsApp setup wizard** — concluido em `c47f38e`
+12. **SEO + changelog** — concluido em `2146164` (sprint comercial)
 
 ---
 
-## 13. Regras para o Claude
+## 20. Regras para o Claude
 
-1. **NAO remova arquivos existentes** — apenas adicione ou edite
-2. **Rode `ruff check` e `ruff format`** antes de commitar (disponivel em `$HOME/.local/bin/ruff`)
+1. **NAO remova arquivos existentes** sem confirmacao — apenas adicione ou edite
+2. **Rode `ruff check` e `ruff format`** antes de commitar
 3. **Testes devem passar** com SQLite (conftest usa aiosqlite) e PostgreSQL (CI)
-4. **Multi-tenancy:** todo model com dados de tenant DEVE ter `tenant_id`
-5. **AI Provider:** use `ai_client.ai_complete()` — NUNCA chame APIs de IA diretamente
-6. **Intents novos:** adicionar em `intent_classifier.py` (VALID_INTENTS + prompt) E no `task_executor.py` se for acao
-7. **Commits:** mensagens em ingles, prefixos feat/fix/refactor/docs
-8. **O usuario prefere comunicacao em portugues brasileiro**
+4. **Multi-tenancy:** todo model com dados de tenant DEVE ter `tenant_id` + usar TenantMixin
+5. **AI calls:** use `ai_client.ai_complete()` — NUNCA chame APIs de IA diretamente
+6. **Intents novos:** adicionar em `intent_classifier.VALID_INTENTS` + prompt + `task_executor.py` se for acao
+7. **Migrations:** sempre via `alembic revision --autogenerate -m "..."` e revisar manualmente
+8. **Commits:** mensagens em ingles, prefixos feat/fix/refactor/docs/chore/test/perf/ci
+9. **PRs:** analisar TODOS os commits do branch (nao so o ultimo) e gerar test plan
+10. **Comunicacao com o usuario:** sempre em portugues brasileiro
+11. **Skills/Agents:** delegar para subagents quando tarefa for paralelizavel ou consumir contexto
