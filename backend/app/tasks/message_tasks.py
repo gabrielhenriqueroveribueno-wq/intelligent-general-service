@@ -673,6 +673,48 @@ async def _process_message_async(message_id: str):
             for m in history
         )
 
+        # ── Pre-gate: bloquear off-topic antes do LLM principal ──────────────
+        # Só aplicado para contatos verificados. O fluxo de identificação
+        # (RA, senha) é sempre considerado on-topic e passa direto.
+        safe_input = _sanitize_user_input(message.content or "")
+        if (
+            contact.is_verified
+            and safe_input
+            and safe_input != "[conteúdo inválido]"
+            and await _is_off_topic(safe_input)
+        ):
+            _canned = (
+                "Sou especializada nos serviços da Anchieta. "
+                "Posso te ajudar com notas, boletos, horários ou outros serviços da faculdade?"
+            )
+            _msg_id = await whatsapp_service.send_text_message(phone_id, token, to, _canned)
+            _save_bot_message(db, conversation, _canned, tenant_id, whatsapp_msg_id=_msg_id)
+            from datetime import datetime, timezone
+
+            await db.execute(
+                update(Message)
+                .where(Message.id == message.id)
+                .values(ai_tokens_used=0, intent="off_topic")
+            )
+            await db.execute(
+                update(Conversation)
+                .where(Conversation.id == conversation.id)
+                .values(last_message_at=datetime.now(timezone.utc))
+            )
+            elapsed = time.perf_counter() - start_time
+            messages_processed_total.labels(
+                tenant_id=str(tenant_id), intent="off_topic", resolution_type="blocked"
+            ).inc()
+            response_time_histogram.labels(tenant_id=str(tenant_id)).observe(elapsed)
+            await db.commit()
+            logger.info(
+                "Pre-gate: mensagem off-topic bloqueada em %.2fs: '%s'",
+                elapsed,
+                safe_input[:60],
+            )
+            await _engine.dispose()
+            return
+
         # ── 5. Gera resposta via IA ──────────────────────────────────────
         data_str = (
             _format_data_for_agent(data_context) if data_context else "Nenhum dado carregado."
@@ -692,7 +734,6 @@ async def _process_message_async(message_id: str):
         )
 
         api_key = tenant.claude_api_key or None
-        safe_input = _sanitize_user_input(message.content or "")
         ai_result = await ai_complete_safe(
             system=system_prompt,
             message=safe_input,
@@ -881,6 +922,38 @@ def _sanitize_user_input(text: str) -> str:
         logger.warning("Prompt injection detectado e neutralizado: '%s'", clean[:80])
         clean = "[conteúdo inválido]"
     return clean
+
+
+_OFF_TOPIC_SYSTEM = (
+    "Classify the user message as ON_TOPIC or OFF_TOPIC for a Brazilian university WhatsApp assistant.\n\n"
+    "ON_TOPIC: grades, tuition fees, attendance, class schedules, enrollment, payslips, vacation, "
+    "library, university documents, appointments, helpdesk, anything about university life.\n"
+    "OFF_TOPIC: cooking recipes, jokes, weather, generic programming tutorials, personal advice, "
+    "news, trivia, politics, religion, adult content, topics unrelated to the university.\n\n"
+    "Short or ambiguous messages (greetings, numbers, 'ok', 'sim', 'não', 'oi') = ON_TOPIC.\n"
+    "Reply ONLY with: ON_TOPIC or OFF_TOPIC"
+)
+
+
+async def _is_off_topic(text: str) -> bool:
+    """Cheap pre-gate to reject clearly off-topic messages before the main Billie LLM.
+
+    Uses a fast AI call (~5 output tokens). Falls back to False (allow) on
+    any error — better to pass a borderline message than block a valid query.
+    Only called for verified contacts; identification flow is always ON_TOPIC.
+    """
+    from app.services.ai_client import ai_complete
+
+    try:
+        result = await ai_complete(
+            system=_OFF_TOPIC_SYSTEM,
+            message=text[:500],
+            max_tokens=5,
+        )
+        return "OFF_TOPIC" in result.text.upper()
+    except Exception as exc:
+        logger.debug("Pre-gate _is_off_topic falhou, permitindo mensagem: %s", exc)
+        return False
 
 
 def _extract_commands(raw_reply: str) -> tuple[str, list[str]]:
