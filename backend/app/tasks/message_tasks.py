@@ -893,7 +893,7 @@ _CMD_INJECT_RE = re.compile(
 )
 _INJECTION_RE = re.compile(
     r"\b(ignore\s+(all\s+)?(previous|prior|above|system)\s+(instructions?|prompt|rules?)"
-    r"|esquece?\s+(as\s+)?instru[cç][oõ]es"
+    r"|esque(?:ça?|ce?)\s+(as\s+)?instru[cç][oõ]es"
     r"|desconsider[ae]\s+(as\s+)?instru[cç][oõ]es"
     r"|act\s+as\b|atue?\s+como\b"
     r"|finja\s+(ser|que)\b"
