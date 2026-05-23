@@ -1,3 +1,7 @@
+# IGS — Intelligent General Service
+# Copyright (c) 2026 — All Rights Reserved
+# Proprietary Software — Unauthorized use prohibited. See LICENSE.
+# Origin fingerprint: IGS-2026-BR-ANCHIETA-BILLIE-WHATSAPP-SAAS
 """
 Análise de sentimento das mensagens de WhatsApp — abordagem híbrida:
 1. Classificação rápida por palavras-chave em PT-BR (sem custo de AI)

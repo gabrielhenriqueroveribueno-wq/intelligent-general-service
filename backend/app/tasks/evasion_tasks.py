@@ -1,3 +1,7 @@
+# IGS — Intelligent General Service
+# Copyright (c) 2026 — All Rights Reserved
+# Proprietary Software — Unauthorized use prohibited. See LICENSE.
+# Origin fingerprint: IGS-2026-BR-ANCHIETA-BILLIE-WHATSAPP-SAAS
 """
 Tarefa periódica de análise de risco de evasão.
 Roda a cada hora via celery beat e atualiza evasion_risk_score/level em todos os alunos ativos.

@@ -1,3 +1,7 @@
+# IGS — Intelligent General Service
+# Copyright (c) 2026 — All Rights Reserved
+# Proprietary Software — Unauthorized use prohibited. See LICENSE.
+# Origin fingerprint: IGS-2026-BR-ANCHIETA-BILLIE-WHATSAPP-SAAS
 """
 Models para o sistema de slides IA — professores geram e atualizam
 apresentações seguindo o padrão institucional (ex.: Anchieta).

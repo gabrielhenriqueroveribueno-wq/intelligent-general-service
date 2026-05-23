@@ -1,3 +1,7 @@
+# IGS — Intelligent General Service
+# Copyright (c) 2026 — All Rights Reserved
+# Proprietary Software — Unauthorized use prohibited. See LICENSE.
+# Origin fingerprint: IGS-2026-BR-ANCHIETA-BILLIE-WHATSAPP-SAAS
 """
 Servico de OCR para documentos enviados via foto no WhatsApp.
 Usa Claude/Gemini Vision para extrair dados de documentos.

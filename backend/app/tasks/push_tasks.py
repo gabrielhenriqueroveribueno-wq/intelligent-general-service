@@ -1,3 +1,7 @@
+# IGS — Intelligent General Service
+# Copyright (c) 2026 — All Rights Reserved
+# Proprietary Software — Unauthorized use prohibited. See LICENSE.
+# Origin fingerprint: IGS-2026-BR-ANCHIETA-BILLIE-WHATSAPP-SAAS
 from __future__ import annotations
 
 import asyncio
