@@ -181,13 +181,14 @@ class TestWebhookPost:
         assert resp.json().get("status") == "ignored"
 
     @pytest.mark.asyncio
-    async def test_post_no_secret_skips_signature_check(self, client):
-        """Se WHATSAPP_APP_SECRET não está configurado, aceita sem validar assinatura."""
+    async def test_post_no_secret_dev_mode_skips_signature_check(self, client):
+        """Em dev, se WHATSAPP_APP_SECRET vazio, aceita sem validar (com warning)."""
         body = json.dumps(WHATSAPP_MESSAGE_PAYLOAD).encode()
 
         with patch("app.api.v1.webhook.settings") as mock_settings, \
              patch("app.api.v1.webhook.process_incoming_message") as mock_task:
             mock_settings.WHATSAPP_APP_SECRET = ""
+            mock_settings.is_production = False
             mock_task.delay = MagicMock()
 
             resp = await client.post(
@@ -197,3 +198,20 @@ class TestWebhookPost:
             )
 
         assert resp.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_post_no_secret_in_production_blocks(self, client):
+        """Em produção, WHATSAPP_APP_SECRET vazio deve bloquear webhook (503)."""
+        body = json.dumps(WHATSAPP_MESSAGE_PAYLOAD).encode()
+
+        with patch("app.api.v1.webhook.settings") as mock_settings:
+            mock_settings.WHATSAPP_APP_SECRET = ""
+            mock_settings.is_production = True
+
+            resp = await client.post(
+                "/api/v1/webhook/whatsapp",
+                content=body,
+                headers={"Content-Type": "application/json"},
+            )
+
+        assert resp.status_code == 503

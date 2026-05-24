@@ -48,9 +48,14 @@ async def whatsapp_webhook(
     """Recebe mensagens do WhatsApp e as enfileira para processamento."""
     body_bytes = await request.body()
 
-    # Verifica assinatura HMAC
+    # Verifica assinatura HMAC — OBRIGATÓRIA em produção
     signature = request.headers.get("X-Hub-Signature-256", "")
-    if settings.WHATSAPP_APP_SECRET and not verify_webhook_signature(body_bytes, signature):
+    if not settings.WHATSAPP_APP_SECRET:
+        if settings.is_production:
+            logger.error("WHATSAPP_APP_SECRET não configurado em produção — webhook bloqueado")
+            raise HTTPException(status_code=503, detail="Webhook não configurado")
+        logger.warning("WHATSAPP_APP_SECRET vazio (apenas dev) — assinatura não verificada")
+    elif not verify_webhook_signature(body_bytes, signature):
         raise HTTPException(status_code=401, detail="Assinatura inválida")
 
     payload: dict[str, Any] = await request.json()
@@ -195,6 +200,43 @@ async def _handle_incoming_message(
     msg_type = raw_msg.get("type", "text")
     from_phone = raw_msg.get("from")
     whatsapp_msg_id = raw_msg.get("id")
+
+    # ── Anti-replay: rejeita mensagens com timestamp muito antigo ────────
+    # WhatsApp envia timestamp em segundos (string). Mensagens > 5 min são
+    # provavelmente replay ou backlog de webhook restaurado após outage.
+    raw_ts = raw_msg.get("timestamp")
+    if raw_ts:
+        try:
+            msg_ts = int(raw_ts)
+            now_ts = int(datetime.now(timezone.utc).timestamp())
+            age_sec = now_ts - msg_ts
+            if age_sec > 300:
+                logger.warning(
+                    "Mensagem descartada por timestamp antigo: msg_id=%s age=%ds",
+                    whatsapp_msg_id,
+                    age_sec,
+                )
+                return
+            if age_sec < -60:
+                # Timestamp no futuro além de skew razoável — payload suspeito
+                logger.warning(
+                    "Mensagem descartada por timestamp futuro: msg_id=%s skew=%ds",
+                    whatsapp_msg_id,
+                    -age_sec,
+                )
+                return
+        except (ValueError, TypeError):
+            pass
+
+    # ── Deduplicação por whatsapp_msg_id (anti replay via reenvio) ──────
+    # Se a mesma msg_id chega 2x (Meta às vezes reenvia), pula a segunda.
+    if whatsapp_msg_id:
+        existing = await db.execute(
+            select(Message.id).where(Message.whatsapp_msg_id == whatsapp_msg_id)
+        )
+        if existing.scalar_one_or_none():
+            logger.info("Mensagem duplicada descartada: %s", whatsapp_msg_id)
+            return
 
     supported_types = {"text", "image", "document", "audio", "video", "sticker"}
     if msg_type not in supported_types:

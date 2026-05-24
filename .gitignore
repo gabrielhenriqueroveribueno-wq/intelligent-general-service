@@ -68,8 +68,10 @@ backend/backups/
 SETUP_PROMPT.md
 PROMPT_EVOLUCAO_IGS.md
 
-# Billie agent prompt (proprietary — not for public repo)
+# Billie agent prompts (proprietary — not for public repo)
 backend/prompts/billie_agent.txt
+backend/prompts/billie_behaviors.txt
+backend/prompts/billie_classifier.txt
 
 # Grafana
 monitoring/grafana/data/

@@ -1,20 +1,45 @@
 import re
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.dependencies import get_current_user, get_db
 from app.schemas.auth import LoginRequest, RefreshRequest, TokenResponse, UserMe
+from app.services import audit_service
 from app.services.auth_service import authenticate_user, refresh_tokens
+from app.utils.exceptions import UnauthorizedError
 
 router = APIRouter()
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
-    access_token, refresh_token, must_change = await authenticate_user(db, body.email, body.password)
+async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    ip = audit_service.extract_ip(request)
+    try:
+        access_token, refresh_token, must_change, user = await authenticate_user(
+            db, body.email, body.password
+        )
+    except UnauthorizedError:
+        # Login falhou — registra em transação isolada para sobreviver ao rollback.
+        # Email é mantido para forensics (já é PII conhecido pelo atacante).
+        await audit_service.log_event_isolated(
+            action=audit_service.ACTION_LOGIN_FAILED,
+            details={"email": body.email},
+            ip=ip,
+        )
+        raise
+
+    # Audit log atômico com last_login_at — get_db comita ambos juntos.
+    await audit_service.log_event(
+        db,
+        action=audit_service.ACTION_LOGIN_SUCCESS,
+        tenant_id=user.tenant_id,
+        user_id=user.id,
+        ip=ip,
+    )
     return TokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
@@ -48,6 +73,7 @@ class ChangePasswordRequest(BaseModel):
 @router.post("/change-password", status_code=200)
 async def change_password(
     body: ChangePasswordRequest,
+    request: Request,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -70,12 +96,20 @@ async def change_password(
             must_change_password=False,
         )
     )
+    await audit_service.log_event(
+        db,
+        action=audit_service.ACTION_PASSWORD_CHANGED,
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.id,
+        ip=audit_service.extract_ip(request),
+    )
     await db.commit()
     return {"message": "Senha alterada com sucesso"}
 
 
 @router.get("/me/export")
 async def export_me(
+    request: Request,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -87,12 +121,12 @@ async def export_me(
 
     from sqlalchemy import select
 
-    from app.models.conversation import Conversation
     from app.models.ticket import Ticket
 
     # Tickets do usuário (se for agente atribuído)
     tickets_q = await db.execute(
-        select(Ticket).where(Ticket.tenant_id == current_user.tenant_id)
+        select(Ticket)
+        .where(Ticket.tenant_id == current_user.tenant_id)
         .where(Ticket.assigned_to == current_user.id)
         .limit(500)
     )
@@ -117,13 +151,27 @@ async def export_me(
             "role": current_user.role,
             "tenant_id": str(current_user.tenant_id) if current_user.tenant_id else None,
             "is_active": current_user.is_active,
-            "last_login_at": current_user.last_login_at.isoformat() if current_user.last_login_at else None,
-            "created_at": current_user.created_at.isoformat() if hasattr(current_user, "created_at") and current_user.created_at else None,
+            "last_login_at": current_user.last_login_at.isoformat()
+            if current_user.last_login_at
+            else None,
+            "created_at": current_user.created_at.isoformat()
+            if hasattr(current_user, "created_at") and current_user.created_at
+            else None,
         },
         "tickets_assigned": tickets,
     }
 
     from fastapi.responses import JSONResponse
+
+    await audit_service.log_event(
+        db,
+        action=audit_service.ACTION_DATA_EXPORTED,
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.id,
+        ip=audit_service.extract_ip(request),
+        details={"tickets_count": len(tickets)},
+    )
+    await db.commit()
 
     return JSONResponse(
         content=export,
@@ -136,6 +184,7 @@ async def export_me(
 
 @router.delete("/me", status_code=200)
 async def delete_me(
+    request: Request,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -144,6 +193,7 @@ async def delete_me(
     Não remove o registro para preservar integridade referencial — apenas anonimiza os dados pessoais.
     """
     import uuid as _uuid
+
     from sqlalchemy import update as sql_update
 
     anon_suffix = str(_uuid.uuid4())[:8]
@@ -157,6 +207,14 @@ async def delete_me(
             is_active=False,
         )
     )
+    await audit_service.log_event(
+        db,
+        action=audit_service.ACTION_ACCOUNT_DELETED,
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.id,
+        ip=audit_service.extract_ip(request),
+        details={"reason": "lgpd_art_18_user_request"},
+    )
     await db.commit()
     return {"message": "Conta removida conforme solicitado (LGPD Art. 18)"}
 
@@ -169,7 +227,11 @@ class ForgotPasswordRequest(BaseModel):
 
 
 @router.post("/forgot-password", status_code=202)
-async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+async def forgot_password(
+    body: ForgotPasswordRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """
     Envia email com link de reset de senha.
     Retorna 202 sempre (não revela se o email existe).
@@ -180,7 +242,9 @@ async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depend
 
     from app.models.user import User
 
-    result = await db.execute(select(User).where(User.email == body.email, User.is_active.is_(True)))
+    result = await db.execute(
+        select(User).where(User.email == body.email, User.is_active.is_(True))
+    )
     user = result.scalar_one_or_none()
 
     if user:
@@ -204,6 +268,14 @@ async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depend
         except Exception:
             pass
 
+        await audit_service.log_event(
+            db,
+            action=audit_service.ACTION_PASSWORD_RESET_REQUESTED,
+            tenant_id=user.tenant_id,
+            user_id=user.id,
+            ip=audit_service.extract_ip(request),
+        )
+
     return {"message": "Se o email existir, você receberá as instruções em breve."}
 
 
@@ -213,7 +285,11 @@ class ResetPasswordRequest(BaseModel):
 
 
 @router.post("/reset-password", status_code=200)
-async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+async def reset_password(
+    body: ResetPasswordRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Redefine a senha usando o token recebido por email."""
     import redis.asyncio as aioredis
 
@@ -232,8 +308,9 @@ async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(
     finally:
         await redis_client.aclose()
 
-    from sqlalchemy import update as sql_update
     import uuid
+
+    from sqlalchemy import update as sql_update
 
     result = await db.execute(select(User).where(User.id == uuid.UUID(user_id.decode())))
     user = result.scalar_one_or_none()
@@ -244,6 +321,13 @@ async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(
         sql_update(User)
         .where(User.id == user.id)
         .values(password_hash=hash_password(body.new_password), must_change_password=False)
+    )
+    await audit_service.log_event(
+        db,
+        action=audit_service.ACTION_PASSWORD_RESET_COMPLETED,
+        tenant_id=user.tenant_id,
+        user_id=user.id,
+        ip=audit_service.extract_ip(request),
     )
     await db.commit()
     return {"message": "Senha redefinida com sucesso. Você já pode fazer login."}
@@ -265,7 +349,7 @@ _SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9\-]{2,98}[a-z0-9]$")
 
 
 @router.post("/signup", status_code=201)
-async def signup(body: SignupRequest, db: AsyncSession = Depends(get_db)):
+async def signup(body: SignupRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Cria novo tenant + admin em plano trial (14 dias)."""
     from datetime import datetime, timedelta, timezone
 
@@ -321,6 +405,28 @@ async def signup(body: SignupRequest, db: AsyncSession = Depends(get_db)):
         is_active=True,
     )
     db.add(admin)
+    await db.flush()
+
+    ip = audit_service.extract_ip(request)
+    await audit_service.log_event(
+        db,
+        action=audit_service.ACTION_TENANT_CREATED,
+        tenant_id=tenant.id,
+        entity_type="tenant",
+        entity_id=tenant.id,
+        details={"slug": tenant.slug, "plan": "trial"},
+        ip=ip,
+    )
+    await audit_service.log_event(
+        db,
+        action=audit_service.ACTION_USER_CREATED,
+        tenant_id=tenant.id,
+        user_id=admin.id,
+        entity_type="user",
+        entity_id=admin.id,
+        details={"role": "admin", "via": "signup"},
+        ip=ip,
+    )
     await db.commit()
 
     # Envia email de boas-vindas (falha silenciosamente se SMTP não configurado)

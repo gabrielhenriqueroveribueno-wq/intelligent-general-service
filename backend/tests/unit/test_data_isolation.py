@@ -10,6 +10,8 @@ Cobre:
 2. Rate limiting de identificação (prevenção de enumeração de RA)
 3. Rate limiting de senha (prevenção de brute-force)
 4. Classificador off-topic (topic pre-gate)
+5. Expiração de sessão (re-verificação após TTL)
+6. Rate limit por contato (anti-spam / proteção de budget IA)
 """
 
 import uuid
@@ -19,6 +21,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.tasks.message_tasks import (
+    SESSION_TTL_DAYS,
+    _check_contact_rate_limit,
+    _check_session_expired,
     _handle_identification,
     _handle_password,
     _is_off_topic,
@@ -293,7 +298,7 @@ class TestHandlePasswordRateLimit:
 
     @pytest.mark.asyncio
     async def test_correct_password_clears_metadata(self):
-        """Successful auth wipes all pending metadata (no trace left)."""
+        """Successful auth wipes pending metadata, keeps only verified_at (for TTL)."""
         pending_id = str(uuid.uuid4())
         contact = _make_contact({
             "pending_student_id": pending_id,
@@ -307,7 +312,11 @@ class TestHandlePasswordRateLimit:
         with patch("app.tasks.message_tasks._check_password", return_value=True):
             await _handle_password(db, contact, "correct")
         assert contact.is_verified is True
-        assert contact.metadata_ == {}
+        # Pending/attempt data must be gone; only verified_at remains for session TTL.
+        assert set(contact.metadata_.keys()) == {"verified_at"}
+        assert "pending_student_id" not in contact.metadata_
+        assert "password_attempts" not in contact.metadata_
+        assert "identify_attempts" not in contact.metadata_
         assert contact.name == "Ana Silva"
 
     @pytest.mark.asyncio
@@ -366,3 +375,148 @@ class TestIsOffTopic:
             mock_ai.return_value = MagicMock(text="ON_TOPIC", tokens_used=1)
             result = await _is_off_topic("meu boleto do mês")
         assert result is False
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 5. Session expiration (TTL forces re-verification)
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+class TestSessionExpiration:
+
+    @pytest.mark.asyncio
+    async def test_unverified_contact_not_affected(self):
+        db = AsyncMock()
+        contact = _make_contact({})
+        contact.is_verified = False
+        result = await _check_session_expired(db, contact)
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_legacy_contact_without_verified_at_not_expired(self):
+        """Backward-compat: contacts with no verified_at must not be kicked out."""
+        db = AsyncMock()
+        contact = _make_contact({})
+        contact.is_verified = True
+        result = await _check_session_expired(db, contact)
+        assert result is False
+        assert contact.is_verified is True
+
+    @pytest.mark.asyncio
+    async def test_fresh_verification_not_expired(self):
+        db = AsyncMock()
+        contact = _make_contact({"verified_at": datetime.now(timezone.utc).isoformat()})
+        contact.is_verified = True
+        result = await _check_session_expired(db, contact)
+        assert result is False
+        assert contact.is_verified is True
+
+    @pytest.mark.asyncio
+    async def test_expired_session_resets_verification(self):
+        db = AsyncMock()
+        old = (datetime.now(timezone.utc) - timedelta(days=SESSION_TTL_DAYS + 1)).isoformat()
+        contact = _make_contact({"verified_at": old})
+        contact.is_verified = True
+        contact.student_id = uuid.uuid4()
+        contact.employee_id = None
+        result = await _check_session_expired(db, contact)
+        assert result is True
+        assert contact.is_verified is False
+        assert contact.student_id is None
+        assert contact.contact_type == "unknown"
+        assert contact.metadata_ == {}
+
+    @pytest.mark.asyncio
+    async def test_invalid_verified_at_does_not_kick_out(self):
+        """Corrupted/invalid verified_at must not log user out (fail-safe)."""
+        db = AsyncMock()
+        contact = _make_contact({"verified_at": "not-a-date"})
+        contact.is_verified = True
+        result = await _check_session_expired(db, contact)
+        assert result is False
+        assert contact.is_verified is True
+
+    @pytest.mark.asyncio
+    async def test_boundary_exactly_at_ttl_not_expired(self):
+        """Exactly at TTL boundary is still valid (inclusive)."""
+        db = AsyncMock()
+        # 1 second BEFORE expiration
+        edge = (
+            datetime.now(timezone.utc) - timedelta(days=SESSION_TTL_DAYS) + timedelta(seconds=1)
+        ).isoformat()
+        contact = _make_contact({"verified_at": edge})
+        contact.is_verified = True
+        result = await _check_session_expired(db, contact)
+        assert result is False
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 6. Per-contact rate limit (anti-spam / IA budget protection)
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+class TestContactRateLimit:
+
+    @pytest.mark.asyncio
+    async def test_under_limit_not_blocked(self):
+        """First message under the limit must pass."""
+        mock_redis = AsyncMock()
+        mock_redis.incr = AsyncMock(return_value=1)
+        mock_redis.expire = AsyncMock()
+        mock_redis.aclose = AsyncMock()
+        with patch("redis.asyncio.from_url", return_value=mock_redis):
+            blocked, retry = await _check_contact_rate_limit(uuid.uuid4(), uuid.uuid4())
+        assert blocked is False
+        assert retry == 0
+        mock_redis.expire.assert_awaited_once()  # TTL set on first increment
+
+    @pytest.mark.asyncio
+    async def test_over_limit_is_blocked(self):
+        """Crossing the threshold must block and return retry_after."""
+        from app.tasks.message_tasks import CONTACT_MSG_RATE_LIMIT_PER_HOUR
+
+        mock_redis = AsyncMock()
+        mock_redis.incr = AsyncMock(return_value=CONTACT_MSG_RATE_LIMIT_PER_HOUR + 1)
+        mock_redis.expire = AsyncMock()
+        mock_redis.ttl = AsyncMock(return_value=1800)
+        mock_redis.aclose = AsyncMock()
+        with patch("redis.asyncio.from_url", return_value=mock_redis):
+            blocked, retry = await _check_contact_rate_limit(uuid.uuid4(), uuid.uuid4())
+        assert blocked is True
+        assert retry == 1800
+
+    @pytest.mark.asyncio
+    async def test_redis_failure_is_fail_open(self):
+        """If Redis is down, allow the message (fail-open) but log debug."""
+        with patch("redis.asyncio.from_url", side_effect=ConnectionError("redis down")):
+            blocked, retry = await _check_contact_rate_limit(uuid.uuid4(), uuid.uuid4())
+        assert blocked is False
+        assert retry == 0
+
+    @pytest.mark.asyncio
+    async def test_at_exact_limit_not_blocked(self):
+        """Message exactly at the limit must still pass — only EXCEEDING blocks."""
+        from app.tasks.message_tasks import CONTACT_MSG_RATE_LIMIT_PER_HOUR
+
+        mock_redis = AsyncMock()
+        mock_redis.incr = AsyncMock(return_value=CONTACT_MSG_RATE_LIMIT_PER_HOUR)
+        mock_redis.expire = AsyncMock()
+        mock_redis.aclose = AsyncMock()
+        with patch("redis.asyncio.from_url", return_value=mock_redis):
+            blocked, retry = await _check_contact_rate_limit(uuid.uuid4(), uuid.uuid4())
+        assert blocked is False
+
+    @pytest.mark.asyncio
+    async def test_minimum_retry_seconds_floor(self):
+        """If Redis TTL returns 0 or negative, retry must default to >=60s."""
+        from app.tasks.message_tasks import CONTACT_MSG_RATE_LIMIT_PER_HOUR
+
+        mock_redis = AsyncMock()
+        mock_redis.incr = AsyncMock(return_value=CONTACT_MSG_RATE_LIMIT_PER_HOUR + 10)
+        mock_redis.expire = AsyncMock()
+        mock_redis.ttl = AsyncMock(return_value=-1)
+        mock_redis.aclose = AsyncMock()
+        with patch("redis.asyncio.from_url", return_value=mock_redis):
+            blocked, retry = await _check_contact_rate_limit(uuid.uuid4(), uuid.uuid4())
+        assert blocked is True
+        assert retry >= 60

@@ -21,8 +21,12 @@ async def client():
 class TestLogin:
     @pytest.mark.asyncio
     async def test_login_success(self, client):
-        with patch("app.api.v1.auth.authenticate_user", new_callable=AsyncMock) as mock_auth:
-            mock_auth.return_value = ("access_token_xyz", "refresh_token_xyz", False)
+        fake_user = MagicMock()
+        fake_user.id = uuid.uuid4()
+        fake_user.tenant_id = uuid.uuid4()
+        with patch("app.api.v1.auth.authenticate_user", new_callable=AsyncMock) as mock_auth, \
+             patch("app.api.v1.auth.audit_service.log_event", new_callable=AsyncMock):
+            mock_auth.return_value = ("access_token_xyz", "refresh_token_xyz", False, fake_user)
             resp = await client.post("/api/v1/auth/login", json={
                 "email": "admin@test.com",
                 "password": "senha123",

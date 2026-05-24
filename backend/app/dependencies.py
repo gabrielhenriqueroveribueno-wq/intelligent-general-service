@@ -192,6 +192,18 @@ async def get_current_user(
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="Usuario nao encontrado ou inativo")
 
+    # Cross-valida tenant_id do token com o registro no DB (anti stale-token).
+    # Se o usuário foi movido de tenant, tokens antigos com tenant_id desatualizado
+    # são rejeitados — força re-login para refletir o estado atual.
+    token_tenant = str(tenant_id) if tenant_id else None
+    user_tenant = str(user.tenant_id) if user.tenant_id else None
+    if token_tenant != user_tenant:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token desatualizado (tenant alterado) — faça login novamente",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     return user
 
 

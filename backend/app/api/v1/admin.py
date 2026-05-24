@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Body, Depends, Query
+from fastapi import APIRouter, Body, Depends, Query, Request
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +14,7 @@ from app.dependencies import get_db, require_roles
 from app.models.audit import AuditLog, FailedTask
 from app.models.tenant import Tenant
 from app.models.user import User
+from app.services import audit_service
 from app.utils.exceptions import NotFoundError
 
 router = APIRouter()
@@ -273,10 +274,11 @@ async def super_tenants(
 @router.patch("/super/tenants/{tenant_id}")
 async def super_update_tenant(
     tenant_id: uuid.UUID,
+    request: Request,
     is_active: Optional[bool] = Body(default=None),
     plan: Optional[str] = Body(default=None),
     db: AsyncSession = Depends(get_db),
-    _=Depends(require_roles("super_admin")),
+    current_user=Depends(require_roles("super_admin")),
 ):
     """Ativa/suspende tenant ou muda plano."""
     result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
@@ -284,10 +286,25 @@ async def super_update_tenant(
     if not tenant:
         raise NotFoundError("Tenant")
 
-    if is_active is not None:
+    changes: dict = {}
+    if is_active is not None and tenant.is_active != is_active:
+        changes["is_active"] = {"old": tenant.is_active, "new": is_active}
         tenant.is_active = is_active
-    if plan is not None:
+    if plan is not None and tenant.plan != plan:
+        changes["plan"] = {"old": tenant.plan, "new": plan}
         tenant.plan = plan
+
+    if changes:
+        await audit_service.log_event(
+            db,
+            action=audit_service.ACTION_TENANT_UPDATED,
+            tenant_id=tenant.id,
+            user_id=current_user.id,
+            entity_type="tenant",
+            entity_id=tenant.id,
+            details=changes,
+            ip=audit_service.extract_ip(request),
+        )
 
     await db.commit()
     return {

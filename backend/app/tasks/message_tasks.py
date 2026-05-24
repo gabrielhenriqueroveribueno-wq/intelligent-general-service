@@ -75,88 +75,142 @@ def _load_system_prompt() -> str:
 
 AGENT_SYSTEM_PROMPT = _load_system_prompt()
 
-BEHAVIOR_NEW_CONTACT = """O contato ainda NÃO se identificou.
-- Se é a primeira mensagem (histórico vazio ou só 1 msg), se apresente e pergunte: "Oi! Sou a Billie, do atendimento da Faculdade Anchieta. Você é *aluno*, *funcionário* ou *ainda não faz parte da Anchieta*?"
-- Se já respondeu que é ALUNO, peça o RA: "Me passa seu RA que eu puxo seus dados."
-- Se já respondeu que é FUNCIONÁRIO, peça a matrícula: "Me passa seu código de funcionário (ex: FUNC001)."
-- Se respondeu que NÃO é aluno nem funcionário, ou quer se matricular, fazer vestibular, ou conhecer a faculdade:
-  Responda com entusiasmo: "Que legal que você tem interesse na Anchieta! Pra se matricular ou saber mais sobre nossos cursos, acessa o site da faculdade: https://www.anchieta.br/vestibular - Lá tem tudo sobre vestibular, cursos e inscrição. Se tiver dúvida, me chama aqui!"
-- Se respondeu que quer trabalhar na Anchieta, quer vagas, ou procura emprego:
-  Responda: "Pra conferir as vagas abertas na Anchieta, acessa: https://www.anchieta.br/trabalhe-conosco - Lá você vê as oportunidades disponíveis. Boa sorte!"
-- Se já se apresentou no histórico, NÃO repita. Vá direto ao ponto.
-- Qualquer número de 4 a 10 dígitos = RA de aluno. Adicione [IDENTIFY:student:NUMERO].
-- "FUNC001" ou similar = matrícula de funcionário. Adicione [IDENTIFY:employee:CODIGO].
-- IMPORTANTE: Quando detectar um RA/matrícula, confirme que encontrou e JÁ peça a senha na mesma mensagem. Exemplo: "Achei seu cadastro! Por segurança, me confirma sua senha?" NÃO ofereça serviços antes da senha.
-- Sem número na mensagem? Continue a conversa naturalmente, sem repetir o que já disse."""
 
-BEHAVIOR_AWAITING_PASSWORD = """O contato informou o RA e foi encontrado como: *{name}*.
-Agora precisa confirmar a identidade com a senha.
-- Se no histórico a Billie JÁ pediu a senha (ex: "confirma sua senha"), o usuário está enviando a senha agora. Trate a mensagem inteira como senha. Adicione [PASSWORD:valor_exato] e responda confirmando e oferecendo ajuda. Exemplo: "Senha confirmada, *{name}*! Como posso te ajudar hoje?"
-- Se ainda NÃO pediu a senha no histórico, peça agora: "Achei seu cadastro, *{name}*! Me confirma sua senha pra eu liberar o acesso?"
-- NÃO mostre dados antes da senha.
-- Pediu cancelar? Adicione [CANCEL].
-- Errou a senha? "Essa não bateu. Tenta de novo com calma." """
+# ══════════════════════════════════════════════════════════════════════════════
+# Behaviors (NEW_CONTACT / AWAITING_PASSWORD / VERIFIED) — carregados de arquivo
+# externo. Configure BILLIE_BEHAVIORS_FILE no .env para apontar para o arquivo
+# real (gitignored). Fallback: backend/prompts/billie_behaviors.txt, depois
+# billie_behaviors.stub.txt.
+# ══════════════════════════════════════════════════════════════════════════════
 
-BEHAVIOR_VERIFIED = """O contato é *{name}* ({contact_type}).
-⚠️ SEGURANÇA: Você está atendendo EXCLUSIVAMENTE {name}. Todos os DADOS DISPONÍVEIS pertencem SOMENTE a esta pessoa. Jamais consulte, mencione ou compartilhe dados de outros alunos ou funcionários.
-- Use o nome da pessoa.
-- Apresente dados direto, sem enrolação.
-- NÃO repita confirmações de cadastro ou boas-vindas se já fez isso no histórico.
-- Dados ruins? Empatia real + orientação. Dados bons? Celebre.
-- Sempre termine com uma pergunta natural: "Precisa de mais alguma coisa?" — mas SÓ se ainda não perguntou isso na última mensagem.
+_BEHAVIORS_STUB_PATH = _PROMPTS_DIR / "billie_behaviors.stub.txt"
+_BEHAVIOR_SECTION_RE = re.compile(r"^###\s*(\w+)\s*###\s*$", re.MULTILINE)
 
-═══ PESQUISA DE SATISFAÇÃO — PRIORIDADE MÁXIMA ═══
-⚠️ ESTA REGRA TEM PRIORIDADE SOBRE QUALQUER OUTRA RESPOSTA DE DESPEDIDA.
-Quando o usuário indicar que não precisa de mais nada, você NÃO PODE simplesmente se despedir.
 
-GATILHOS (qualquer uma dessas frases): "não", "não obrigado", "era só isso", "obrigado", "valeu", "tchau", "só isso", "tá bom", "até mais", "nada mais", "é isso", "só isso mesmo", "não preciso"
+def _parse_behaviors(content: str) -> dict[str, str]:
+    """Split a behaviors file into sections delimited by '### NAME ###' headers."""
+    sections: dict[str, str] = {}
+    parts = _BEHAVIOR_SECTION_RE.split(content)
+    # parts = ["", name1, body1, name2, body2, ...]
+    for i in range(1, len(parts), 2):
+        name = parts[i].strip()
+        body = parts[i + 1].strip() if i + 1 < len(parts) else ""
+        sections[name] = body
+    return sections
 
-Ao detectar QUALQUER gatilho acima, sua resposta OBRIGATORIAMENTE deve ser:
-"Que bom que pude ajudar! Me dá uma nota de *1 a 5* pro atendimento? 1 = ruim, 5 = excelente"
-Seguido de [FEEDBACK_REQUEST] na última linha.
 
-RESPOSTA PROIBIDA: "Tudo certo! Qualquer coisa, é só chamar." — NUNCA encerre sem pedir nota.
-EXCEÇÃO ÚNICA: Só NÃO peça se "nota de 1 a 5" já aparece no histórico desta conversa.
-Se o usuário mandar um número de 1 a 5 após pedido de avaliação, o sistema processa automaticamente.
+def _load_behaviors() -> dict[str, str]:
+    """Load behavior blocks from the external file.
 
-═══ TUTOR — MATÉRIAS DA PROVA ═══
-- Se o aluno perguntar sobre provas, o que estudar, ou o que cai na prova, use os dados de GRADES e SCHEDULES para listar as disciplinas do semestre atual.
-- Diga quais matérias ele está cursando e sugira focar nas que tem nota mais baixa.
-- NÃO tente explicar conteúdo nem resumir matéria. Apenas liste as disciplinas e orientação geral.
-- Exemplo: "Suas matérias desse semestre são: *Cálculo I*, *Programação*, *Física*. Sua nota mais apertada tá em *Programação* (5.5 na P1), vale reforçar essa!"
+    Resolution order:
+    1. Path in BILLIE_BEHAVIORS_FILE env var
+    2. backend/prompts/billie_behaviors.txt (default, gitignored)
+    3. backend/prompts/billie_behaviors.stub.txt (public stub, fallback)
+    """
+    candidates = []
+    env_path = os.environ.get("BILLIE_BEHAVIORS_FILE", "").strip()
+    if env_path:
+        candidates.append(Path(env_path))
+    candidates.append(_PROMPTS_DIR / "billie_behaviors.txt")
 
-═══ PAGAMENTO VIA LINK ═══
-- Quando os DADOS DISPONIVEIS contiverem "payment_url" ou "checkout_url" em action_result, apresente o link para o aluno pagar.
-- Diga: "Aqui está o link pra pagar:" e cole o link. Diga que aceita PIX, cartão e boleto.
-- IMPORTANTE: Links de pagamento SÓ aparecem nos DADOS DISPONÍVEIS quando o sistema os gera. Se NÃO há payment_url nos dados, NÃO invente um link. Nunca crie URLs como "anchieta.com.br/pagamento/..." — essas URLs não existem.
-- Se o aluno disser "sim" para pagar ou "quero pagar" e NÃO houver payment_url nos DADOS DISPONÍVEIS, diga: "Vou gerar o link de pagamento pra você agora!" — o sistema vai gerar automaticamente.
-- Se os DADOS DISPONÍVEIS mostrarem erro na geração do pagamento, diga: "Não consegui gerar o link agora. Passa na secretaria ou tenta de novo daqui a pouco."
-- PROIBIDO: inventar URLs, links ou códigos de pagamento. Use EXCLUSIVAMENTE o que estiver em DADOS DISPONÍVEIS.
+    for path in candidates:
+        try:
+            content = path.read_text(encoding="utf-8")
+            logger.info("Billie behaviors carregados de: %s", path)
+            return _parse_behaviors(content)
+        except FileNotFoundError:
+            continue
 
-═══ DOCUMENTOS DIGITAIS ═══
-- Se o aluno pedir declaração de matrícula, histórico, ou documento, confirme e adicione [GENERATE_DOC:tipo].
-- Tipos: enrollment_declaration, academic_history
-- Exemplo: aluno pede "preciso de uma declaração de matrícula" → responda "Vou gerar sua declaração agora!" e adicione [GENERATE_DOC:enrollment_declaration].
-- Para histórico: [GENERATE_DOC:academic_history]
-- O documento será enviado como mensagem formatada logo em seguida.
+    try:
+        content = _BEHAVIORS_STUB_PATH.read_text(encoding="utf-8")
+        logger.warning(
+            "BILLIE_BEHAVIORS_FILE não encontrado. Usando stub público — "
+            "configure o arquivo real em produção."
+        )
+        return _parse_behaviors(content)
+    except FileNotFoundError:
+        logger.error("Stub de behaviors também não encontrado. Usando fallback mínimo.")
+        return {
+            "BEHAVIOR_NEW_CONTACT": "Contato não identificado. Peça RA ou código de funcionário.",
+            "BEHAVIOR_AWAITING_PASSWORD": "Contato *{name}* aguardando senha.",
+            "BEHAVIOR_VERIFIED": "Atendendo *{name}* ({contact_type}). Use apenas dados desta pessoa.",
+        }
 
-═══ AGENDAMENTO PRESENCIAL ═══
-- Se o aluno/funcionário quiser agendar atendimento presencial (secretaria, coordenação, financeiro, etc.), o sistema automaticamente mostra horários disponíveis via DADOS DISPONÍVEIS.
-- Apresente os horários e peça que escolha data e horário.
-- Quando ele escolher, o sistema confirma o agendamento com protocolo.
-- Se quiser cancelar agendamento, o sistema cancela automaticamente.
-- Setores disponíveis: secretaria, coordenação, financeiro, biblioteca, TI.
 
-═══ RECONHECIMENTO DE DOCUMENTOS (OCR) ═══
-- Se o usuário enviar uma foto e os DADOS DISPONÍVEIS contiverem "ocr_result", apresente os dados extraídos do documento de forma organizada.
-- Diga o tipo de documento identificado e liste os dados extraídos.
-- Se a confiança for "baixa", avise que alguns dados podem não estar corretos.
-- NÃO invente dados que não estão no ocr_result.
+_BEHAVIORS = _load_behaviors()
+BEHAVIOR_NEW_CONTACT = _BEHAVIORS.get("BEHAVIOR_NEW_CONTACT", "")
+BEHAVIOR_AWAITING_PASSWORD = _BEHAVIORS.get("BEHAVIOR_AWAITING_PASSWORD", "")
+BEHAVIOR_VERIFIED = _BEHAVIORS.get("BEHAVIOR_VERIFIED", "")
 
-═══ LEMBRETES PROATIVOS ═══
-- Se o usuário pedir para ativar lembretes/notificações (ex: "ativar lembretes", "quero receber avisos", "me avisa quando tiver boleto"), confirme e adicione [REMINDERS_ON]. Responda: "Pronto, ativei os lembretes! Vou te avisar sobre vencimento de boletos e novas notas."
-- Se pedir para desativar (ex: "desativar lembretes", "para de mandar mensagem", "não quero mais avisos"), confirme e adicione [REMINDERS_OFF]. Responda: "Ok, desativei os lembretes. Se mudar de ideia, é só pedir."
-- Não ofereça lembretes espontaneamente — só ative quando o usuário pedir."""
+
+# ── Security gates ──────────────────────────────────────────────────────────
+# Session expira após N dias — força re-verificação (RA + senha) caso o WhatsApp
+# tenha sido transferido para outra pessoa ou ficado inativo por muito tempo.
+SESSION_TTL_DAYS = 30
+# Rate limit por contato verificado — protege contra spam que esgota budget de IA.
+CONTACT_MSG_RATE_LIMIT_PER_HOUR = 30
+
+
+async def _check_session_expired(db, contact) -> bool:
+    """Se a verificação do contato expirou, reseta is_verified e retorna True.
+
+    Não derruba contatos legados sem `verified_at` (compatibilidade retroativa).
+    """
+    from datetime import datetime, timedelta, timezone
+
+    if not contact.is_verified:
+        return False
+    meta = contact.metadata_ or {}
+    verified_at_str = meta.get("verified_at")
+    if not verified_at_str:
+        return False  # contato legado — não força re-verificação
+    try:
+        verified_at = datetime.fromisoformat(verified_at_str)
+    except (ValueError, TypeError):
+        return False
+    if datetime.now(timezone.utc) - verified_at <= timedelta(days=SESSION_TTL_DAYS):
+        return False
+
+    logger.info(
+        "Sessão expirada para contact=%s (verified_at=%s) — forçando re-verificação",
+        contact.id,
+        verified_at_str,
+    )
+    contact.is_verified = False
+    contact.student_id = None
+    contact.employee_id = None
+    contact.contact_type = "unknown"
+    contact.metadata_ = {}
+    await db.flush()
+    return True
+
+
+async def _check_contact_rate_limit(tenant_id, contact_id) -> tuple[bool, int]:
+    """Retorna (bloqueado, segundos_restantes).
+
+    Limita cada contato verificado a CONTACT_MSG_RATE_LIMIT_PER_HOUR msgs/hora.
+    Fail-open: se o Redis estiver indisponível, permite passar.
+    """
+    try:
+        import redis.asyncio as aioredis
+
+        from app.config import settings as _settings
+
+        r = aioredis.from_url(_settings.REDIS_URL, decode_responses=True)
+        try:
+            key = f"msg_rate:{tenant_id}:{contact_id}"
+            count = await r.incr(key)
+            if count == 1:
+                await r.expire(key, 3600)
+            if count > CONTACT_MSG_RATE_LIMIT_PER_HOUR:
+                ttl = await r.ttl(key)
+                return True, max(int(ttl), 60)
+            return False, 0
+        finally:
+            await r.aclose()
+    except Exception as exc:
+        logger.debug("Rate limit Redis falhou (permitindo): %s", exc)
+        return False, 0
 
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=5)
@@ -317,6 +371,50 @@ async def _process_message_async(message_id: str):
                     message.content = transcription
             except Exception as audio_exc:
                 logger.warning("Falha ao transcrever áudio: %s", audio_exc)
+
+        # ── Security gates: sessão expirada + rate-limit por contato ──────
+        await _check_session_expired(db, contact)
+
+        if contact.is_verified:
+            _blocked, _retry_sec = await _check_contact_rate_limit(tenant_id, contact.id)
+            if _blocked:
+                _retry_min = max(1, _retry_sec // 60)
+                _canned = (
+                    f"Você atingiu o limite de mensagens por hora. "
+                    f"Tenta de novo em ~{_retry_min} min. 🙏"
+                )
+                _msg_id = await whatsapp_service.send_text_message(phone_id, token, to, _canned)
+                _save_bot_message(db, conversation, _canned, tenant_id, whatsapp_msg_id=_msg_id)
+                from datetime import datetime as _dt_rl
+                from datetime import timezone as _tz_rl
+
+                await db.execute(
+                    update(Message)
+                    .where(Message.id == message.id)
+                    .values(ai_tokens_used=0, intent="rate_limited")
+                )
+                await db.execute(
+                    update(Conversation)
+                    .where(Conversation.id == conversation.id)
+                    .values(last_message_at=_dt_rl.now(_tz_rl.utc))
+                )
+                messages_processed_total.labels(
+                    tenant_id=str(tenant_id),
+                    intent="rate_limited",
+                    resolution_type="blocked",
+                ).inc()
+                response_time_histogram.labels(tenant_id=str(tenant_id)).observe(
+                    time.perf_counter() - start_time
+                )
+                await db.commit()
+                logger.warning(
+                    "Rate limit por contato: tenant=%s contact=%s retry_sec=%d",
+                    tenant_id,
+                    contact.id,
+                    _retry_sec,
+                )
+                await _engine.dispose()
+                return
 
         # ── 1. Montar contexto do contato ─────────────────────────────────
         contact_meta = contact.metadata_ or {}
@@ -748,6 +846,20 @@ async def _process_message_async(message_id: str):
         raw_reply = ai_result.text
         tokens = ai_result.tokens_used
 
+        # ── Output guardrail: detecta PII alheia/alucinada na resposta ────
+        from app.utils.output_guardrail import SAFE_FALLBACK_REPLY, audit_llm_output
+
+        _output_issues = audit_llm_output(raw_reply)
+        if _output_issues:
+            logger.error(
+                "Output guardrail BLOQUEOU resposta: tenant=%s contact=%s issues=%s preview=%r",
+                tenant_id,
+                contact.id,
+                _output_issues,
+                raw_reply[:200],
+            )
+            raw_reply = SAFE_FALLBACK_REPLY
+
         # ── 6. Processar comandos embutidos ──────────────────────────────
         reply, commands = _extract_commands(raw_reply)
         resolution_type = "agent"
@@ -1103,7 +1215,7 @@ async def _handle_password(db, contact, password: str):
             contact.contact_type = "student"
             contact.is_verified = True
             contact.name = student.full_name
-            contact.metadata_ = {}
+            contact.metadata_ = {"verified_at": now.isoformat()}
             verified = True
             logger.info("Aluno verificado com senha: %s", student.full_name)
 
@@ -1119,7 +1231,7 @@ async def _handle_password(db, contact, password: str):
             contact.contact_type = "employee"
             contact.is_verified = True
             contact.name = employee.full_name
-            contact.metadata_ = {}
+            contact.metadata_ = {"verified_at": now.isoformat()}
             verified = True
             logger.info("Funcionário verificado com senha: %s", employee.full_name)
 

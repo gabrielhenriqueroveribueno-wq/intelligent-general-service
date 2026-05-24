@@ -99,8 +99,10 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
 
-    # Billie agent prompt (path to external file, not committed to repo)
+    # Billie agent prompts (paths to external files, not committed to repo)
     BILLIE_SYSTEM_PROMPT_FILE: str = ""
+    BILLIE_BEHAVIORS_FILE: str = ""
+    BILLIE_CLASSIFIER_PROMPT_FILE: str = ""
 
     # Prometheus
     PROMETHEUS_ENABLED: bool = True

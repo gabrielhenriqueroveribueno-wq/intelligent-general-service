@@ -4,6 +4,8 @@
 # Origin fingerprint: IGS-2026-BR-ANCHIETA-BILLIE-WHATSAPP-SAAS
 import json
 import logging
+import os
+from pathlib import Path
 from typing import Optional
 
 from app.config import settings
@@ -55,30 +57,48 @@ VALID_INTENTS = [
     "unknown",  # Intenção não reconhecida
 ]
 
-CLASSIFIER_SYSTEM_PROMPT = """Você é um classificador de intenções para um sistema de atendimento universitário.
-Classifique a mensagem do usuário em EXATAMENTE uma das seguintes intenções:
+# ══════════════════════════════════════════════════════════════════════════════
+# Classifier system prompt — carregado de arquivo externo (gitignored em prod).
+# Configure BILLIE_CLASSIFIER_PROMPT_FILE no .env. Fallback:
+# backend/prompts/billie_classifier.txt → billie_classifier.stub.txt.
+# ══════════════════════════════════════════════════════════════════════════════
 
-grade_query, attendance_query, schedule_query, boleto_query, enrollment_query,
-payslip_query, vacation_query, time_record_query, hr_request, faq, human_handoff,
-greeting, verification, generate_boleto, enrollment_request, document_request,
-class_enrollment, grade_appeal, transfer_request, scholarship_query, internship_query,
-event_registration, library_query, financial_negotiation, certificate_request,
-slide_generate, slide_update, generate_pix, facility_ticket, library_renewal,
-tutor_question, medical_certificate, feedback_response, enable_reminders,
-disable_reminders, farewell, schedule_appointment, cancel_appointment,
-document_ocr, open_ticket, unknown
+_PROMPTS_DIR = Path(__file__).parent.parent.parent / "prompts"
+_CLASSIFIER_STUB_PATH = _PROMPTS_DIR / "billie_classifier.stub.txt"
 
-DICAS DE CLASSIFICAÇÃO:
-- "sim", "quero", "pode", "gera", "faz" após contexto de boleto/pagamento → generate_pix
-- "gerar pix", "pagar", "quero pagar", "pagar boleto", "link de pagamento" → generate_pix
-- "agendar", "marcar horário", "ir na secretaria" → schedule_appointment
-- "cancelar agendamento" → cancel_appointment
-- "analisar documento", "ler documento" → document_ocr
-- "abrir chamado", "preciso de ajuda", "tenho um problema", "quero registrar" → open_ticket
 
-Responda APENAS com um JSON no formato: {"intent": "nome_da_intencao", "entities": {}}
-Para entities, extraia dados relevantes como: subject (matéria), period (período), month (mês), type (tipo), amount (valor), date (data), time (horário).
-Não adicione explicações."""
+def _load_classifier_prompt() -> str:
+    candidates = []
+    env_path = os.environ.get("BILLIE_CLASSIFIER_PROMPT_FILE", "").strip()
+    if env_path:
+        candidates.append(Path(env_path))
+    candidates.append(_PROMPTS_DIR / "billie_classifier.txt")
+
+    for path in candidates:
+        try:
+            content = path.read_text(encoding="utf-8")
+            logger.info("Classifier prompt carregado de: %s", path)
+            return content
+        except FileNotFoundError:
+            continue
+
+    try:
+        content = _CLASSIFIER_STUB_PATH.read_text(encoding="utf-8")
+        logger.warning(
+            "BILLIE_CLASSIFIER_PROMPT_FILE não encontrado. Usando stub público — "
+            "configure o prompt real em produção."
+        )
+        return content
+    except FileNotFoundError:
+        logger.error("Stub do classifier também não encontrado. Usando fallback mínimo.")
+        return (
+            "Classifique a mensagem em uma das intenções: "
+            + ", ".join(VALID_INTENTS)
+            + '. Responda APENAS JSON: {"intent": "nome", "entities": {}}'
+        )
+
+
+CLASSIFIER_SYSTEM_PROMPT = _load_classifier_prompt()
 
 
 async def classify_intent(

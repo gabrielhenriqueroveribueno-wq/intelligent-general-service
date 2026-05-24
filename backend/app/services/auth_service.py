@@ -22,8 +22,8 @@ from app.utils.security import (
 
 async def authenticate_user(
     db: AsyncSession, email: str, password: str
-) -> tuple[str, str, bool]:
-    """Autentica o usuário e retorna (access_token, refresh_token, must_change_password)."""
+) -> tuple[str, str, bool, User]:
+    """Autentica o usuário e retorna (access_token, refresh_token, must_change_password, user)."""
     result = await db.execute(select(User).where(User.email == email, User.is_active))
     user = result.scalar_one_or_none()
 
@@ -42,7 +42,7 @@ async def authenticate_user(
     }
     access_token = create_access_token(token_data)
     refresh_token = create_refresh_token(token_data)
-    return access_token, refresh_token, user.must_change_password
+    return access_token, refresh_token, user.must_change_password, user
 
 
 async def refresh_tokens(db: AsyncSession, refresh_token: str) -> tuple[str, str]:

@@ -12,6 +12,43 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 
+# Limite de mensagens enviadas por tenant por hora. Protege contra abuso
+# se um token WhatsApp vazar — atacante não consegue spamar em massa.
+TENANT_OUTBOUND_LIMIT_PER_HOUR = 500
+
+
+async def _check_outbound_rate_limit(phone_number_id: str) -> bool:
+    """Retorna True se a mensagem PODE ser enviada (sob o limite).
+
+    Fail-open: se Redis indisponível, permite (não derruba comunicação).
+    Chave é por phone_number_id (1:1 com tenant na prática).
+    """
+    if not phone_number_id:
+        return True
+    try:
+        import redis.asyncio as aioredis
+
+        r = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+        try:
+            key = f"outbound:{phone_number_id}"
+            count = await r.incr(key)
+            if count == 1:
+                await r.expire(key, 3600)
+            if count > TENANT_OUTBOUND_LIMIT_PER_HOUR:
+                logger.error(
+                    "Outbound rate limit excedido: phone_number_id=%s count=%d",
+                    phone_number_id,
+                    count,
+                )
+                return False
+            return True
+        finally:
+            await r.aclose()
+    except Exception as exc:
+        logger.debug("Outbound rate limit Redis falhou (permitindo): %s", exc)
+        return True
+
+
 async def send_text_message(
     phone_number_id: str,
     access_token: str,
@@ -19,6 +56,8 @@ async def send_text_message(
     body: str,
 ) -> Optional[str]:
     """Envia mensagem de texto via WhatsApp Business Cloud API."""
+    if not await _check_outbound_rate_limit(phone_number_id):
+        return None
     url = f"{settings.WHATSAPP_API_URL}/{phone_number_id}/messages"
     headers = {
         "Authorization": f"Bearer {access_token}",
@@ -57,6 +96,8 @@ async def send_interactive_list(
     sections: list,
 ) -> Optional[str]:
     """Envia mensagem interativa com lista de opções."""
+    if not await _check_outbound_rate_limit(phone_number_id):
+        return None
     url = f"{settings.WHATSAPP_API_URL}/{phone_number_id}/messages"
     headers = {
         "Authorization": f"Bearer {access_token}",
@@ -99,6 +140,8 @@ async def send_template_message(
     components exemplo (corpo com variáveis):
     [{"type": "body", "parameters": [{"type": "text", "text": "João"}, {"type": "text", "text": "R$ 350,00"}]}]
     """
+    if not await _check_outbound_rate_limit(phone_number_id):
+        return None
     url = f"{settings.WHATSAPP_API_URL}/{phone_number_id}/messages"
     headers = {
         "Authorization": f"Bearer {access_token}",
@@ -142,6 +185,8 @@ async def send_document_message(
     caption: str = "",
 ) -> Optional[str]:
     """Envia documento (PDF, etc.) via WhatsApp Business Cloud API."""
+    if not await _check_outbound_rate_limit(phone_number_id):
+        return None
     url = f"{settings.WHATSAPP_API_URL}/{phone_number_id}/messages"
     headers = {
         "Authorization": f"Bearer {access_token}",

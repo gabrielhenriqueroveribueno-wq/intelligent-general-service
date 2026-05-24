@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencies import get_db, get_tenant_id, require_roles
 from app.models.user import User
 from app.schemas.auth import UserMe
+from app.services import audit_service
 from app.services.auth_service import create_user
 from app.utils.exceptions import NotFoundError
 
@@ -25,6 +26,7 @@ router = APIRouter()
 @router.post("", response_model=UserMe, status_code=201)
 async def create_new_user(
     body: UserCreate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user=Depends(require_roles("super_admin", "admin")),
@@ -36,6 +38,16 @@ async def create_new_user(
         full_name=body.full_name,
         role=body.role,
         tenant_id=tenant_id,
+    )
+    await audit_service.log_event(
+        db,
+        action=audit_service.ACTION_USER_CREATED,
+        tenant_id=tenant_id,
+        user_id=current_user.id,
+        entity_type="user",
+        entity_id=user.id,
+        details={"role": user.role, "created_email_domain": body.email.split("@")[-1]},
+        ip=audit_service.extract_ip(request),
     )
     return UserMe(
         id=str(user.id),

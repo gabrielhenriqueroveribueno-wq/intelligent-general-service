@@ -39,9 +39,6 @@ class TestIsActionIntent:
     def test_generate_boleto_is_action(self):
         assert is_action_intent("generate_boleto") is True
 
-    def test_slide_generate_is_action(self):
-        assert is_action_intent("slide_generate") is True
-
     def test_schedule_appointment_is_action(self):
         assert is_action_intent("schedule_appointment") is True
 
