@@ -24,8 +24,12 @@ if (sentryDsn) {
   })
 }
 
-// DEMO MODE: intercept API calls with mock data for screenshots
-enableDemoMock()
+// DEMO MODE: intercept API calls with mock data (apenas para screenshots/landing).
+// Ativar com VITE_DEMO_MODE=true no build. Em produção real, MANTER desativado
+// para que o painel admin consulte dados reais da API.
+if (import.meta.env.VITE_DEMO_MODE === 'true') {
+  enableDemoMock()
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
