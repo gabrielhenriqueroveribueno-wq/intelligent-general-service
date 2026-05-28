@@ -20,6 +20,19 @@ from app.utils.exceptions import NotFoundError
 router = APIRouter()
 
 
+def _tenant_clause(tenant_id: Optional[uuid.UUID]):
+    """Cláusula condicional de escopo de tenant.
+
+    Super_admin (tenant_id=None no token) atua cross-tenant — não aplica filtro.
+    Admins normais ficam restritos ao próprio tenant.
+    """
+    from sqlalchemy import true as sql_true
+
+    if tenant_id is None:
+        return sql_true()
+    return Conversation.tenant_id == tenant_id
+
+
 def _conv_to_response(
     conv: Conversation, contact: Optional[Contact] = None
 ) -> ConversationResponse:
@@ -42,7 +55,10 @@ async def list_conversations(
 ):
     from sqlalchemy import func
 
-    query = select(Conversation).where(Conversation.tenant_id == tenant_id)
+    # Super_admin (tenant_id=None no token) vê conversas de todos os tenants
+    query = select(Conversation)
+    if tenant_id is not None:
+        query = query.where(Conversation.tenant_id == tenant_id)
     if status:
         query = query.where(Conversation.status == status)
 
@@ -108,7 +124,7 @@ async def get_conversation(
 ):
     result = await db.execute(
         select(Conversation).where(
-            Conversation.id == conversation_id, Conversation.tenant_id == tenant_id
+            Conversation.id == conversation_id, _tenant_clause(tenant_id)
         )
     )
     conv = result.scalar_one_or_none()
@@ -143,7 +159,7 @@ async def take_over_conversation(
     """Agente assume o atendimento humano — inibe o bot nessa conversa."""
     result = await db.execute(
         select(Conversation).where(
-            Conversation.id == conversation_id, Conversation.tenant_id == tenant_id
+            Conversation.id == conversation_id, _tenant_clause(tenant_id)
         )
     )
     conv = result.scalar_one_or_none()
@@ -202,7 +218,7 @@ async def release_conversation(
     """Devolve a conversa para o bot (remove atribuição do agente)."""
     await db.execute(
         update(Conversation)
-        .where(Conversation.id == conversation_id, Conversation.tenant_id == tenant_id)
+        .where(Conversation.id == conversation_id, _tenant_clause(tenant_id))
         .values(assigned_agent_id=None, status="active")
     )
     await db.commit()
@@ -222,7 +238,7 @@ async def assign_conversation(
 ):
     await db.execute(
         update(Conversation)
-        .where(Conversation.id == conversation_id, Conversation.tenant_id == tenant_id)
+        .where(Conversation.id == conversation_id, _tenant_clause(tenant_id))
         .values(assigned_agent_id=agent_id, status="active")
     )
     await db.commit()
@@ -241,7 +257,7 @@ async def close_conversation(
 ):
     await db.execute(
         update(Conversation)
-        .where(Conversation.id == conversation_id, Conversation.tenant_id == tenant_id)
+        .where(Conversation.id == conversation_id, _tenant_clause(tenant_id))
         .values(status="closed", closed_at=datetime.now(timezone.utc))
     )
     await db.commit()
@@ -306,7 +322,7 @@ async def send_agent_message(
 
     result = await db.execute(
         select(Conversation).where(
-            Conversation.id == conversation_id, Conversation.tenant_id == tenant_id
+            Conversation.id == conversation_id, _tenant_clause(tenant_id)
         )
     )
     conv = result.scalar_one_or_none()

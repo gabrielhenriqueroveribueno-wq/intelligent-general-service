@@ -149,6 +149,10 @@ BEHAVIOR_VERIFIED = _BEHAVIORS.get("BEHAVIOR_VERIFIED", "")
 SESSION_TTL_DAYS = 30
 # Rate limit por contato verificado — protege contra spam que esgota budget de IA.
 CONTACT_MSG_RATE_LIMIT_PER_HOUR = 30
+# Cooldown após 2ª tentativa de leak/jailbreak: contato fica sem IA por 1h.
+# Pode continuar mandando mensagem, mas só recebe orientação pra abrir ticket.
+LEAK_COOLDOWN_SECONDS = 3600
+LEAK_ATTEMPTS_THRESHOLD = 2  # 1ª = aviso; 2ª (>=) = cooldown
 
 
 async def _check_session_expired(db, contact) -> bool:
@@ -211,6 +215,73 @@ async def _check_contact_rate_limit(tenant_id, contact_id) -> tuple[bool, int]:
     except Exception as exc:
         logger.debug("Rate limit Redis falhou (permitindo): %s", exc)
         return False, 0
+
+
+async def _check_leak_cooldown(contact) -> tuple[bool, int]:
+    """Retorna (em_cooldown, segundos_restantes) para o contato.
+
+    Lê o timestamp `leak_cooldown_until` armazenado em contact.metadata_.
+    Não escreve no DB aqui — apenas consulta. Fail-open em erro.
+    """
+    from datetime import datetime, timezone
+
+    try:
+        meta = contact.metadata_ or {}
+        until_str = meta.get("leak_cooldown_until")
+        if not until_str:
+            return False, 0
+        until = datetime.fromisoformat(until_str)
+        now = datetime.now(timezone.utc)
+        if now >= until:
+            return False, 0
+        remaining = int((until - now).total_seconds())
+        return True, max(remaining, 60)
+    except Exception as exc:
+        logger.debug("Leak cooldown check falhou (permitindo): %s", exc)
+        return False, 0
+
+
+async def _handle_leak_attempt(db, contact) -> tuple[str, bool]:
+    """Registra uma tentativa de leak. Retorna (mensagem_para_usuario, em_cooldown).
+
+    1ª tentativa: contador++, aviso.
+    2ª+ tentativa: contador++, ativa cooldown de LEAK_COOLDOWN_SECONDS.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    meta = dict(contact.metadata_ or {})
+    attempts = int(meta.get("leak_attempts", 0)) + 1
+    meta["leak_attempts"] = attempts
+
+    if attempts >= LEAK_ATTEMPTS_THRESHOLD:
+        until = datetime.now(timezone.utc) + timedelta(seconds=LEAK_COOLDOWN_SECONDS)
+        meta["leak_cooldown_until"] = until.isoformat()
+        contact.metadata_ = meta
+        await db.flush()
+        logger.warning(
+            "Leak cooldown ATIVADO: contact=%s tentativas=%d até=%s",
+            contact.id,
+            attempts,
+            until.isoformat(),
+        )
+        return (
+            "⚠️ Identifiquei uma segunda tentativa de pedir informações confidenciais "
+            "ou contornar minhas regras. Por segurança, seu acesso à assistente está "
+            "suspenso por 1 hora. Durante esse período, se precisar de algo, envie "
+            "*\"quero falar com atendente\"* para abrir um chamado com uma pessoa real.",
+            True,
+        )
+
+    contact.metadata_ = meta
+    await db.flush()
+    logger.warning("Leak attempt registrado: contact=%s tentativas=%d", contact.id, attempts)
+    return (
+        "⚠️ Essa informação é confidencial e eu não posso compartilhar. "
+        "Posso te ajudar com seus *próprios* dados (notas, boletos, horários, etc.) "
+        "depois que você se identificar. Se insistir nesse tipo de pedido, seu acesso "
+        "será suspenso por 1 hora.",
+        False,
+    )
 
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=5)
@@ -374,6 +445,47 @@ async def _process_message_async(message_id: str):
 
         # ── Security gates: sessão expirada + rate-limit por contato ──────
         await _check_session_expired(db, contact)
+
+        # ── Leak cooldown: bloqueio de 1h após 2 tentativas de leak/jailbreak ──
+        _leak_blocked, _leak_remaining = await _check_leak_cooldown(contact)
+        if _leak_blocked:
+            _msg_text = (message.content or "").lower().strip()
+            _wants_human = any(
+                kw in _msg_text
+                for kw in (
+                    "atendente",
+                    "humano",
+                    "pessoa real",
+                    "falar com algu",
+                    "me transfere",
+                    "quero falar",
+                )
+            )
+            if _wants_human:
+                # Permite handoff durante cooldown — usuário pode abrir ticket
+                pass
+            else:
+                _min = max(1, _leak_remaining // 60)
+                _canned = (
+                    f"Seu acesso à assistente está suspenso por mais ~{_min} min "
+                    f"devido a tentativas de pedir informações confidenciais. "
+                    f"Envie *\"quero falar com atendente\"* para abrir um chamado."
+                )
+                _msg_id = await whatsapp_service.send_text_message(phone_id, token, to, _canned)
+                _save_bot_message(db, conversation, _canned, tenant_id, whatsapp_msg_id=_msg_id)
+                await db.execute(
+                    update(Message)
+                    .where(Message.id == message.id)
+                    .values(ai_tokens_used=0, intent="leak_cooldown")
+                )
+                await db.commit()
+                logger.warning(
+                    "Mensagem bloqueada por leak cooldown: contact=%s restante=%ds",
+                    contact.id,
+                    _leak_remaining,
+                )
+                await _engine.dispose()
+                return
 
         if contact.is_verified:
             _blocked, _retry_sec = await _check_contact_rate_limit(tenant_id, contact.id)
@@ -892,6 +1004,12 @@ async def _process_message_async(message_id: str):
                     )
                 except Exception:
                     pass
+
+            elif cmd == "LEAK_ATTEMPT":
+                _leak_msg, _cooldown_now = await _handle_leak_attempt(db, contact)
+                # Sobrescreve resposta da LLM com mensagem de segurança canônica
+                reply = _leak_msg
+                resolution_type = "leak_blocked"
 
             elif cmd.startswith("IDENTIFY:"):
                 parts = cmd.split(":", 2)
