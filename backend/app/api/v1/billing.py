@@ -26,6 +26,17 @@ async def billing_status(
     db: AsyncSession = Depends(get_db),
 ):
     """Retorna status de cobrança do tenant autenticado."""
+    # Super_admin não tem tenant_id — não é assinante, é operador da plataforma.
+    if current_user.tenant_id is None:
+        return {
+            "found": True,
+            "plan": "platform_admin",
+            "is_active": True,
+            "trial_expired": False,
+            "trial_days_left": None,
+            "trial_ends_at": None,
+        }
+
     status = await saas_billing_service.get_billing_status(db, current_user.tenant_id)
     if not status["found"]:
         raise HTTPException(status_code=404, detail="Tenant não encontrado")

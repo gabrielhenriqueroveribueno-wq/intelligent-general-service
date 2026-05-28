@@ -48,7 +48,8 @@ api.interceptors.response.use(
     }
 
     const message = error.response?.data?.detail || 'Ocorreu um erro. Tente novamente.'
-    if (status !== 401) {
+    const suppress = (error.config as any)?.suppressErrorToast === true
+    if (status !== 401 && !suppress) {
       toast.error(message)
     }
 

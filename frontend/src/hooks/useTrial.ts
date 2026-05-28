@@ -16,7 +16,7 @@ export function useTrial() {
 
   useEffect(() => {
     if (!user?.tenant_id) return
-    api.get('/api/v1/billing/status')
+    api.get('/api/v1/billing/status', { suppressErrorToast: true } as any)
       .then(r => setStatus(r.data))
       .catch(() => {/* billing status is optional */})
   }, [user?.tenant_id])
