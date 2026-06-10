@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class MessageResponse(BaseModel):
@@ -37,6 +37,14 @@ class ConversationResponse(BaseModel):
 
 class ConversationDetailResponse(ConversationResponse):
     messages: List[MessageResponse] = []
+
+    @field_validator("messages", mode="before")
+    @classmethod
+    def _none_to_empty_list(cls, v: object) -> object:
+        # Relação `messages` pode vir None quando não foi eager-loaded no ORM.
+        # O endpoint preenche as mensagens ordenadas depois — aqui só evitamos
+        # que o model_validate(conv) quebre ao ler conv.messages == None.
+        return v if v is not None else []
 
 
 class AgentMessageCreate(BaseModel):
