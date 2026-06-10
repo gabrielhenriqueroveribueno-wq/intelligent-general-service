@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -17,6 +17,16 @@ class AuditLog(Base, TenantMixin, TimestampMixin):
     """Log de auditoria de ações sensíveis."""
 
     __tablename__ = "audit_logs"
+
+    # tenant_id é opcional aqui: ações de plataforma (super_admin sem tenant)
+    # como login_success precisam ser auditadas mesmo sem tenant vinculado.
+    # Sobrescreve o nullable=False herdado de TenantMixin.
+    tenant_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("tenants.id"),
+        nullable=True,
+        index=True,
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True))
