@@ -5,9 +5,11 @@ Revises: l8h9i0j1k2l3
 Create Date: 2026-05-14
 
 """
-from alembic import op
+
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision = "m9i0j1k2l3m4"
 down_revision = "l8h9i0j1k2l3"
@@ -20,7 +22,8 @@ def upgrade() -> None:
         "leads",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("name", sa.String(255), nullable=False),
-        sa.Column("email", sa.String(255), nullable=False, index=True),
+        # index=True aqui duplicaria o op.create_index("ix_leads_email") abaixo
+        sa.Column("email", sa.String(255), nullable=False),
         sa.Column("phone", sa.String(30)),
         sa.Column("institution", sa.String(255)),
         sa.Column("role", sa.String(100)),

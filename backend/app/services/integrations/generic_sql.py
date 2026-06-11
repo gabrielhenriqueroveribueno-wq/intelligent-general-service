@@ -59,9 +59,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -69,19 +69,33 @@ from app.services.integrations.base import SyncResult, upsert_employee, upsert_s
 
 logger = logging.getLogger(__name__)
 
+# Identificadores SQL (tabela/coluna) vem do `config` do tenant-admin, nao do
+# usuario final — mas validamos como defesa em profundidade para impedir que uma
+# config malformada/maliciosa injete SQL via nome de tabela/coluna.
+_IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.$]*$")
+
+
+def _safe_ident(value: str, kind: str) -> str:
+    if not isinstance(value, str) or not _IDENT_RE.match(value):
+        raise ValueError(f"Identificador SQL invalido para {kind}: {value!r}")
+    return value
+
+
 _executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="igs-sql-conn")
 
 DRIVER_MAP = {
-    "mssql":      "mssql+pymssql",
-    "mysql":      "mysql+pymysql",
-    "mariadb":    "mysql+pymysql",
+    "mssql": "mssql+pymssql",
+    "mysql": "mysql+pymysql",
+    "mariadb": "mysql+pymysql",
     "postgresql": "postgresql+psycopg2",
-    "postgres":   "postgresql+psycopg2",
-    "oracle":     "oracle+oracledb",
+    "postgres": "postgresql+psycopg2",
+    "oracle": "oracle+oracledb",
 }
 
 
-def _build_url(db_type: str, host: str, port: int, database: str, username: str, password: str) -> str:
+def _build_url(
+    db_type: str, host: str, port: int, database: str, username: str, password: str
+) -> str:
     driver = DRIVER_MAP.get(db_type.lower())
     if not driver:
         raise ValueError(f"db_type '{db_type}' nao suportado. Use: {', '.join(DRIVER_MAP.keys())}")
@@ -106,6 +120,7 @@ def _test_connection_sync(conn_url: str) -> tuple[bool, str]:
     """Testa conexao. Roda em thread."""
     try:
         from sqlalchemy import create_engine, text
+
         engine = create_engine(conn_url, pool_pre_ping=True, connect_args={"timeout": 10})
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
@@ -115,61 +130,57 @@ def _test_connection_sync(conn_url: str) -> tuple[bool, str]:
         return False, str(exc)
 
 
-def _build_students_query(mapping: dict) -> str:
-    """Monta SELECT baseado no mapeamento de campos."""
-    table = mapping["table"]
-    fields = {
-        "registration_number": mapping.get("registration_number", "registration_number"),
-        "full_name":           mapping.get("full_name", "full_name"),
-        "course":              mapping.get("course"),
-        "semester":            mapping.get("semester"),
-        "email":               mapping.get("email"),
-        "phone":               mapping.get("phone"),
-        "status_field":        mapping.get("status_field"),
-    }
+def _build_select(mapping: dict, field_names: dict[str, str]) -> tuple[str, dict]:
+    """Monta SELECT a partir do mapeamento. Identificadores sao validados;
+    o valor de filtro (active_value) vai como bind param. Retorna (sql, params)."""
+    table = _safe_ident(mapping["table"], "table")
+    fields = {key: mapping.get(cfg, default) for key, (cfg, default) in field_names.items()}
     active_value = mapping.get("active_value", "A")
 
-    select_cols = [
-        f"{v} AS {k}"
-        for k, v in fields.items()
-        if v and k != "status_field"
-    ]
+    select_cols = []
+    for k, v in fields.items():
+        if v and k != "status_field":
+            select_cols.append(f"{_safe_ident(v, k)} AS {k}")
     if fields["status_field"]:
-        select_cols.append(f"{fields['status_field']} AS _status")
+        select_cols.append(f"{_safe_ident(fields['status_field'], 'status_field')} AS _status")
 
+    params: dict = {}
     where = ""
     if fields["status_field"] and active_value:
-        where = f" WHERE {fields['status_field']} = '{active_value}'"
+        where = f" WHERE {_safe_ident(fields['status_field'], 'status_field')} = :active_value"
+        params["active_value"] = active_value
 
-    return f"SELECT {', '.join(select_cols)} FROM {table}{where}"
+    return f"SELECT {', '.join(select_cols)} FROM {table}{where}", params
 
 
-def _build_employees_query(mapping: dict) -> str:
-    table = mapping["table"]
-    fields = {
-        "employee_number": mapping.get("employee_number", "employee_number"),
-        "full_name":       mapping.get("full_name", "full_name"),
-        "department":      mapping.get("department"),
-        "position":        mapping.get("position"),
-        "email":           mapping.get("email"),
-        "phone":           mapping.get("phone"),
-        "status_field":    mapping.get("status_field"),
-    }
-    active_value = mapping.get("active_value", "A")
+def _build_students_query(mapping: dict) -> tuple[str, dict]:
+    return _build_select(
+        mapping,
+        {
+            "registration_number": ("registration_number", "registration_number"),
+            "full_name": ("full_name", "full_name"),
+            "course": ("course", None),
+            "semester": ("semester", None),
+            "email": ("email", None),
+            "phone": ("phone", None),
+            "status_field": ("status_field", None),
+        },
+    )
 
-    select_cols = [
-        f"{v} AS {k}"
-        for k, v in fields.items()
-        if v and k != "status_field"
-    ]
-    if fields["status_field"]:
-        select_cols.append(f"{fields['status_field']} AS _status")
 
-    where = ""
-    if fields["status_field"] and active_value:
-        where = f" WHERE {fields['status_field']} = '{active_value}'"
-
-    return f"SELECT {', '.join(select_cols)} FROM {table}{where}"
+def _build_employees_query(mapping: dict) -> tuple[str, dict]:
+    return _build_select(
+        mapping,
+        {
+            "employee_number": ("employee_number", "employee_number"),
+            "full_name": ("full_name", "full_name"),
+            "department": ("department", None),
+            "position": ("position", None),
+            "email": ("email", None),
+            "phone": ("phone", None),
+            "status_field": ("status_field", None),
+        },
+    )
 
 
 class GenericSqlIntegrator:
@@ -190,7 +201,14 @@ class GenericSqlIntegrator:
         )
 
     def _default_port(self, db_type: str) -> int:
-        return {"mssql": 1433, "mysql": 3306, "mariadb": 3306, "postgresql": 5432, "postgres": 5432, "oracle": 1521}.get(db_type.lower(), 1433)
+        return {
+            "mssql": 1433,
+            "mysql": 3306,
+            "mariadb": 3306,
+            "postgresql": 5432,
+            "postgres": 5432,
+            "oracle": 1521,
+        }.get(db_type.lower(), 1433)
 
     async def test_connection(self) -> tuple[bool, str]:
         loop = asyncio.get_event_loop()
@@ -199,11 +217,17 @@ class GenericSqlIntegrator:
     async def sync_students(self, db: AsyncSession, tenant_id: uuid.UUID) -> SyncResult:
         result = SyncResult(success=True)
         try:
-            query = self._config.get("students_query") or _build_students_query(
-                self._config.get("table_mappings", {}).get("students", {})
-            )
+            custom = self._config.get("students_query")
+            if custom:
+                query, params = custom, {}
+            else:
+                query, params = _build_students_query(
+                    self._config.get("table_mappings", {}).get("students", {})
+                )
             loop = asyncio.get_event_loop()
-            rows = await loop.run_in_executor(_executor, _fetch_rows_sync, self._conn_url, query)
+            rows = await loop.run_in_executor(
+                _executor, _fetch_rows_sync, self._conn_url, query, params
+            )
             for row in rows:
                 try:
                     created, _ = await upsert_student(
@@ -215,7 +239,12 @@ class GenericSqlIntegrator:
                         semester=int(row["semester"]) if row.get("semester") else None,
                         email=str(row["email"]) if row.get("email") else None,
                         phone=str(row["phone"]) if row.get("phone") else None,
-                        enrollment_status="active" if row.get("_status", "A") == self._config.get("table_mappings", {}).get("students", {}).get("active_value", "A") else "inactive",
+                        enrollment_status="active"
+                        if row.get("_status", "A")
+                        == self._config.get("table_mappings", {})
+                        .get("students", {})
+                        .get("active_value", "A")
+                        else "inactive",
                     )
                     if created:
                         result.students_created += 1
@@ -233,11 +262,17 @@ class GenericSqlIntegrator:
     async def sync_employees(self, db: AsyncSession, tenant_id: uuid.UUID) -> SyncResult:
         result = SyncResult(success=True)
         try:
-            query = self._config.get("employees_query") or _build_employees_query(
-                self._config.get("table_mappings", {}).get("employees", {})
-            )
+            custom = self._config.get("employees_query")
+            if custom:
+                query, params = custom, {}
+            else:
+                query, params = _build_employees_query(
+                    self._config.get("table_mappings", {}).get("employees", {})
+                )
             loop = asyncio.get_event_loop()
-            rows = await loop.run_in_executor(_executor, _fetch_rows_sync, self._conn_url, query)
+            rows = await loop.run_in_executor(
+                _executor, _fetch_rows_sync, self._conn_url, query, params
+            )
             for row in rows:
                 try:
                     created, _ = await upsert_employee(

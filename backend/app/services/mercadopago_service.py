@@ -238,7 +238,8 @@ def verify_webhook_signature(
     """Valida assinatura HMAC do webhook do Mercado Pago."""
     secret = settings.MP_WEBHOOK_SECRET
     if not secret:
-        return True  # Skip verification if no secret configured
+        # Sem secret: tolera apenas fora de producao. Em producao, fail-closed.
+        return not settings.is_production
 
     # Parse x_signature: "ts=xxx,v1=xxx"
     parts = {}

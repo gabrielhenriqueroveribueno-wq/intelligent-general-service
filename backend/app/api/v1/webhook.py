@@ -96,9 +96,13 @@ async def mercadopago_webhook(
     data = payload.get("data", {})
     payment_id = str(data.get("id", ""))
 
-    # Validar assinatura se configurada
+    # Validar assinatura — OBRIGATORIA em producao (fail-closed).
+    # Sem isso, um POST forjado sem header poderia disparar process_payment_webhook.
     x_signature = request.headers.get("x-signature", "")
     x_request_id = request.headers.get("x-request-id", "")
+    if settings.is_production and settings.MP_WEBHOOK_SECRET and not x_signature:
+        logger.warning("Webhook MP sem assinatura em producao — rejeitado")
+        raise HTTPException(status_code=401, detail="Assinatura ausente")
     if x_signature:
         from app.services.mercadopago_service import verify_webhook_signature
 

@@ -11,6 +11,7 @@ try:
     from sentry_sdk.integrations.fastapi import FastApiIntegration
     from sentry_sdk.integrations.logging import LoggingIntegration
     from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
     _SENTRY_AVAILABLE = True
 except ImportError:
     _SENTRY_AVAILABLE = False
@@ -52,11 +53,35 @@ def _init_sentry() -> None:
 _init_sentry()
 
 
+def _validate_production_secrets() -> None:
+    """Fail-closed: impede subir em producao com secrets default/fracos.
+
+    Evita o cenario catastrofico de rodar prod com `change-me-jwt-secret`,
+    o que permitiria a qualquer um forjar JWTs de admin.
+    """
+    if not settings.is_production:
+        return
+
+    problems: list[str] = []
+    if settings.JWT_SECRET_KEY in ("", "change-me-jwt-secret") or len(settings.JWT_SECRET_KEY) < 32:
+        problems.append("JWT_SECRET_KEY ausente, default ou curto (<32 chars)")
+    if settings.APP_SECRET_KEY in ("", "change-me-in-production"):
+        problems.append("APP_SECRET_KEY ausente ou default")
+    if not settings.ENCRYPTION_KEY:
+        problems.append("ENCRYPTION_KEY ausente (Fernet)")
+    if not settings.WHATSAPP_APP_SECRET:
+        problems.append("WHATSAPP_APP_SECRET ausente (verificacao HMAC do webhook)")
+
+    if problems:
+        raise RuntimeError("Configuracao insegura para producao: " + "; ".join(problems))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Gerencia o ciclo de vida da aplicação."""
     from app.services.ws_manager import ws_manager
 
+    _validate_production_secrets()
     logger.info("IGS API iniciando...")
     redis_task = asyncio.create_task(ws_manager.start_redis_listener())
     yield

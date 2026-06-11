@@ -4,7 +4,7 @@
 > caso o historico de conversas seja perdido. Leia este documento inteiro
 > antes de iniciar qualquer tarefa.
 >
-> **Ultima atualizacao:** 2026-05-22 (apos commits ate `c47f38e — feat(wizard): visual step-by-step WhatsApp setup`)
+> **Ultima atualizacao:** 2026-06-10 (apos commits ate `f40d54b`; revisao de pendencias verificada contra o codigo)
 
 ---
 
@@ -547,23 +547,47 @@ make import-employees file=funcionarios.csv
 
 ## 19. Pendencias / Proximos Passos
 
-### Tecnicas
-1. **Token permanente Meta WhatsApp** — System User Token pendente (atual expira em 1-2h)
-2. **Evolution API** — avaliar migracao para reduzir custo de mensagens
-3. **Slides feature** — UI ainda existe mas backend foi dropado (migration `l8h9i0j1k2l3`). Decidir: remover UI ou reativar backend?
-4. **Templates HSM Meta** — criar templates aprovados para boleto_lembrete, frequencia_alerta, rematricula (necessario para outbound proativo)
-5. **Monitoring no servidor prod-light** — Oracle 1GB nao roda stack completo, falta solucao leve (uptime kuma?)
-6. **Integration com sistema academico real** — testar em cliente piloto (TOTVS RM via generic_sql)
+> Revisado em 2026-06-10 contra o codigo. Legenda: 🔴 critico p/ apresentar ·
+> 🟡 importante · 🟢 opcional/decisao · ✅ concluido.
+
+### Concluido desde 2026-05-22 (sprint de seguranca + anti-leak, NAO estava no CONTEXT antigo)
+- ✅ **Hardening de seguranca** (`6033603`): rate-limits, replay protection, output
+  guardrail, audit logs.
+- ✅ **39 testes de regressao** de isolamento de dados/seguranca (`ae67119`).
+- ✅ **Topic pre-gate** — bloqueia mensagens off-topic antes do LLM principal (`fe10471`).
+- ✅ **Prompt da Billie externalizado** para arquivos gitignored em `backend/prompts/`
+  (`6e14846`) — `billie_agent.txt` / `billie_behaviors.txt` / `billie_classifier.txt`.
+- ✅ **Anti-leak cooldown + super_admin cross-tenant** (tenant_id=NULL no JWT) (`9487087`).
+- ✅ **Demo mock desligado em producao** — painel admin usa API real (`c7192cc`).
+- ✅ Fixes de producao (`0caf77b`, `e616a42`, `f40d54b`): billing platform_admin p/
+  super_admin, `audit_logs.tenant_id` nullable, conversation detail `messages` None→[].
+
+### Tecnicas (verificado — ainda PENDENTE)
+1. 🔴 **Token permanente Meta WhatsApp** — System User Token ainda pendente; o token
+   atual e temporario (expira em 1-2h). **Risco #1 para uma demo ao vivo.** Verificar/trocar
+   no servidor antes de qualquer apresentacao.
+2. 🟢 **Evolution API** — apenas mencionada; sem codigo. Decisao de migracao em aberto.
+3. 🟢 **Slides feature** — confirmado: `models/slide.py` mantido, `pages/Slides.tsx` ainda
+   existe, intents `slide_generate/slide_update` no classifier, mas tabelas dropadas
+   (`l8h9i0j1k2l3`). Decidir: remover UI ou reativar backend.
+4. 🟡 **Templates HSM Meta** — infra existe (`MessageTemplate`, `api/v1/templates.py`,
+   `notification_tasks`), mas **templates aprovados na Meta** (boleto/frequencia/rematricula)
+   ainda nao criados. Necessario para outbound proativo.
+5. 🟡 **Monitoring no prod-light** — confirmado ausente no `docker-compose.prod-light.yml`
+   (sem uptime-kuma/monitoring). Falta solucao leve.
+6. 🟡 **Integracao com sistema academico real** — testar em piloto (TOTVS RM via `generic_sql`).
+7. 🔴 **Drift de migracao no prod** — prod em `k7g8h9i0j1k2`, head do repo `n0j1k2l3m4n5`.
+   `l8`/`m9`/`n0` NAO aplicadas; tabela `leads` ausente no prod. Rodar `alembic upgrade head`
+   (n0 e idempotente). **Nao** usar `alembic stamp` (esconderia o drift).
 
 ### Comerciais
-7. **Pitch deck final** — preparar demo end-to-end com Billie funcionando + dados de `seed_pitch`
-8. **Site de apresentacao** — `docs/site/` (Vite + Vercel) — divulgar
-9. **Leads pipeline** — definir follow-up automatico (email sequence?)
+8. 🟡 **Pitch deck final** — preparar demo end-to-end com Billie + dados de `seed_pitch`.
+9. 🟢 **Site de apresentacao** — `docs/site/` (Vite + Vercel) existe; divulgar.
+10. 🟢 **Leads pipeline** — follow-up automatico (email sequence?) — depende do item 7 (tabela `leads`).
 
-### Producto
-10. **Visual demo improvements** — concluido em commit `a9ece69` (hero stats, typing, before/after)
-11. **WhatsApp setup wizard** — concluido em `c47f38e`
-12. **SEO + changelog** — concluido em `2146164` (sprint comercial)
+### Concluido (produto)
+- ✅ **Visual demo improvements** (`a9ece69`), **WhatsApp setup wizard** (`c47f38e`),
+  **SEO + changelog** (`2146164`).
 
 ---
 
