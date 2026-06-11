@@ -12,7 +12,20 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import Text
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.compiler import compiles
+
+# Tipos PostgreSQL precisam de override para rodar no SQLite dos testes
+# (mesmo shim usado em app/tests/conftest.py)
+compiles(JSONB, "sqlite")(lambda element, compiler, **kw: compiler.visit_JSON(element, **kw))
+
+
+@compiles(ARRAY, "sqlite")
+def _compile_array_sqlite(element, compiler, **kw):
+    return compiler.visit_string(Text(), **kw)
+
 
 # UUIDs fixos para tornar os testes determinísticos
 TENANT_A = uuid.UUID("aaaaaaaa-0000-0000-0000-000000000001")

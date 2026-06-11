@@ -11,6 +11,21 @@ export default {
           700: '#1d4ed8',
           900: '#1e3a8a',
         },
+        // Paleta dark "Anchieta": navy institucional + amarelo de destaque
+        navy: {
+          950: '#0a1322',
+          900: '#0b1422',
+          850: '#0f1a2e',
+          800: '#131f36',
+          750: '#15223c',
+          700: '#15294a',
+          600: '#1d2f52',
+          line: '#1e2a40',
+        },
+        accent: {
+          DEFAULT: '#facc15',
+          ink: '#3a2e00',
+        },
       },
       animation: {
         'slide-up': 'slide-up 250ms ease-out',

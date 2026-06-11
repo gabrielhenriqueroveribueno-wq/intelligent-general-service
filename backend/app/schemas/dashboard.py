@@ -25,6 +25,46 @@ class DashboardOverview(BaseModel):
     estimated_cost_savings: float = 0.0
 
 
+class DailyVolumePoint(BaseModel):
+    date: str  # ISO (YYYY-MM-DD)
+    label: str  # dia da semana abreviado pt-BR (seg, ter, ...)
+    count: int
+
+
+class IntentCount(BaseModel):
+    intent: str
+    count: int
+
+
+class SentimentBreakdown(BaseModel):
+    positive: int = 0
+    neutral: int = 0
+    negative: int = 0
+
+
+class CsatSummary(BaseModel):
+    avg_score: float = 0.0  # 1-5
+    responses: int = 0
+
+
+class AiCostSummary(BaseModel):
+    tokens_month: int = 0
+    estimated_cost_usd: float = 0.0
+    budget_usd: float = 0.0
+    budget_used_pct: float = 0.0  # 0-100
+    provider: str = "groq"
+
+
+class DashboardInsights(BaseModel):
+    """Dados ricos do dashboard: volume diario, demanda, sentimento, CSAT e custo de IA."""
+
+    daily_volume: List[DailyVolumePoint] = []
+    top_intents: List[IntentCount] = []
+    sentiment: SentimentBreakdown = SentimentBreakdown()
+    csat: CsatSummary = CsatSummary()
+    ai_cost: AiCostSummary = AiCostSummary()
+
+
 class SLAMetrics(BaseModel):
     total_tickets: int
     within_sla: int

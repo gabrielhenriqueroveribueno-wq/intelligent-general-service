@@ -11,7 +11,7 @@ export default function Layout() {
   const { unreadCount, markAllRead, isConnected } = useNotifications()
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="theme-dark flex h-screen bg-navy-950">
       <PaywallModal />
 
       {/* Overlay mobile */}

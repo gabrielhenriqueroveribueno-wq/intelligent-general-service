@@ -12,11 +12,11 @@ export default function Header({ onMenuToggle, unreadCount, onBellClick, wsConne
   const { user, logout } = useAuth()
 
   return (
-    <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+    <header className="bg-navy-900 border-b border-navy-line px-4 py-3 flex items-center justify-between">
       {/* Hambúrguer — visível só em mobile */}
       <button
         onClick={onMenuToggle}
-        className="lg:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+        className="lg:hidden p-2 rounded-lg text-slate-400 hover:bg-navy-750 transition-colors"
         aria-label="Abrir menu"
       >
         <Menu size={20} />
@@ -41,7 +41,7 @@ export default function Header({ onMenuToggle, unreadCount, onBellClick, wsConne
         {/* Sino de notificações */}
         <button
           onClick={onBellClick}
-          className="relative p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+          className="relative p-2 rounded-lg text-slate-400 hover:bg-navy-750 transition-colors"
           aria-label="Notificações"
         >
           <Bell size={18} />
@@ -53,18 +53,18 @@ export default function Header({ onMenuToggle, unreadCount, onBellClick, wsConne
         </button>
 
         {/* Info do usuário */}
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <div className="bg-blue-100 p-1.5 rounded-full">
-            <User size={16} className="text-blue-600" />
+        <div className="flex items-center gap-2 text-sm text-slate-300">
+          <div className="bg-navy-600 p-1.5 rounded-full">
+            <User size={16} className="text-primary-500" />
           </div>
           <span className="hidden sm:block font-medium">{user?.full_name}</span>
-          <span className="hidden sm:block text-gray-400 capitalize">({user?.role})</span>
+          <span className="hidden sm:block text-slate-500 capitalize">({user?.role})</span>
         </div>
 
         {/* Sair */}
         <button
           onClick={logout}
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-red-600 transition-colors"
+          className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-red-400 transition-colors"
           aria-label="Sair"
         >
           <LogOut size={16} />

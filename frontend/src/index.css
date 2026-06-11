@@ -34,3 +34,79 @@
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   Tema dark "Anchieta" — escopado em .theme-dark (aplicado no Layout do
+   painel /app). Páginas públicas (Landing, Pricing, Login) NÃO recebem
+   a classe e continuam claras. Remapeia as utilities claras mais usadas
+   pelas páginas para tons navy, convertendo o painel inteiro sem editar
+   página por página.
+   ════════════════════════════════════════════════════════════════════ */
+
+.theme-dark { color-scheme: dark; }
+
+/* Superfícies */
+.theme-dark .bg-white { background-color: #131f36; }
+.theme-dark .bg-gray-50 { background-color: #0f1a2e; }
+.theme-dark .bg-gray-100 { background-color: #15223c; }
+.theme-dark .bg-gray-200 { background-color: #1d2f52; }
+.theme-dark .hover\:bg-gray-50:hover { background-color: #15223c; }
+.theme-dark .hover\:bg-gray-100:hover { background-color: #1d2f52; }
+.theme-dark .bg-blue-50 { background-color: #13233f; }
+.theme-dark .bg-blue-100 { background-color: #1d2f52; }
+.theme-dark .bg-red-50 { background-color: #2a1414; }
+.theme-dark .bg-red-100 { background-color: #3b1d1d; }
+.theme-dark .bg-green-50 { background-color: #0e2b22; }
+.theme-dark .bg-green-100 { background-color: #11352a; }
+.theme-dark .bg-yellow-50 { background-color: #2e2503; }
+.theme-dark .bg-yellow-100 { background-color: #3a2e00; }
+.theme-dark .bg-orange-50 { background-color: #321f0c; }
+.theme-dark .bg-orange-100 { background-color: #3a2410; }
+.theme-dark .bg-purple-100 { background-color: #2a2150; }
+
+/* Texto */
+.theme-dark .text-gray-900 { color: #e8edf6; }
+.theme-dark .text-gray-800 { color: #dce4f0; }
+.theme-dark .text-gray-700 { color: #c2cddf; }
+.theme-dark .text-gray-600 { color: #9fadc4; }
+.theme-dark .text-gray-500 { color: #8294ad; }
+.theme-dark .text-gray-400 { color: #64748b; }
+.theme-dark .text-blue-600 { color: #7fb0f6; }
+.theme-dark .text-blue-700 { color: #9ec3f7; }
+.theme-dark .text-red-600 { color: #f0999b; }
+.theme-dark .text-red-700 { color: #f4b3b4; }
+.theme-dark .text-green-600 { color: #5dcaa5; }
+.theme-dark .text-green-700 { color: #86d8bd; }
+.theme-dark .text-yellow-600 { color: #facc15; }
+.theme-dark .text-yellow-700 { color: #fbd54a; }
+.theme-dark .text-orange-600 { color: #f0b27b; }
+.theme-dark .text-orange-700 { color: #f4c599; }
+.theme-dark .text-purple-700 { color: #b9aef0; }
+
+/* Bordas e divisores */
+.theme-dark .border-gray-100 { border-color: #1a2538; }
+.theme-dark .border-gray-200 { border-color: #1e2a40; }
+.theme-dark .border-gray-300 { border-color: #27364f; }
+.theme-dark .border-red-200 { border-color: #4a2020; }
+.theme-dark .border-green-200 { border-color: #14402f; }
+.theme-dark .border-yellow-200 { border-color: #4a3a00; }
+.theme-dark .border-orange-200 { border-color: #4a2f12; }
+.theme-dark .border-blue-200 { border-color: #1d3a66; }
+.theme-dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) { border-color: #1e2a40; }
+.theme-dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: #1a2538; }
+
+/* Formulários */
+.theme-dark input:not([type='checkbox']):not([type='radio']),
+.theme-dark select,
+.theme-dark textarea {
+  background-color: #0f1a2e;
+  color: #e8edf6;
+  border-color: #27364f;
+}
+.theme-dark input::placeholder,
+.theme-dark textarea::placeholder { color: #5f7090; }
+
+/* Sombras ficam discretas no escuro */
+.theme-dark .shadow-sm { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); }
+.theme-dark .shadow-md { box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45); }
+.theme-dark .shadow-xl { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); }

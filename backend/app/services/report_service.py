@@ -320,3 +320,119 @@ async def get_dashboard_overview(db: AsyncSession, tenant_id: uuid.UUID) -> dict
         "ai_tokens_month": ai_tokens,
         "estimated_cost_savings": cost_savings,
     }
+
+
+_WEEKDAY_PT = ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"]
+
+# Intents conversacionais que nao representam demanda real do aluno/funcionario
+_NON_DEMAND_INTENTS = {"greeting", "farewell", "unknown", "verification", "feedback_response"}
+
+
+async def get_dashboard_insights(db: AsyncSession, tenant_id: uuid.UUID) -> dict:
+    """Dados ricos do dashboard: volume 7d, top intents, sentimento, CSAT e custo IA."""
+    from datetime import timedelta, timezone
+
+    from app.config import settings
+
+    now = datetime.now(timezone.utc)
+    today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    seven_days_ago = today - timedelta(days=6)
+    thirty_days_ago = today - timedelta(days=30)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    # ── Volume diario (ultimos 7 dias, preenchendo dias sem conversa) ──
+    rows = await db.execute(
+        select(
+            func.date(Conversation.started_at).label("day"),
+            func.count(Conversation.id),
+        )
+        .where(
+            Conversation.tenant_id == tenant_id,
+            Conversation.started_at >= seven_days_ago,
+        )
+        .group_by(func.date(Conversation.started_at))
+    )
+    counts_by_day = {str(day): count for day, count in rows.all()}
+    daily_volume = []
+    for i in range(7):
+        d = (seven_days_ago + timedelta(days=i)).date()
+        daily_volume.append(
+            {
+                "date": d.isoformat(),
+                "label": _WEEKDAY_PT[d.weekday()],
+                "count": counts_by_day.get(d.isoformat(), 0),
+            }
+        )
+
+    # ── Top intents (30 dias, excluindo conversacionais) ──
+    rows = await db.execute(
+        select(Message.intent, func.count(Message.id))
+        .where(
+            Message.tenant_id == tenant_id,
+            Message.created_at >= thirty_days_ago,
+            Message.intent.is_not(None),
+            Message.intent.not_in(_NON_DEMAND_INTENTS),
+        )
+        .group_by(Message.intent)
+        .order_by(func.count(Message.id).desc())
+        .limit(6)
+    )
+    top_intents = [{"intent": intent, "count": count} for intent, count in rows.all()]
+
+    # ── Sentimento das mensagens de usuarios (30 dias) ──
+    rows = await db.execute(
+        select(Message.sentiment, func.count(Message.id))
+        .where(
+            Message.tenant_id == tenant_id,
+            Message.created_at >= thirty_days_ago,
+            Message.sender_type == "user",
+            Message.sentiment.is_not(None),
+        )
+        .group_by(Message.sentiment)
+    )
+    sentiment = {"positive": 0, "neutral": 0, "negative": 0}
+    for label, count in rows.all():
+        if label in sentiment:
+            sentiment[label] = count
+
+    # ── CSAT (30 dias) ──
+    row = await db.execute(
+        select(func.avg(SatisfactionSurvey.score), func.count(SatisfactionSurvey.id)).where(
+            SatisfactionSurvey.tenant_id == tenant_id,
+            SatisfactionSurvey.score.is_not(None),
+            SatisfactionSurvey.survey_sent_at >= thirty_days_ago,
+        )
+    )
+    avg_score, responses = row.one()
+
+    # ── Custo de IA no mes corrente ──
+    row = await db.execute(
+        select(func.coalesce(func.sum(Message.ai_tokens_used), 0)).where(
+            Message.tenant_id == tenant_id,
+            Message.created_at >= month_start,
+        )
+    )
+    tokens_month = int(row.scalar_one())
+    # Precos por 1k tokens alinhados com ai_budget_tasks._COST_PER_1K
+    cost_per_1k = {"claude": 0.015, "anthropic": 0.015, "groq": 0.0008, "gemini": 0.0005}
+    provider = settings.AI_PROVIDER
+    estimated_cost = (tokens_month / 1000.0) * cost_per_1k.get(provider, 0.01)
+    budget = float(settings.AI_MONTHLY_BUDGET_USD or 0)
+    budget_pct = (estimated_cost / budget * 100.0) if budget > 0 else 0.0
+
+    return {
+        "daily_volume": daily_volume,
+        "top_intents": top_intents,
+        "sentiment": sentiment,
+        "csat": {
+            "avg_score": round(float(avg_score or 0), 2),
+            "responses": int(responses or 0),
+        },
+        "ai_cost": {
+            "tokens_month": tokens_month,
+            "estimated_cost_usd": round(estimated_cost, 2),
+            "budget_usd": budget,
+            "budget_used_pct": round(min(budget_pct, 100.0), 1),
+            "provider": provider,
+        },
+    }
