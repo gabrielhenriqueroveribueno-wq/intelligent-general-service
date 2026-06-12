@@ -128,7 +128,7 @@ export default function MetricsDashboard() {
       <div className="rounded-2xl overflow-hidden shadow-lg">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-gray-200">
           {/* ANTES */}
-          <div className="bg-gradient-to-br from-gray-700 via-gray-800 to-slate-900 p-7 text-white relative overflow-hidden">
+          <div className="bg-navy-750 p-7 text-white relative overflow-hidden">
             <div className="absolute top-0 right-0 opacity-10">
               <Frown size={140} />
             </div>
@@ -174,11 +174,10 @@ export default function MetricsDashboard() {
           </div>
 
           {/* DEPOIS */}
-          <div className="bg-gradient-to-br from-emerald-500 via-green-600 to-teal-600 p-7 text-white relative overflow-hidden">
+          <div className="bg-green-600 p-7 text-white relative overflow-hidden">
             <div className="absolute top-0 right-0 opacity-10">
               <Smile size={140} />
             </div>
-            <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl pointer-events-none" />
             <div className="relative">
               <div className="flex items-center gap-2 mb-2">
                 <span className="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-bold bg-white/30 backdrop-blur flex items-center gap-1">
@@ -220,7 +219,7 @@ export default function MetricsDashboard() {
         {/* Faixa de economia */}
         <div className="bg-white px-7 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-gray-100">
           <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-br from-emerald-100 to-green-100 p-3 rounded-xl">
+            <div className="bg-green-100 p-3 rounded-xl">
               <ArrowRight className="text-green-600" size={22} />
             </div>
             <div>
@@ -258,25 +257,25 @@ export default function MetricsDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
           icon={BarChart2}
-          color="from-blue-500 to-blue-600"
+          color="text-primary-500"
           label="Total Atendimentos"
           value={dashboard?.total_interactions ?? 0}
         />
         <KPICard
           icon={Bot}
-          color="from-purple-500 to-indigo-600"
+          color="text-purple-400"
           label="Atendimentos pela IA"
           value={roi?.bot_interactions ?? 0}
         />
         <KPICard
           icon={Users}
-          color="from-orange-500 to-amber-600"
+          color="text-orange-400"
           label="Atendimentos por Humano"
           value={roi?.human_interactions ?? 0}
         />
         <KPICard
           icon={Clock}
-          color="from-emerald-500 to-teal-600"
+          color="text-green-400"
           label="Tempo Economizado/Atend."
           value={roi?.avg_time_saved_per_interaction_seconds ?? 0}
           decimals={1}
@@ -483,8 +482,8 @@ function KPICard({
   return (
     <div className="card hover:shadow-md transition-shadow">
       <div className="flex items-center gap-3">
-        <div className={`p-2.5 rounded-xl bg-gradient-to-br ${color} shadow-sm`}>
-          <Icon className="text-white" size={20} />
+        <div className="p-2.5 rounded-xl bg-navy-700">
+          <Icon className={color} size={20} />
         </div>
         <div className="min-w-0">
           <p className="text-xs text-gray-500">{label}</p>

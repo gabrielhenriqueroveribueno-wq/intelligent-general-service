@@ -324,8 +324,20 @@ async def get_dashboard_overview(db: AsyncSession, tenant_id: uuid.UUID) -> dict
 
 _WEEKDAY_PT = ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"]
 
-# Intents conversacionais que nao representam demanda real do aluno/funcionario
-_NON_DEMAND_INTENTS = {"greeting", "farewell", "unknown", "verification", "feedback_response"}
+# Intents que nao representam demanda real do aluno/funcionario:
+# conversacionais, placeholders do pipeline e estados de seguranca.
+# "conversation" e o intent default (msgs nao classificadas / contato nao verificado).
+_NON_DEMAND_INTENTS = {
+    "greeting",
+    "farewell",
+    "unknown",
+    "verification",
+    "feedback_response",
+    "conversation",
+    "off_topic",
+    "rate_limited",
+    "leak_cooldown",
+}
 
 
 async def get_dashboard_insights(db: AsyncSession, tenant_id: uuid.UUID) -> dict:
@@ -364,12 +376,15 @@ async def get_dashboard_insights(db: AsyncSession, tenant_id: uuid.UUID) -> dict
             }
         )
 
-    # ── Top intents (30 dias, excluindo conversacionais) ──
+    # ── Top intents (30 dias) — so mensagens do usuario, excluindo placeholders.
+    # Conta a demanda real do aluno/funcionario (nao as respostas do bot, que
+    # herdam o mesmo intent e dobrariam a contagem).
     rows = await db.execute(
         select(Message.intent, func.count(Message.id))
         .where(
             Message.tenant_id == tenant_id,
             Message.created_at >= thirty_days_ago,
+            Message.sender_type == "user",
             Message.intent.is_not(None),
             Message.intent.not_in(_NON_DEMAND_INTENTS),
         )

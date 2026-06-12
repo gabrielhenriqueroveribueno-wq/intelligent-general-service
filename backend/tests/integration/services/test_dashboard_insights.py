@@ -60,6 +60,16 @@ async def _seed(db, tenant_id: uuid.UUID, other_tenant_id: uuid.UUID) -> None:
                 sentiment="neutral",
                 **ts,
             ),
+            # Resposta do bot herda o intent — NAO pode contar como demanda
+            Message(
+                tenant_id=tenant_id,
+                conversation_id=conv.id,
+                sender_type="bot",
+                content="aqui esta seu boleto",
+                intent="boleto_query",
+                ai_tokens_used=150,
+                **ts,
+            ),
             # Mensagem de OUTRO tenant — nunca pode vazar
             Message(
                 tenant_id=other_tenant_id,
@@ -101,8 +111,10 @@ async def test_insights_aggregates_and_isolates_tenant(
     assert sum(p["count"] for p in insights["daily_volume"]) == 1
 
     # Top intents: exclui 'greeting' e nao traz intent de outro tenant
-    intents = {i["intent"] for i in insights["top_intents"]}
-    assert intents == {"boleto_query", "grade_query"}
+    by_intent = {i["intent"]: i["count"] for i in insights["top_intents"]}
+    assert set(by_intent) == {"boleto_query", "grade_query"}
+    # boleto_query conta so a msg do usuario (1), nao a resposta do bot
+    assert by_intent["boleto_query"] == 1
 
     # Sentimento: 1 positivo, 1 neutro, 1 negativo (do tenant certo)
     assert insights["sentiment"] == {"positive": 1, "neutral": 1, "negative": 1}
@@ -111,8 +123,8 @@ async def test_insights_aggregates_and_isolates_tenant(
     assert insights["csat"]["avg_score"] == 4.0
     assert insights["csat"]["responses"] == 1
 
-    # Custo IA: 300 tokens do tenant (sem os 999k do outro)
-    assert insights["ai_cost"]["tokens_month"] == 300
+    # Custo IA: 100+200 (user) + 150 (bot) do tenant; sem os 999k do outro
+    assert insights["ai_cost"]["tokens_month"] == 450
     assert insights["ai_cost"]["budget_usd"] > 0
 
 
