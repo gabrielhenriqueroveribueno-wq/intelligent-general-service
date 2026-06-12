@@ -104,6 +104,7 @@ const INTENT_LABELS: Record<string, string> = {
   faq: 'Dúvidas gerais',
   human_handoff: 'Atendimento humano',
   document_ocr: 'Envio de documentos',
+  conversation: 'Conversa geral',
 }
 
 const PROVIDER_LABELS: Record<string, string> = {

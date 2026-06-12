@@ -43,7 +43,12 @@
    página por página.
    ════════════════════════════════════════════════════════════════════ */
 
-.theme-dark { color-scheme: dark; }
+/* Texto herdado: elementos sem classe de cor herdam o text-gray-900 do body,
+   que fica FORA do escopo .theme-dark — define a herança clara aqui */
+.theme-dark { color-scheme: dark; color: #dce4f0; }
+/* Cor default de borda do preflight (ex.: `border` sem cor explícita).
+   :where() zera a especificidade para nunca vencer utilities explícitas */
+:where(.theme-dark) :where(*, ::before, ::after) { border-color: #1e2a40; }
 
 /* Superfícies */
 .theme-dark .bg-white { background-color: #131f36; }
