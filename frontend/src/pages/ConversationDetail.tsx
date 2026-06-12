@@ -253,12 +253,12 @@ export default function ConversationDetail() {
               >
                 <div
                   className={clsx(
-                    'max-w-[80%] lg:max-w-[70%] rounded-2xl px-4 py-2.5 shadow-sm',
+                    'max-w-[80%] lg:max-w-[70%] rounded-2xl px-4 py-2.5 shadow-sm text-white',
                     msg.sender_type === 'user'
-                      ? 'bg-white border rounded-tl-sm'
+                      ? 'bg-blue-600 rounded-tl-sm'
                       : msg.sender_type === 'bot'
-                        ? 'bg-blue-600 text-white rounded-tr-sm'
-                        : 'bg-green-600 text-white rounded-tr-sm',
+                        ? 'bg-blue-600 rounded-tr-sm'
+                        : 'bg-green-600 rounded-tr-sm',
                   )}
                 >
                   <div className="flex items-center gap-1.5 mb-1">
@@ -267,14 +267,9 @@ export default function ConversationDetail() {
                     ) : msg.sender_type === 'agent' ? (
                       <UserCheck size={12} className="opacity-70" />
                     ) : (
-                      <User size={12} className="opacity-70 text-gray-400" />
+                      <User size={12} className="opacity-70" />
                     )}
-                    <span
-                      className={clsx(
-                        'text-[10px] font-medium',
-                        msg.sender_type === 'user' ? 'text-gray-400' : 'opacity-70',
-                      )}
-                    >
+                    <span className="text-[10px] font-medium opacity-70">
                       {senderLabels[msg.sender_type] || msg.sender_type}
                     </span>
                     {msg.intent && (
@@ -287,12 +282,7 @@ export default function ConversationDetail() {
                     )}
                   </div>
                   <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
-                  <p
-                    className={clsx(
-                      'text-[10px] mt-1 text-right',
-                      msg.sender_type === 'user' ? 'text-gray-400' : 'opacity-60',
-                    )}
-                  >
+                  <p className="text-[10px] mt-1 text-right opacity-60">
                     {format(new Date(msg.created_at), 'HH:mm', { locale: ptBR })}
                   </p>
                 </div>
@@ -348,15 +338,15 @@ export default function ConversationDetail() {
             <div className="space-y-3 text-sm">
               <div>
                 <p className="text-xs text-gray-400">Canal</p>
-                <p className="font-medium capitalize">{conv.channel}</p>
+                <p className="font-medium capitalize text-gray-800">{conv.channel}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-400">Tipo</p>
-                <p className="font-medium">{conv.context_type || 'Geral'}</p>
+                <p className="font-medium text-gray-800">{conv.context_type || 'Geral'}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-400">Status</p>
-                <p className="font-medium">{statusLabels[conv.status] || conv.status}</p>
+                <p className="font-medium text-gray-800">{statusLabels[conv.status] || conv.status}</p>
               </div>
               {conv.assigned_agent_id && (
                 <div>
@@ -368,26 +358,26 @@ export default function ConversationDetail() {
               )}
               <div>
                 <p className="text-xs text-gray-400">Início</p>
-                <p className="font-medium">
+                <p className="font-medium text-gray-800">
                   {format(new Date(conv.started_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
                 </p>
               </div>
               {conv.last_message_at && (
                 <div>
                   <p className="text-xs text-gray-400">Última mensagem</p>
-                  <p className="font-medium">
+                  <p className="font-medium text-gray-800">
                     {format(new Date(conv.last_message_at), "dd/MM HH:mm", { locale: ptBR })}
                   </p>
                 </div>
               )}
               <div>
                 <p className="text-xs text-gray-400">Mensagens</p>
-                <p className="font-medium">{conv.messages?.length || 0}</p>
+                <p className="font-medium text-gray-800">{conv.messages?.length || 0}</p>
               </div>
               {conv.satisfaction_score && (
                 <div>
                   <p className="text-xs text-gray-400">Avaliação</p>
-                  <p className="font-medium">{'⭐'.repeat(conv.satisfaction_score)} ({conv.satisfaction_score}/5)</p>
+                  <p className="font-medium text-gray-800">{'⭐'.repeat(conv.satisfaction_score)} ({conv.satisfaction_score}/5)</p>
                 </div>
               )}
             </div>
