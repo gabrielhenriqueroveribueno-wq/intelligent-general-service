@@ -1022,6 +1022,14 @@ async def _process_message_async(message_id: str):
                 await _handle_password(db, contact, password)
                 if contact.is_verified:
                     resolution_type = "verified"
+                    # Marca a conversa (ticket) com o tipo do login recém-autenticado.
+                    # Após um [LOGOUT], esta é uma conversa nova, agora vinculada ao
+                    # novo login (contact.name já foi atualizado em _handle_password).
+                    await db.execute(
+                        update(Conversation)
+                        .where(Conversation.id == conversation.id)
+                        .values(context_type=contact.contact_type)
+                    )
 
             elif cmd == "FEEDBACK_REQUEST":
                 # Marca conversa como aguardando feedback
@@ -1059,6 +1067,34 @@ async def _process_message_async(message_id: str):
 
             elif cmd == "CANCEL":
                 contact.metadata_ = {}
+
+            elif cmd == "LOGOUT":
+                # Usuário pediu para sair / trocar de conta.
+                # 1) Encerra a conversa atual (vira um "ticket" fechado no painel).
+                # 2) Zera toda a identificação/verificação do contato.
+                # A próxima mensagem do usuário não encontra conversa ativa no
+                # webhook, então uma NOVA conversa é criada; ao se verificar de
+                # novo, o atendimento passa a ficar sob o novo login.
+                from datetime import datetime as _dt_logout
+                from datetime import timezone as _tz_logout
+
+                await db.execute(
+                    update(Conversation)
+                    .where(Conversation.id == conversation.id)
+                    .values(status="closed", closed_at=_dt_logout.now(_tz_logout.utc))
+                )
+                contact.is_verified = False
+                contact.contact_type = "unknown"
+                contact.student_id = None
+                contact.employee_id = None
+                contact.name = None
+                contact.metadata_ = {}
+                resolution_type = "logout"
+                logger.info(
+                    "Logout/troca de conta: contact=%s — conversa %s encerrada",
+                    contact.id,
+                    conversation.id,
+                )
 
         # ── 7. Envia resposta ─────────────────────────────────────────────
         if reply.strip():
@@ -1118,7 +1154,7 @@ async def _process_message_async(message_id: str):
 # Padrões de prompt injection e injeção de comandos do sistema
 _CMD_INJECT_RE = re.compile(
     r"\[(HANDOFF|IDENTIFY:[^\]]*|PASSWORD:[^\]]*|CANCEL|FEEDBACK[^\]]*"
-    r"|REMINDERS_(?:ON|OFF)|GENERATE_DOC:[^\]]*)\]",
+    r"|REMINDERS_(?:ON|OFF)|GENERATE_DOC:[^\]]*|LOGOUT)\]",
     re.IGNORECASE,
 )
 _INJECTION_RE = re.compile(
@@ -1199,6 +1235,7 @@ def _extract_commands(raw_reply: str) -> tuple[str, list[str]]:
         "REMINDERS_ON",
         "REMINDERS_OFF",
         "GENERATE_DOC:",
+        "LOGOUT",
     )
     for match in re.finditer(r"\[([A-Z_]+(?::[^\]]*)?)\]", raw_reply):
         cmd = match.group(1)
@@ -1206,7 +1243,7 @@ def _extract_commands(raw_reply: str) -> tuple[str, list[str]]:
             commands.append(cmd)
 
     clean = re.sub(
-        r"\s*\[(?:HANDOFF|IDENTIFY:[^\]]*|PASSWORD:[^\]]*|CANCEL|FEEDBACK_REQUEST|FEEDBACK:\d|REMINDERS_ON|REMINDERS_OFF|GENERATE_DOC:[^\]]*)\]\s*",
+        r"\s*\[(?:HANDOFF|IDENTIFY:[^\]]*|PASSWORD:[^\]]*|CANCEL|FEEDBACK_REQUEST|FEEDBACK:\d|REMINDERS_ON|REMINDERS_OFF|GENERATE_DOC:[^\]]*|LOGOUT)\]\s*",
         "",
         raw_reply,
     )
