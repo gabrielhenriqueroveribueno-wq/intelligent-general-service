@@ -975,6 +975,7 @@ async def _process_message_async(message_id: str):
         # ── 6. Processar comandos embutidos ──────────────────────────────
         reply, commands = _extract_commands(raw_reply)
         resolution_type = "agent"
+        _just_verified = False  # vira True quando a senha é validada NESTE turno
 
         for cmd in commands:
             if cmd == "HANDOFF":
@@ -1022,6 +1023,7 @@ async def _process_message_async(message_id: str):
                 await _handle_password(db, contact, password)
                 if contact.is_verified:
                     resolution_type = "verified"
+                    _just_verified = True
                     # Marca a conversa (ticket) com o tipo do login recém-autenticado.
                     # Após um [LOGOUT], esta é uma conversa nova, agora vinculada ao
                     # novo login (contact.name já foi atualizado em _handle_password).
@@ -1100,6 +1102,22 @@ async def _process_message_async(message_id: str):
         if reply.strip():
             msg_id = await whatsapp_service.send_text_message(phone_id, token, to, reply.strip())
             _save_bot_message(db, conversation, reply.strip(), tenant_id, whatsapp_msg_id=msg_id)
+
+        # ── 7b. Senha validada NESTE turno: cumprimenta automaticamente ────
+        # Sem isso, a Billie manda só "Validando sua senha..." e fica esperando
+        # o usuário mandar outra mensagem pra ser recebido. Mensagem curta e
+        # determinística (sem custo extra de LLM), enviada logo após a confirmação.
+        if _just_verified:
+            _first_name = (contact.name or "").strip().split(" ")[0]
+            _greeting = (
+                f"Olá, *{_first_name}*! ✅ Acesso liberado. Como posso te ajudar hoje?"
+                if _first_name
+                else "Pronto, acesso liberado! ✅ Como posso te ajudar hoje?"
+            )
+            _greeting_id = await whatsapp_service.send_text_message(
+                phone_id, token, to, _greeting
+            )
+            _save_bot_message(db, conversation, _greeting, tenant_id, whatsapp_msg_id=_greeting_id)
 
         await db.execute(
             update(Message)
